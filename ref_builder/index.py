@@ -253,6 +253,18 @@ class Index:
 
         return None
 
+    def get_id_by_acronym(self, acronym: str) -> UUID | None:
+        """Get an OTU ID by its acronym."""
+        cursor = self.con.execute(
+            'SELECT id AS "id [uuid]" FROM otus WHERE acronym = ?',
+            (acronym,),
+        )
+
+        if result := cursor.fetchone():
+            return result[0]
+
+        return None
+
     def get_id_by_legacy_id(self, legacy_id: str) -> UUID | None:
         """Get an OTU ID by its legacy ID."""
         cursor = self.con.execute(
