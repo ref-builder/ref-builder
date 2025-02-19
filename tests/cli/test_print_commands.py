@@ -56,7 +56,9 @@ class TestPrintCommands:
             assert "OTU not found" in result.output
 
     def test_otu_get_empty(self, scratch_repo):
-        result = runner.invoke(otu_command_group, ["--path", str(scratch_repo.path)] + ["get", ""])
+        result = runner.invoke(
+            otu_command_group, ["--path", str(scratch_repo.path)] + ["get", ""]
+        )
 
         assert result.exit_code == 1
 
