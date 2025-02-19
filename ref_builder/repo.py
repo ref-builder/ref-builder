@@ -829,6 +829,16 @@ class Repo:
 
         return None
 
+    def get_otu_id_by_acronym(self, acronym: str) -> uuid.UUID | None:
+        """Return the UUID of the OTU with the given ``acronym``.
+        If no OTU is found, return None.
+
+        :param acronym: the exact acronym of the OTU
+        :return: the UUID of the OTU or ``None``
+        """
+
+        return self._index.get_id_by_acronym(acronym)
+
     def get_otu_id_by_taxid(self, taxid: int) -> uuid.UUID | None:
         """Return the UUID of the OTU with the given ``taxid``.
 
