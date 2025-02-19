@@ -7,6 +7,7 @@ from polyfactory.factories.pydantic_factory import ModelFactory
 from polyfactory.pytest_plugin import register_fixture
 from pydantic import BaseModel, TypeAdapter
 from pytest_mock import MockerFixture
+from structlog import get_logger
 
 from ref_builder.legacy.utils import build_legacy_otu
 from ref_builder.logs import configure_logger
@@ -28,6 +29,8 @@ from tests.fixtures.factories import (
 )
 
 configure_logger(True)
+
+logger = get_logger()
 
 
 @pytest.fixture(autouse=True)
