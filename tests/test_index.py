@@ -192,6 +192,19 @@ class TestGetIDByPartial:
         assert index.get_id_by_partial("00000000") is None
 
 
+class TestGetIDByAcronym:
+    """Test the `get_id_by_name` method of the Snapshotter class."""
+
+    def test_ok(self, index: Index, indexable_otus: list[RepoOTU]):
+        """Test that the correct OTU ID is retrieved by acronym."""
+        for otu in indexable_otus:
+            assert otu.id == index.get_id_by_acronym(otu.acronym)
+
+    def test_not_found(self, index: Index):
+        """Test that `None` is returned when the acronym is not found."""
+        assert index.get_id_by_acronym("paella") is None
+
+
 class TestGetIDByName:
     """Test the `get_id_by_name` method of the Snapshotter class."""
 
