@@ -551,6 +551,45 @@ class TestExtendPlanCommand:
         assert result.exit_code == 1
 
 
+
+
+class TestGetIsolateIdCommand:
+    """Test ``ref-builder otu get-isolate-id`` command works as expected."""
+
+    def test_default_ok(self, scratch_repo: Repo):
+        """Test that leaving the option empty prints the representative isolate ID to console."""
+        otu = scratch_repo.get_otu_by_taxid(438782)
+
+        result = runner.invoke(
+            otu_command_group,
+            ["--path", str(scratch_repo.path)] + ["get-isolate-id", str(otu.id)],
+        )
+
+        print(result.output)
+
+        assert result.exit_code == 0
+
+        assert str(otu.representative_isolate) in result.stdout
+
+    def test_with_name_option_ok(self, scratch_repo):
+        """Test that using the ``--name TYPE VALUE `` option returns the correct isolate id."""
+        otu = scratch_repo.get_otu_by_taxid(438782)
+
+        isolate_id = next(iter(otu.isolate_ids - {otu.representative_isolate}))
+
+        isolate_name = otu.get_isolate(isolate_id).name
+
+        result = runner.invoke(
+            otu_command_group,
+            ["--path", str(scratch_repo.path)]
+            + ["get-isolate-id", str(otu.id)]
+            + ["--name", str(isolate_name.type), isolate_name.value],
+        )
+
+        assert result.exit_code == 0
+
+        assert str(isolate_id) in result.stdout
+
 @pytest.mark.parametrize(
     ("taxid", "accessions"),
     [(1278205, ["NC_020160"]), (345184, ["DQ178610", "DQ178611"])],
