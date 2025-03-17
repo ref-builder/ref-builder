@@ -15,10 +15,26 @@ from ref_builder.events.otu import (
     CreatePlan,
     SetRepresentativeIsolate,
     UpdateExcludedAccessions,
+    UpdateIdentifiers,
 )
 from ref_builder.events.repo import CreateRepo
 from ref_builder.events.sequence import CreateSequence, DeleteSequence
 from ref_builder.utils import pad_zeroes
+
+
+CLASS_NAME_INDEX = {
+    "CreateRepo": CreateRepo,
+    "CreateOTU": CreateOTU,
+    "CreateIsolate": CreateIsolate,
+    "CreateSequence": CreateSequence,
+    "LinkSequence": LinkSequence,
+    "UnlinkSequence": UnlinkSequence,
+    "DeleteIsolate": DeleteIsolate,
+    "DeleteSequence": DeleteSequence,
+    "CreatePlan": CreatePlan,
+    "SetRepresentativeIsolate": SetRepresentativeIsolate,
+    "UpdateExcludedAccessions": UpdateExcludedAccessions,
+}
 
 
 class EventStore:
@@ -119,19 +135,7 @@ class EventStore:
             loaded = orjson.loads(f.read())
 
             try:
-                cls = {
-                    "CreateRepo": CreateRepo,
-                    "CreateOTU": CreateOTU,
-                    "CreateIsolate": CreateIsolate,
-                    "CreateSequence": CreateSequence,
-                    "LinkSequence": LinkSequence,
-                    "UnlinkSequence": UnlinkSequence,
-                    "DeleteIsolate": DeleteIsolate,
-                    "DeleteSequence": DeleteSequence,
-                    "CreatePlan": CreatePlan,
-                    "SetRepresentativeIsolate": SetRepresentativeIsolate,
-                    "UpdateExcludedAccessions": UpdateExcludedAccessions,
-                }[loaded["type"]]
+                cls = CLASS_NAME_INDEX[loaded["type"]]
 
                 return cls(**loaded)
 
