@@ -78,6 +78,39 @@ def allow_accessions_into_otu(
             excluded_accessions=sorted(excluded_accessions),
         )
 
+def update_otu_identifiers(
+    repo: Repo,
+    otu: OTUBuilder,
+    taxid: int,
+    ignore_cache: bool = False,
+) -> OTUBuilder | None:
+    """Update OTU with new Taxonomy ID and associated name."""
+    client = NCBIClient(ignore_cache)
+
+    otu_logger = logger.bind(
+        id=str(otu.id), original_taxid=otu.taxid, original_name=otu.name
+    )
+
+    if repo.get_otu_id_by_taxid(taxid):
+        raise ValueError(
+            f"Taxonomy ID {taxid} has already been added to this reference.",
+        )
+
+    taxonomy = client.fetch_taxonomy_record(taxid)
+
+    if taxonomy is None:
+        otu_logger.fatal(f"Could not retrieve {taxid} from NCBI Taxonomy")
+        return None
+
+    otu_logger.info("Updating OTU with new Taxonomy data...")
+
+    with repo.use_transaction():
+        repo.update_otu_identifiers(
+            otu_id=otu.id, taxid=taxonomy.id, name=taxonomy.name
+        )
+
+    return repo.get_otu(otu.id)
+
 
 def delete_isolate_from_otu(repo: Repo, otu: OTUBuilder, isolate_id: UUID) -> bool:
     """Remove an isolate from a specified OTU."""
