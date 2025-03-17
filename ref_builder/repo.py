@@ -61,6 +61,8 @@ from ref_builder.events.otu import (
     SetRepresentativeIsolateData,
     UpdateExcludedAccessions,
     UpdateExcludedAccessionsData,
+    UpdateIdentifiers,
+    UpdateIdentifiersData,
 )
 from ref_builder.events.repo import (
     CreateRepo,
@@ -610,6 +612,32 @@ class Repo:
         return (
             self.get_otu(otu_id).get_isolate(isolate_id).get_sequence_by_id(sequence_id)
         )
+
+    def update_otu_identifiers(
+        self,
+        otu_id: uuid.UUID,
+        taxid: int | None,
+        name: str | None,
+    ) -> OTUBuilder | None:
+        """Set the Taxonomy ID or name of an OTU."""
+        otu = self.get_otu(otu_id)
+
+        if taxid == otu.taxid:
+            logger.warning("Taxonomy ID is already up to date.")
+            taxid = None
+
+        if name == otu.name:
+            logger.warning("Name is already up to date.")
+            name = None
+
+        if any([taxid, name]) is not None:
+            self._write_event(
+                UpdateIdentifiers,
+                UpdateIdentifiersData(taxid=taxid, name=name),
+                OTUQuery(otu_id=otu.id),
+            )
+
+        return self.get_otu(otu_id)
 
     def set_representative_isolate(
         self, otu_id: uuid.UUID, isolate_id: uuid.UUID
