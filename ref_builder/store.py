@@ -34,6 +34,7 @@ CLASS_NAME_INDEX = {
     "CreatePlan": CreatePlan,
     "SetRepresentativeIsolate": SetRepresentativeIsolate,
     "UpdateExcludedAccessions": UpdateExcludedAccessions,
+    "UpdateIdentifiers": UpdateIdentifiers,
 }
 
 
