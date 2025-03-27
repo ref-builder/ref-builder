@@ -128,6 +128,8 @@ class Index:
                 id TEXT PRIMARY KEY,
                 crc TEXT,
                 otu_id TEXT,
+                accession_key TEXT,
+                accession_version INTEGER,
                 sequence TEXT
             );
             """,
@@ -151,6 +153,7 @@ class Index:
             ("otus", "name"),
             ("otus", "taxid"),
             ("sequences", "otu_id"),
+            ("sequences", "accession_key"),
             ("sequences", "crc"),
             ("otu_updates", "otu_id"),
         ]:
@@ -602,6 +605,8 @@ class Index:
                         sequence.id,
                         crc,
                         otu.id,
+                        sequence.accession.key,
+                        sequence.accession.version,
                         sequence.sequence,
                     ),
                 )
@@ -609,8 +614,9 @@ class Index:
         # Perform batch insert
         self.con.executemany(
             """
-            INSERT OR REPLACE INTO sequences (id, crc, otu_id, sequence)
-            VALUES (?, ?, ?, ?)
+            INSERT OR REPLACE 
+            INTO sequences (id, crc, otu_id, accession_key, accession_version, sequence)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             batch,
         )
@@ -619,10 +625,14 @@ class Index:
         self.con.executemany(
             """
             UPDATE sequences
-            SET crc = ?, otu_id = ?, sequence = ?
+            SET 
+            crc = ?, otu_id = ?, accession_key = ?, accession_version = ?, sequence = ?
             WHERE id = ? AND crc != ?
             """,
-            [(crc, otu_id, seq, seq_id, crc) for seq_id, crc, otu_id, seq in batch],
+            [
+                (crc, otu_id, accession_key, accession_version, seq, seq_id, crc)
+                for seq_id, crc, otu_id, accession_key, accession_version, seq in batch
+            ],
         )
 
         self.con.execute(
