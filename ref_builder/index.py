@@ -576,17 +576,3 @@ def _calculate_crc32(sequence: str) -> str:
 
     # Convert CRC as a hexadecimal string.
     return hex(crc & 0xFFFFFFFF)[2:].zfill(8)
-
-
-def _default_json(obj: Any) -> list:
-    """Cast sets to lists.
-
-    This function is used as the default argument to `orjson.dumps` to handle sets.
-
-    :param obj: the object to serialize
-    :return: the serialized object
-    """
-    if isinstance(obj, set):
-        return list(obj)
-
-    raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
