@@ -39,6 +39,20 @@ class Snapshot:
     """The OTU that was snapshotted."""
 
 
+def adapt_uuid(original_uuid: UUID) -> str:
+    """Automatically convert UUID to SQLite-compatible string."""
+    return str(original_uuid)
+
+
+def adapt_datetime(original_datetime: datetime.datetime) -> str:
+    """Automatically convert datetime to SQLite-compatible string."""
+    return original_datetime.isoformat()
+
+
+sqlite3.register_adapter(UUID, adapt_uuid)
+sqlite3.register_adapter(datetime.datetime, adapt_datetime)
+
+
 class Index:
     """An index for rapid access to repository data.
 
@@ -159,8 +173,8 @@ class Index:
             """,
             (
                 event_id,
-                str(otu_id),
-                timestamp.isoformat(),
+                otu_id,
+                timestamp,
             ),
         )
 
@@ -173,7 +187,7 @@ class Index:
             WHERE otu_id = ?
             ORDER BY event_id
             """,
-            (str(otu_id),),
+            (otu_id,),
         )
 
         event_ids = [row[0] for row in res]
@@ -195,7 +209,7 @@ class Index:
             WHERE otu_id = ?
             ORDER BY event_id
             """,
-            (str(otu_id),),
+            (otu_id,),
         )
 
         if result := cursor.fetchone():
@@ -212,7 +226,7 @@ class Index:
             WHERE otu_id = ?
             ORDER BY event_id DESC
             """,
-            (str(otu_id),),
+            (otu_id,),
         )
 
         if result := cursor.fetchone():
@@ -276,7 +290,7 @@ class Index:
         """Get an OTU ID from an isolate ID that belongs to it."""
         cursor = self.con.execute(
             "SELECT otu_id FROM isolates WHERE id = ?",
-            (str(isolate_id),),
+            (isolate_id,),
         )
 
         if result := cursor.fetchone():
@@ -312,22 +326,22 @@ class Index:
         """
         self.con.execute(
             "DELETE FROM events WHERE otu_id = ?",
-            (str(otu_id),),
+            (otu_id,),
         )
 
         self.con.execute(
             "DELETE FROM isolates WHERE otu_id = ?",
-            (str(otu_id),),
+            (otu_id,),
         )
 
         self.con.execute(
             "DELETE FROM otus WHERE id = ?",
-            (str(otu_id),),
+            (otu_id,),
         )
 
         self.con.execute(
             "DELETE FROM sequences WHERE otu_id = ?",
-            (str(otu_id),),
+            (otu_id,),
         )
 
         self.con.commit()
@@ -367,7 +381,7 @@ class Index:
             SELECT timestamp_complete FROM otu_updates 
             WHERE otu_id = ? ORDER BY id DESC
             """,
-            (str(otu_id),),
+            (otu_id,),
         )
 
         if result := cursor.fetchone():
@@ -376,7 +390,7 @@ class Index:
         return None
 
     def add_otu_update_history_entry(
-        self, otu_id, timestamp: datetime.datetime
+        self, otu_id: UUID, timestamp: datetime.datetime
     ) -> int | None:
         """Write an entry into the OTU update history."""
         self.con.execute(
@@ -386,24 +400,26 @@ class Index:
             VALUES(?, ?)
             """,
             (
-                str(otu_id),
+                otu_id,
                 timestamp.isoformat(),
             ),
         )
 
         cursor = self.con.execute(
             "SELECT id FROM otu_updates WHERE otu_id = ? ORDER BY id DESC",
-            (str(otu_id),),
+            (otu_id,),
         )
 
         if result := cursor.fetchone():
             return result[0]
 
+        return None
+
     def load_snapshot(self, otu_id: UUID) -> Snapshot | None:
         """Load an OTU snapshot."""
         cursor = self.con.execute(
             "SELECT at_event, otu FROM otus WHERE id = ?",
-            (str(otu_id),),
+            (otu_id,),
         )
 
         result = cursor.fetchone()
@@ -461,7 +477,7 @@ class Index:
         Only sequences that have changed will be updated.
         """
         sequence_ids = {
-            str(seq.id) for isolate in otu.isolates for seq in isolate.sequences
+            seq.id for isolate in otu.isolates for seq in isolate.sequences
         }
 
         placeholders = ",".join("?" for _ in sequence_ids)
@@ -471,7 +487,7 @@ class Index:
             f"""
             DELETE FROM sequences WHERE otu_id = ? AND NOT id IN ({ placeholders });
             """,
-            (str(otu.id), *sequence_ids),
+            (otu.id, *sequence_ids),
         )
 
         batch = []
@@ -481,9 +497,9 @@ class Index:
             self.con.execute(
                 "INSERT OR REPLACE INTO isolates (id, name, otu_id) VALUES (?, ?, ?)",
                 (
-                    str(isolate.id),
+                    isolate.id,
                     str(isolate.name),
-                    str(otu.id),
+                    otu.id,
                 ),
             )
 
@@ -491,9 +507,9 @@ class Index:
                 crc = _calculate_crc32(sequence.sequence)
                 batch.append(
                     (
-                        str(sequence.id),
+                        sequence.id,
                         crc,
-                        str(otu.id),
+                        otu.id,
                         sequence.sequence,
                     ),
                 )
@@ -523,7 +539,7 @@ class Index:
             VALUES (?, ?,?, ?, ?, ?, ?)
             """,
             (
-                str(otu.id),
+                otu.id,
                 otu.acronym,
                 at_event,
                 otu.legacy_id,
