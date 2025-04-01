@@ -464,8 +464,6 @@ class Index:
             str(seq.id) for isolate in otu.isolates for seq in isolate.sequences
         }
 
-        otu_dict = otu.model_dump(mode="json")
-
         placeholders = ",".join("?" for _ in sequence_ids)
 
         # Delete any sequences that are no longer in the OTU.
@@ -479,24 +477,24 @@ class Index:
         batch = []
 
         # Insert or update the isolates.
-        for isolate in otu_dict["isolates"]:
+        for isolate in otu.isolates:
             self.con.execute(
                 "INSERT OR REPLACE INTO isolates (id, name, otu_id) VALUES (?, ?, ?)",
                 (
-                    str(isolate["id"]),
-                    str(isolate["name"]),
-                    str(otu_dict["id"]),
+                    str(isolate.id),
+                    str(isolate.name),
+                    str(otu.id),
                 ),
             )
 
-            for sequence in isolate["sequences"]:
-                crc = _calculate_crc32(sequence["sequence"])
+            for sequence in isolate.sequences:
+                crc = _calculate_crc32(sequence.sequence)
                 batch.append(
                     (
-                        str(sequence["id"]),
+                        str(sequence.id),
                         crc,
                         str(otu.id),
-                        sequence["sequence"],
+                        sequence.sequence,
                     ),
                 )
 
@@ -530,7 +528,7 @@ class Index:
                 at_event,
                 otu.legacy_id,
                 otu.name,
-                orjson.dumps(otu_dict),
+                otu.model_dump_json(),
                 otu.taxid,
             ),
         )
