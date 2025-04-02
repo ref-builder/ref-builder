@@ -51,10 +51,16 @@ def convert_uuid(string_uuid: bytes) -> UUID:
     return UUID(string_uuid.decode())
 
 
+def convert_datetime(string_datetime: bytes) -> datetime.datetime:
+    """Automatically convert stringified datetime back to datetime type."""
+    return datetime.datetime.fromisoformat(string_datetime.decode())
+
+
 sqlite3.register_adapter(UUID, adapt_uuid)
 sqlite3.register_adapter(datetime.datetime, adapt_datetime)
 
 sqlite3.register_converter("uuid", convert_uuid)
+sqlite3.register_converter("datetime", convert_datetime)
 
 
 class Index:
@@ -214,6 +220,7 @@ class Index:
         cursor = self.con.execute(
             """
             SELECT timestamp
+            AS "timestamp [datetime]"
             FROM events
             WHERE otu_id = ?
             ORDER BY event_id
@@ -222,7 +229,7 @@ class Index:
         )
 
         if result := cursor.fetchone():
-            return datetime.datetime.fromisoformat(result[0])
+            return result[0]
 
         return None
 
@@ -231,6 +238,7 @@ class Index:
         cursor = self.con.execute(
             """
             SELECT timestamp
+            AS "timestamp [datetime]"
             FROM events
             WHERE otu_id = ?
             ORDER BY event_id DESC
@@ -239,7 +247,7 @@ class Index:
         )
 
         if result := cursor.fetchone():
-            return datetime.datetime.fromisoformat(result[0])
+            return result[0]
 
         return None
 
@@ -410,7 +418,7 @@ class Index:
             """,
             (
                 otu_id,
-                timestamp.isoformat(),
+                timestamp,
             ),
         )
 
