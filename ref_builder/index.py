@@ -6,10 +6,7 @@ import sqlite3
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 from uuid import UUID
-
-import orjson
 
 from ref_builder.errors import PartialIDConflictError
 from ref_builder.events.base import EventMetadata
@@ -429,12 +426,12 @@ class Index:
 
         at_event, otu_json = result
 
-        otu = orjson.loads(otu_json)
+        otu = OTUBuilder.model_validate_json(otu_json)
 
         sequence_ids = [
-            str(sequence["id"])
-            for isolate in otu["isolates"]
-            for sequence in isolate["sequences"]
+            sequence.id
+            for isolate in otu.isolates
+            for sequence in isolate.sequences
         ]
 
         # Fetch all sequences in a single query
@@ -450,14 +447,14 @@ class Index:
         # Update the data structure and check for missing sequences
         missing_sequences = []
 
-        for isolate in otu["isolates"]:
-            for sequence in isolate["sequences"]:
-                sequence_id = str(sequence["id"])
+        for isolate in otu.isolates:
+            for sequence in isolate.sequences:
+                sequence_id = str(sequence.id)
 
                 if sequence_id in sequence_map:
-                    sequence["sequence"] = sequence_map[sequence_id]
+                    sequence.sequence = sequence_map[sequence_id]
                 else:
-                    missing_sequences.append(sequence_id)
+                    missing_sequences.append(str(sequence_id))
 
         # Raise an error if any sequences are missing
         if missing_sequences:
