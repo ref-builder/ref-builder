@@ -46,8 +46,15 @@ def adapt_datetime(original_datetime: datetime.datetime) -> str:
     return original_datetime.isoformat()
 
 
+def convert_uuid(string_uuid: bytes) -> UUID:
+    """Automatically convert stringified UUID back to UUID type."""
+    return UUID(string_uuid.decode())
+
+
 sqlite3.register_adapter(UUID, adapt_uuid)
 sqlite3.register_adapter(datetime.datetime, adapt_datetime)
+
+sqlite3.register_converter("uuid", convert_uuid)
 
 
 class Index:
@@ -152,7 +159,7 @@ class Index:
     @property
     def otu_ids(self) -> set[UUID]:
         """A list of all OTUs tracked in the index."""
-        return {UUID(row[0]) for row in self.con.execute("SELECT id FROM otus")}
+        return {row[0] for row in self.con.execute('SELECT id AS "id [uuid]" FROM otus')}
 
     def add_event_id(
         self,
@@ -239,43 +246,43 @@ class Index:
     def get_id_by_legacy_id(self, legacy_id: str) -> UUID | None:
         """Get an OTU ID by its legacy ID."""
         cursor = self.con.execute(
-            "SELECT id FROM otus WHERE legacy_id = ?",
+            'SELECT id AS "id [uuid]" FROM otus WHERE legacy_id = ?',
             (legacy_id,),
         )
 
         if result := cursor.fetchone():
-            return UUID(result[0])
+            return result[0]
 
         return None
 
     def get_id_by_name(self, name: str) -> UUID | None:
         """Get an OTU ID by its name."""
         cursor = self.con.execute(
-            "SELECT id FROM otus WHERE name = ?",
+            'SELECT id AS "id [uuid]" FROM otus WHERE name = ?',
             (name,),
         )
 
         if result := cursor.fetchone():
-            return UUID(result[0])
+            return result[0]
 
         return None
 
     def get_id_by_taxid(self, taxid: int) -> UUID | None:
         """Get an OTU ID by its taxonomy ID."""
         cursor = self.con.execute(
-            "SELECT id FROM otus WHERE taxid = ?",
+            'SELECT id AS "id [uuid]" FROM otus WHERE taxid = ?',
             (taxid,),
         )
 
         if result := cursor.fetchone():
-            return UUID(result[0])
+            return result[0]
 
         return None
 
     def get_id_by_partial(self, partial: str) -> UUID | None:
         """Get an OTU ID by a truncated ``partial`` string."""
         cursor = self.con.execute(
-            "SELECT id FROM otus WHERE id LIKE ?",
+            'SELECT id AS "id [uuid]" FROM otus WHERE id LIKE ?',
             (f"{partial}%",),
         )
 
@@ -284,19 +291,19 @@ class Index:
                 raise PartialIDConflictError
 
             if result:
-                return UUID(result[0][0])
+                return result[0][0]
 
         return None
 
     def get_id_by_isolate_id(self, isolate_id: UUID) -> UUID | None:
         """Get an OTU ID from an isolate ID that belongs to it."""
         cursor = self.con.execute(
-            "SELECT otu_id FROM isolates WHERE id = ?",
+            'SELECT otu_id AS "otu_id [uuid]" FROM isolates WHERE id = ?',
             (isolate_id,),
         )
 
         if result := cursor.fetchone():
-            return UUID(result[0])
+            return result[0]
 
         return None
 
@@ -306,7 +313,7 @@ class Index:
             raise ValueError("Empty partial given.")
 
         cursor = self.con.execute(
-            "SELECT id FROM isolates WHERE id LIKE ?",
+            'SELECT id AS "id [uuid]" FROM isolates WHERE id LIKE ?',
             (f"{partial}%",),
         )
 
@@ -315,7 +322,7 @@ class Index:
                 raise PartialIDConflictError
 
             if result:
-                return UUID(result[0][0])
+                return result[0][0]
 
         return None
 
@@ -364,13 +371,13 @@ class Index:
     def iter_minimal_otus(self) -> Iterator[OTUMinimal]:
         """Iterate over minimal representations of all OTUs in the index."""
         rows = self.con.execute(
-            "SELECT acronym, id, legacy_id, name, taxid FROM otus ORDER BY name",
+            'SELECT acronym, id AS "id [uuid]", legacy_id, name, taxid FROM otus ORDER BY name',
         ).fetchall()
 
         for row in rows:
             yield OTUMinimal(
                 acronym=row[0],
-                id=UUID(row[1]),
+                id=row[1],
                 legacy_id=row[2],
                 name=row[3],
                 taxid=row[4],
