@@ -165,7 +165,9 @@ class Index:
     @property
     def otu_ids(self) -> set[UUID]:
         """A list of all OTUs tracked in the index."""
-        return {row[0] for row in self.con.execute('SELECT id AS "id [uuid]" FROM otus')}
+        return {
+            row[0] for row in self.con.execute('SELECT id AS "id [uuid]" FROM otus')
+        }
 
     def add_event_id(
         self,
@@ -379,7 +381,10 @@ class Index:
     def iter_minimal_otus(self) -> Iterator[OTUMinimal]:
         """Iterate over minimal representations of all OTUs in the index."""
         rows = self.con.execute(
-            'SELECT acronym, id AS "id [uuid]", legacy_id, name, taxid FROM otus ORDER BY name',
+            """
+            SELECT acronym, id AS "id [uuid]", legacy_id, name, taxid
+            FROM otus ORDER BY name
+            """,
         ).fetchall()
 
         for row in rows:
@@ -395,7 +400,7 @@ class Index:
         """Get the timestamp of the last event in an update for an OTU."""
         cursor = self.con.execute(
             """
-            SELECT timestamp_complete FROM otu_updates 
+            SELECT timestamp_complete FROM otu_updates
             WHERE otu_id = ? ORDER BY id DESC
             """,
             (otu_id,),
@@ -449,9 +454,7 @@ class Index:
         otu = OTUBuilder.model_validate_json(otu_json)
 
         sequence_ids = [
-            sequence.id
-            for isolate in otu.isolates
-            for sequence in isolate.sequences
+            sequence.id for isolate in otu.isolates for sequence in isolate.sequences
         ]
 
         # Fetch all sequences in a single query
@@ -493,9 +496,7 @@ class Index:
 
         Only sequences that have changed will be updated.
         """
-        sequence_ids = {
-            seq.id for isolate in otu.isolates for seq in isolate.sequences
-        }
+        sequence_ids = {seq.id for isolate in otu.isolates for seq in isolate.sequences}
 
         placeholders = ",".join("?" for _ in sequence_ids)
 
@@ -553,7 +554,7 @@ class Index:
         self.con.execute(
             """
             INSERT OR REPLACE INTO otus (id, acronym, at_event, legacy_id, name, otu, taxid)
-            VALUES (?, ?,?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 otu.id,
