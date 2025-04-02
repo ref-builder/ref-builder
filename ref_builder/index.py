@@ -66,7 +66,12 @@ class Index:
 
         self.path.parent.mkdir(exist_ok=True, parents=True)
 
-        self.con = sqlite3.connect(path, isolation_level=None)
+        self.con = sqlite3.connect(
+            path,
+            isolation_level=None,
+            detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
+        )
+
         self.con.execute("PRAGMA journal_mode = WAL")
         self.con.execute("PRAGMA synchronous = NORMAL")
 
