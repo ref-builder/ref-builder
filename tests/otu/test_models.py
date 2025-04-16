@@ -6,7 +6,9 @@ import warnings
 import pytest
 from pydantic import ValidationError
 
-from ref_builder.otu.models import OTU, Isolate, OTUBase, Sequence
+from ref_builder.otu.validators.isolate import Isolate
+from ref_builder.otu.validators.otu import OTU, OTUBase
+from ref_builder.otu.validators.sequence import Sequence
 from ref_builder.plan import PlanWarning, SegmentRule
 from ref_builder.utils import Accession, is_refseq
 from tests.fixtures.factories import (

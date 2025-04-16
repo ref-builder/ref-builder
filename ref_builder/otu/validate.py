@@ -4,8 +4,9 @@ from typing import Any
 from pydantic import ValidationError
 from structlog import get_logger
 
-from ref_builder.otu.models import OTU
 from ref_builder.resources import RepoOTU
+from ref_builder.otu.validators.otu import OTU
+
 
 logger = get_logger("otu.validate")
 

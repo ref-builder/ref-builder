@@ -8,7 +8,9 @@ from pydantic.v1 import UUID4
 
 from ref_builder.models import MolType, OTUMinimal
 from ref_builder.ncbi.models import NCBIGenbank, NCBISource, NCBISourceMolType
-from ref_builder.otu.models import SequenceBase, IsolateBase, OTUBase
+from ref_builder.otu.validators.isolate import IsolateBase
+from ref_builder.otu.validators.otu import OTUBase
+from ref_builder.otu.validators.sequence import SequenceBase
 from ref_builder.plan import (
     Plan,
     Segment,
