@@ -1,36 +1,12 @@
-import warnings
-from collections import Counter
-from uuid import UUID
-
-from pydantic import (
-    UUID4,
-    BaseModel,
-    ConfigDict,
-    Field,
-    field_serializer,
-    field_validator,
-    model_validator,
-)
-from pydantic_core import PydanticCustomError
+from pydantic import UUID4, BaseModel, field_serializer, field_validator
 
 from ref_builder.models import Molecule
-from ref_builder.otu.builders.isolate import IsolateBuilder as RepoIsolate
-from ref_builder.otu.builders.otu import SequenceBuilder as RepoSequence
-from ref_builder.plan import Plan, PlanWarning
-from ref_builder.utils import Accession, IsolateName, is_accession_key_valid, is_refseq
+from ref_builder.plan import Plan
+from ref_builder.utils import Accession, IsolateName
 
 
-class IsolateInconsistencyWarning(UserWarning):
-    """Warn when an isolate contains both RefSeq and non-RefSeq accessions.
-
-    All sequences in an isolate should be sourced from the same database.
-    """
-
-
-class SequenceBase(BaseModel):
-    """A class representing a sequence with basic validation."""
-
-    model_config = ConfigDict(validate_assignment=True)
+class SequenceModel(BaseModel):
+    """A class representing the fields of a sequence."""
 
     id: UUID4
     """The sequence id."""
@@ -53,11 +29,6 @@ class SequenceBase(BaseModel):
     segment: UUID4
     """The sequence segment."""
 
-    @property
-    def refseq(self) -> bool:
-        """Return True if this sequence was sourced from NCBI's RefSeq database."""
-        return is_refseq(self.accession.key)
-
     @field_validator("accession", mode="before")
     @classmethod
     def convert_accession(cls, value: Accession | str) -> Accession:
@@ -77,21 +48,8 @@ class SequenceBase(BaseModel):
         return str(accession)
 
 
-class Sequence(SequenceBase):
-    """A class representing a sequence with full validation."""
-
-    @field_validator("accession", mode="after")
-    @classmethod
-    def check_accession_key_is_valid(cls, v: Accession) -> Accession:
-        """Check the accession key against INSDC and NCBI RefSeq patterns."""
-        if is_accession_key_valid(v.key):
-            return v
-
-        raise ValueError(f"Accession {v} does not match a valid accession pattern.")
-
-
-class IsolateBase(BaseModel):
-    """A class representing an isolate with basic validation."""
+class IsolateModel(BaseModel):
+    """A class representing the fields of an isolate."""
 
     id: UUID4
     """The isolate id."""
@@ -105,109 +63,18 @@ class IsolateBase(BaseModel):
     name: IsolateName | None
     """The isolate's name."""
 
-    sequences: list[SequenceBase]
-    """The isolates sequences."""
 
-    @property
-    def refseq(self) -> bool:
-        """Return True if this isolate was sourced from NCBI's RefSeq database."""
-        if self.sequences:
-            return is_refseq(self.sequences[0].accession.key)
-
-        return False
-
-    def get_sequence_by_accession(
-        self,
-        accession: Accession,
-    ) -> SequenceBase | None:
-        """Get a sequence by its accession.
-
-        Return ``None`` if the sequence is not found.
-
-        :param accession: the accession of the sequence to retrieve
-        :return: the sequence with the given accession, or None
-        """
-        for sequence in self.sequences:
-            if sequence.accession == accession:
-                return sequence
-
-        return None
-
-    def get_sequence_by_id(self, sequence_id: UUID) -> SequenceBase | None:
-        """Get a sequence by its ID.
-
-        Return ``None`` if the sequence is not found.
-
-        :param sequence_id: the ID of the sequence to retrieve
-        :return: the sequence with the given ID, or None
-        """
-        for sequence in self.sequences:
-            if sequence.id == sequence_id:
-                return sequence
-
-        return None
-
-    @field_validator("sequences", mode="before")
-    @classmethod
-    def convert_sequence_models(
-        cls,
-        v: list[dict | SequenceBase | Sequence | RepoSequence | BaseModel],
-    ) -> list[SequenceBase]:
-        """Automatically revalidate sequence if not already validated."""
-        if not v or isinstance(v[0], dict | SequenceBase):
-            return v
-
-        return [SequenceBase.model_validate(sequence.model_dump()) for sequence in v]
-
-
-class Isolate(IsolateBase):
-    """A class representing an isolate with full validation."""
-
-    model_config = ConfigDict(validate_assignment=True)
-
-    sequences: list[Sequence] = Field(min_length=1)
-    """The isolates sequences.
-
-    A valid isolate must have at least one sequence.
-    """
-
-    @field_validator("sequences", mode="before")
-    @classmethod
-    def convert_sequence_models(
-        cls,
-        v: list[dict | SequenceBase | Sequence | RepoSequence | BaseModel],
-    ) -> list[Sequence]:
-        if not v or isinstance(v[0], dict | SequenceBase):
-            return v
-
-        return [Sequence.model_validate(sequence.model_dump()) for sequence in v]
-
-    @field_validator("sequences", mode="after")
-    def check_accession_refseq_or_insdc(
-        cls, v: list[RepoSequence]
-    ) -> list[RepoSequence]:
-        """Check if all sequence accessions are all from RefSeq or all from INSDC.
-        If not, warn the user.
-        """
-        if len({s.refseq for s in v}) > 1:
-            warnings.warn(
-                "Combination of RefSeq and non-RefSeq sequences found in multipartite isolate: "
-                + f"{[sequence.accession.key for sequence in v]}",
-                IsolateInconsistencyWarning,
-                stacklevel=1,
-            )
-
-        return v
-
-
-class OTUBase(BaseModel):
-    """A class representing an OTU with basic validation."""
+class OTUModel(BaseModel):
+    """A class representing the fields of a model."""
 
     id: UUID4
     """The OTU id."""
 
     acronym: str
     """The OTU acronym (eg. TMV for Tobacco mosaic virus)."""
+
+    excluded_accessions: set[str]
+    """A set of accessions that should not be retrieved in future fetch operations."""
 
     legacy_id: str | None
     """A string based ID carried over from a legacy Virtool reference repository."""
@@ -221,167 +88,8 @@ class OTUBase(BaseModel):
     plan: Plan
     """The plan for the OTU."""
 
+    representative_isolate: UUID4 | None
+    """The UUID of the representative isolate of this OTU"""
+
     taxid: int
     """The NCBI Taxonomy id for this OTU."""
-
-    excluded_accessions: set[str]
-    """A set of accessions that should not be retrieved in future fetch operations."""
-
-    isolates: list[IsolateBase]
-    """Isolates contained in this OTU."""
-
-    representative_isolate: UUID4 | None
-    """The UUID of the representative isolate of this OTU."""
-
-    @property
-    def sequences(self) -> list[SequenceBase]:
-        """Sequences contained in this OTU."""
-        return [sequence for isolate in self.isolates for sequence in isolate.sequences]
-
-    @field_validator("isolates", mode="before")
-    @classmethod
-    def convert_isolate_models(
-        cls,
-        v: list[dict | IsolateBase | Isolate | RepoIsolate | BaseModel],
-    ) -> list[IsolateBase]:
-        """Automatically revalidate isolates if not already validated."""
-        if not v or isinstance(v[0], dict | IsolateBase):
-            return v
-
-        return [IsolateBase.model_validate(isolate.model_dump()) for isolate in v]
-
-
-class OTU(OTUBase):
-    """A class representing an OTU with full validation."""
-
-    model_config = ConfigDict(validate_assignment=True)
-
-    isolates: list[Isolate] = Field(min_length=1)
-    """Isolates contained in this OTU.
-
-    A valid OTU must have at least one isolate.
-    """
-
-    representative_isolate: UUID4
-    """The UUID of the representative isolate of this OTU.
-
-    A valid OTU must have a representative isolate.
-    """
-
-    @property
-    def sequences(self) -> list[Sequence]:
-        """Sequences contained in this OTU."""
-        return [sequence for isolate in self.isolates for sequence in isolate.sequences]
-
-    @field_validator("isolates", mode="before")
-    @classmethod
-    def convert_isolate_models(
-        cls,
-        v: list[dict | Isolate | IsolateBase | RepoIsolate | BaseModel],
-    ) -> list[Isolate]:
-        """Automatically revalidate isolates if not already validated."""
-        if not v or isinstance(v[0], dict | Isolate):
-            return v
-
-        return [Isolate.model_validate(isolate.model_dump()) for isolate in v]
-
-    @field_validator("plan", mode="after")
-    def check_plan_required(cls, plan: Plan) -> Plan:
-        """Issue a warning if the plan has no required segments."""
-        if not plan.required_segments:
-            warnings.warn("Plan has no required segments.", PlanWarning, stacklevel=2)
-
-        return plan
-
-    @model_validator(mode="after")
-    def check_excluded_accessions(self) -> "OTU":
-        """Ensure that excluded accessions are not in the OTU."""
-        if accessions := self.excluded_accessions & {
-            sequence.accession.key for sequence in self.sequences
-        }:
-            raise ValueError(
-                f"Excluded accessions found in the OTU: {', '.join(accessions)}"
-            )
-
-        return self
-
-    @model_validator(mode="after")
-    def check_representative_isolate(self) -> "OTU":
-        """Ensure that the default isolate is in the OTU."""
-        if self.representative_isolate not in {isolate.id for isolate in self.isolates}:
-            raise ValueError("Representative isolate must be in the OTU")
-
-        return self
-
-    @model_validator(mode="after")
-    def check_unique_isolate_names(self) -> "OTU":
-        """Ensure there are no duplicate isolate names in the OTU."""
-        counts = Counter(isolate.name for isolate in self.isolates)
-
-        duplicates = ", ".join(
-            [str(name) for name, count in counts.items() if name and count > 1]
-        )
-
-        if duplicates:
-            raise ValueError(
-                f"Isolate names must be unique. Non-unique names: {duplicates}",
-            )
-
-        return self
-
-    @model_validator(mode="after")
-    def check_isolates_against_plan(self) -> "OTU":
-        """Check that all isolates satisfy the OTU's plan."""
-        for isolate in self.isolates:
-            for sequence in isolate.sequences:
-                segment = self.plan.get_segment_by_id(sequence.segment)
-                if segment is None:
-                    raise PydanticCustomError(
-                        "segment_not_found",
-                        "Sequence segment {sequence_segment} was not found in "
-                        + "the list of segments: {plan_segments}.",
-                        {
-                            "isolate_id": isolate.id,
-                            "sequence_segment": sequence.segment,
-                            "plan_segments": list(self.plan.segment_ids),
-                        },
-                    )
-
-                min_length = int(segment.length * (1.0 - segment.length_tolerance))
-                max_length = int(segment.length * (1.0 + segment.length_tolerance))
-
-                if len(sequence.sequence) < min_length:
-                    raise PydanticCustomError(
-                        "sequence_too_short",
-                        "Sequence based on {sequence_accession} does not pass validation "
-                        + "against segment {segment_id} "
-                        + "({sequence_length} < {min_sequence_length})",
-                        {
-                            "isolate_id": isolate.id,
-                            "sequence_id": sequence.id,
-                            "sequence_accession": sequence.accession,
-                            "sequence_length": len(sequence.sequence),
-                            "segment_id": segment.id,
-                            "segment_reference_length": segment.length,
-                            "min_sequence_length": min_length,
-                        },
-                    )
-
-                if len(sequence.sequence) > max_length:
-                    raise PydanticCustomError(
-                        "sequence_too_long",
-                        "Sequence based on {sequence_accession} does not pass validation "
-                        + "against segment {segment_id}"
-                        + "({sequence_length} > {max_sequence_length})",
-                        {
-                            "isolate_id": isolate.id,
-                            "sequence_id": sequence.id,
-                            "sequence_accession": sequence.accession,
-                            "sequence_length": len(sequence.sequence),
-                            "segment_id": segment.id,
-                            "segment_reference_length": segment.length,
-                            "max_sequence_length": max_length,
-                        },
-                    )
-
-        return self
