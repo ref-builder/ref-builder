@@ -21,7 +21,8 @@ class TestFetchGenbank:
             for accession in accessions
         )
 
-        assert uncached_ncbi_client.fetch_genbank_records(accessions) == snapshot
+        for record in uncached_ncbi_client.fetch_genbank_records(accessions):
+            assert record.model_dump() == snapshot
 
         assert all(
             uncached_ncbi_client.cache.load_genbank_record(accession)
@@ -33,12 +34,10 @@ class TestFetchGenbank:
         snapshot: SnapshotAssertion,
         scratch_ncbi_client: NCBIClient,
     ):
-        assert (
-            scratch_ncbi_client.fetch_genbank_records(
-                ["NC_036587", "MT240513", "AB017504"],
-            )
-            == snapshot
-        )
+        for record in scratch_ncbi_client.fetch_genbank_records(
+            ["NC_036587", "MT240513", "AB017504"]
+        ):
+            assert record.model_dump() == snapshot
 
     @pytest.mark.ncbi()
     def test_fetch_partially_cached_genbank_records(
@@ -55,12 +54,10 @@ class TestFetchGenbank:
         assert uncached_ncbi_client.fetch_genbank_records(["NC_036587"])
         assert uncached_ncbi_client.cache.load_genbank_record("NC_036587")
 
-        assert (
-            uncached_ncbi_client.fetch_genbank_records(
-                ["NC_036587", "MT240513", "AB017504"],
-            )
-            == snapshot
-        )
+        for record in uncached_ncbi_client.fetch_genbank_records(
+            ["NC_036587", "MT240513", "AB017504"]
+        ):
+            assert record.model_dump() == snapshot
 
     @pytest.mark.ncbi()
     def test_fetch_non_existent_accession(self, scratch_ncbi_client: NCBIClient):
