@@ -182,9 +182,10 @@ class Isolate(IsolateBase):
         return [Sequence.model_validate(sequence.model_dump()) for sequence in v]
 
     @field_validator("sequences", mode="after")
-    def check_accession_consistency(cls, v: list[RepoSequence]) -> list[RepoSequence]:
-        """Check if all sequence accessions are of the same provenance, i.e.
-        all RefSeq or all INSDC.
+    def check_accession_refseq_or_insdc(cls, v: list[RepoSequence]) -> list[RepoSequence]:
+        """Check if all sequence accessions are all from RefSeq or all from INSDC.
+
+        If not, warn the user.
         """
         isolate_accessions = {sequence.accession for sequence in v}
 
@@ -236,7 +237,7 @@ class OTUBase(BaseModel):
     """Isolates contained in this OTU."""
 
     representative_isolate: UUID4 | None
-    """The UUID of the representative isolate of this OTU"""
+    """The UUID of the representative isolate of this OTU."""
 
     @property
     def sequences(self) -> list[SequenceBase]:
@@ -291,12 +292,12 @@ class OTU(OTUBase):
         return [Isolate.model_validate(isolate.model_dump()) for isolate in v]
 
     @field_validator("plan", mode="after")
-    def check_plan_required(cls, value: Plan) -> Plan:
+    def check_plan_required(cls, plan: Plan) -> Plan:
         """Issue a warning if the plan has no required segments."""
-        if not value.required_segments:
+        if not plan.required_segments:
             warnings.warn("Plan has no required segments.", PlanWarning, stacklevel=2)
 
-        return value
+        return plan
 
     @model_validator(mode="after")
     def check_excluded_accessions(self) -> "OTU":
