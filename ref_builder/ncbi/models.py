@@ -14,6 +14,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
+from ref_builder.insdc.models import INSDCFeature
 from ref_builder.models import Molecule, MolType, Strandedness, Topology
 
 
@@ -90,23 +91,23 @@ class NCBISource(BaseModel):
     focus: bool = False
     transgenic: bool = False
 
-    @model_validator(mode="before")
     @classmethod
-    def db_xref_to_taxid(cls, data: dict) -> dict:
-        """Parse db_xref if ``taxid`` is not provided to the model directly.
+    def from_feature(cls, feature: INSDCFeature) -> "NCBISource":
+        """Return a NCBISource from a source feature."""
+        return NCBISource.model_validate(
+            {
+                qualifier.name: True if qualifier.value is None else qualifier.value
+                for qualifier in feature.qualifiers
+            }
+        )
 
-        This is the realistic use case. The source table does not contain a taxid field,
-        but we want to pass a fake value to the model in testing.
+    @field_validator("taxid", mode="before")
+    def convert_taxid(cls, v: int | str):
+        """Extract TaxId from db_xref string as an integer."""
+        if type(v) == int:
+            return v
 
-        """
-        if data.get("taxid"):
-            return data
-
-        if db_xref := data.get("db_xref"):
-            data["taxid"] = db_xref.split(":")[1]
-            return data
-
-        raise ValueError("No db_xref or taxid value found in source table")
+        return v.split(":")[1]
 
 
 class NCBIGenbank(BaseModel):
@@ -150,22 +151,19 @@ class NCBIGenbank(BaseModel):
 
     @field_validator("source", mode="before")
     @classmethod
-    def convert_source(cls, raw: NCBISource | list[dict[str:Any]]) -> NCBISource:
+    def extract_source_from_feature_table(
+        cls,
+        raw: NCBISource | list[dict[str:Any]],
+    ) -> NCBISource:
         """If the source field isn't a ``NCBISource`` object, convert it."""
         if isinstance(raw, NCBISource):
             return raw
 
-        for feature in raw:
-            if feature["GBFeature_key"] == "source":
-                data = {}
+        for raw_feature in raw:
+            feature = INSDCFeature.model_validate(raw_feature)
 
-                for qualifier in feature["GBFeature_quals"]:
-                    data[qualifier["GBQualifier_name"]] = qualifier.get(
-                        "GBQualifier_value",
-                        True,
-                    )
-
-                return NCBISource(**data)
+            if feature.key == "source":
+                return NCBISource.from_feature(feature)
 
         raise ValueError("Feature table contains no ``source`` table.")
 
