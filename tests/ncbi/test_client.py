@@ -59,6 +59,16 @@ class TestFetchGenbank:
         ):
             assert record.model_dump() == snapshot
 
+    def test_fetch_multi_source_record(
+        self, scratch_ncbi_client: NCBIClient, snapshot: SnapshotAssertion
+    ):
+        """Test the parsing of a Genbank record containing multiple source features."""
+        record = scratch_ncbi_client.fetch_genbank_records(["Y18556"])[0]
+
+        assert record.source.organism == record.organism
+
+        assert record.model_dump() == snapshot
+
     @pytest.mark.ncbi()
     def test_fetch_non_existent_accession(self, scratch_ncbi_client: NCBIClient):
         """Test that the client returns an empty list when the fetched accession does
