@@ -184,24 +184,15 @@ class Isolate(IsolateBase):
     @field_validator("sequences", mode="after")
     def check_accession_refseq_or_insdc(cls, v: list[RepoSequence]) -> list[RepoSequence]:
         """Check if all sequence accessions are all from RefSeq or all from INSDC.
-
         If not, warn the user.
         """
-        isolate_accessions = {sequence.accession for sequence in v}
-
-        if any(is_refseq(accession.key) for accession in isolate_accessions):
-            if all(is_refseq(accession.key) for accession in isolate_accessions):
-                return v
-
-        elif all(not is_refseq(accession.key) for accession in isolate_accessions):
-            return v
-
-        warnings.warn(
-            "Combination of RefSeq and non-RefSeq sequences found in multipartite isolate: "
-            + f"{[sequence.accession.key for sequence in v]}",
-            IsolateInconsistencyWarning,
-            stacklevel=1,
-        )
+        if len({s.refseq for s in v}) > 1:
+            warnings.warn(
+                "Combination of RefSeq and non-RefSeq sequences found in multipartite isolate: "
+                + f"{[sequence.accession.key for sequence in v]}",
+                IsolateInconsistencyWarning,
+                stacklevel=1,
+            )
 
         return v
 
