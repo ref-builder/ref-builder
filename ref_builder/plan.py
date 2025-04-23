@@ -284,4 +284,5 @@ def extract_segment_name_from_record_with_plan(
                 key=record.source.segment,
             )
 
-    return None
+    # If all else fails, fall back on basic extraction.
+    return extract_segment_name_from_record(record)
