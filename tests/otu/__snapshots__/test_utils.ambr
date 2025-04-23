@@ -12,7 +12,7 @@
       'source_segment': 'DNA A',
     }),
     'DNA B': dict({
-      'accession_version': 'K93863',
+      'accession_version': 'NC_893402',
       'source_segment': 'DNA B',
     }),
   })
@@ -24,23 +24,23 @@
       'source_segment': 'DNA C',
     }),
     'DNA M': dict({
-      'accession_version': 'K93863',
+      'accession_version': 'NC_893402',
       'source_segment': 'DNA M',
     }),
     'DNA N': dict({
-      'accession_version': 'GG223149',
+      'accession_version': 'NC_048499',
       'source_segment': 'DNA N',
     }),
     'DNA R': dict({
-      'accession_version': 'NC_934447',
+      'accession_version': 'NC_768007',
       'source_segment': 'DNA R',
     }),
     'DNA S': dict({
-      'accession_version': 'NC_404705',
+      'accession_version': 'NC_477219',
       'source_segment': 'DNA S',
     }),
     'DNA U3': dict({
-      'accession_version': 'NC_761067',
+      'accession_version': 'AP968819',
       'source_segment': 'DNA U3',
     }),
   })
