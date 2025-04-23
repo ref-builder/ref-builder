@@ -1,9 +1,9 @@
 # serializer version: 1
 # name: TestAssignRecordsToSegments.test_names_not_in_plan[223262]
-  'Segment names not found in plan: DNA G, RNA N5.'
+  'Segment names present in records, but not found in plan: RNA N5, RNA Y9.'
 # ---
 # name: TestAssignRecordsToSegments.test_names_not_in_plan[438782]
-  'Segment names not found in plan: DNA G, RNA A, RNA N5, Segment I3, Segment W4, Segment X.'
+  'Segment names present in records, but not found in plan: DNA I, DNA V1, DNA W3, RNA N5, RNA Y9, cRNA I.'
 # ---
 # name: TestAssignRecordsToSegments.test_ok[223262]
   dict({
