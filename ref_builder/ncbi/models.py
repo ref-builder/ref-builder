@@ -83,7 +83,7 @@ class NCBISourceMolType(StrEnum):
 class NCBISource(BaseModel):
     """An NCBI source table."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, use_enum_values=True)
 
     taxid: int = Field(validation_alias=AliasChoices("taxon", "db_xref"))
     organism: str
