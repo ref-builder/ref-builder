@@ -14,7 +14,12 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
-from ref_builder.insdc.models import INSDCFeature
+from ref_builder.insdc.models import (
+    INSDCDatabaseCrossReference,
+    INSDCFeature,
+    INSDCFeatureSource,
+    INSDCFeatureTable,
+)
 from ref_builder.models import Molecule, MolType, Strandedness, Topology
 
 
@@ -80,7 +85,7 @@ class NCBISource(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    taxid: int = Field(validation_alias=AliasChoices("taxid", "taxon", "db_xref"))
+    taxid: int = Field(validation_alias=AliasChoices("taxon", "db_xref"))
     organism: str
     mol_type: NCBISourceMolType
     isolate: str = ""
@@ -94,14 +99,22 @@ class NCBISource(BaseModel):
     transgenic: bool = False
 
     @classmethod
-    def from_feature(cls, feature: INSDCFeature) -> "NCBISource":
+    def from_feature(cls, feature: INSDCFeatureSource | INSDCFeature) -> "NCBISource":
         """Return a NCBISource from a source feature."""
-        return NCBISource.model_validate(
-            {
-                qualifier.name: True if qualifier.value is None else qualifier.value
-                for qualifier in feature.qualifiers
-            }
-        )
+        qualifier_data = {}
+
+        for raw_qualifier in feature.qualifiers:
+            if raw_qualifier.name == "db_xref":
+                crossref = INSDCDatabaseCrossReference.from_string(raw_qualifier.value)
+                qualifier_data[crossref.database] = crossref.identifier
+
+            else:
+                qualifier_data[raw_qualifier.name] = (
+                    True if raw_qualifier.value is None
+                    else raw_qualifier.value
+                )
+
+        return NCBISource.model_validate(qualifier_data)
 
     @field_validator("taxid", mode="before")
     def convert_taxid(cls, v: int | str):
@@ -109,8 +122,9 @@ class NCBISource(BaseModel):
         if type(v) == int:
             return v
 
-        return v.split(":")[1]
+        crossref = INSDCDatabaseCrossReference.from_string(v.value)
 
+        return crossref.identifier
 
 class GenbankRecordKey(StrEnum):
     """Keys used in Genbank XML records."""
@@ -155,6 +169,15 @@ class NCBIGenbank(BaseModel):
         Field(validation_alias=GenbankRecordKey.FEATURE_TABLE)
     ]
     comment: Annotated[str, Field(validation_alias=GenbankRecordKey.COMMENT)] = ""
+    features: Annotated[
+        INSDCFeatureTable,
+        Field(
+            default_factory=list,
+            exclude=True,
+            validation_alias=GenbankRecordKey.FEATURE_TABLE,
+        )
+    ]
+
 
     @computed_field()
     def refseq(self) -> bool:
