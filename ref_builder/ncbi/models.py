@@ -237,9 +237,21 @@ class NCBIGenbank(BaseModel):
 
     @model_validator(mode="after")
     def check_source_organism_match(self) -> "NCBIGenbank":
-        """Check that the source organism matches the record organism."""
+        """Check that the source organism matches the record organism.
+
+        If not, go through remaining sources in the feature table and
+        convert the correct source.
+        """
         if self.source.organism == self.organism:
             return self
+
+        for feature in self.features:
+            potential_source = NCBISource.from_feature(feature)
+
+            if potential_source.organism == self.organism:
+                self.source = potential_source
+
+                return self
 
         raise ValueError("Non-matching organism fields on record and source")
 
