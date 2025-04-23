@@ -155,7 +155,9 @@ class NCBIGenbank(BaseModel):
         cls,
         raw: NCBISource | list[dict[str:Any]],
     ) -> NCBISource:
-        """If the source field isn't a ``NCBISource`` object, convert it."""
+        """If the source field isn't a ``NCBISource`` object, extract the data from
+        the feature table and convert.
+        """
         if isinstance(raw, NCBISource):
             return raw
 
