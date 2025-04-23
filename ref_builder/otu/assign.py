@@ -40,8 +40,9 @@ def assign_records_to_segments(
 
     if seen_segment_names.total() > 1 and seen_segment_names[None]:
         raise PlanConformationError(
-            "If a segment has no name, it must be the only segment. Only monopartite "
-            "plans may have unnamed segments."
+            "More than one unnamed segment found in multipartite isolate. "
+            "If a segment has no name, it must be the only segment. "
+            "Only monopartite plans may have unnamed segments."
         )
 
     unassigned_segments = {segment.name: segment for segment in plan.segments}
@@ -58,28 +59,30 @@ def assign_records_to_segments(
             f"Duplicate segment names found in records: {joined}."
         )
 
-    segment_names_not_in_plan = [
+    excess_segment_names_not_in_plan = [
         segment_name
         for segment_name in seen_segment_names
         if segment_name not in unassigned_segments
     ]
 
-    if segment_names_not_in_plan:
+    if excess_segment_names_not_in_plan:
         # This also covers monopartite plans. Plans are guaranteed to only one `None`
         # segment name and only when they are monopartite.
-        joined = ", ".join(sorted(str(n) for n in segment_names_not_in_plan))
-        raise PlanConformationError(f"Segment names not found in plan: {joined}.")
+        joined = ", ".join(sorted(str(n) for n in excess_segment_names_not_in_plan))
+        raise PlanConformationError(
+            f"Segment names present in records, but not found in plan: {joined}."
+        )
 
-    segment_names_not_in_records = [
+    segment_names_not_found_in_records = [
         segment.name
         for segment in plan.segments
         if segment.name not in seen_segment_names
     ]
 
-    if segment_names_not_in_records:
+    if segment_names_not_found_in_records:
         raise PlanConformationError(
             "Required segment names not found in records: ",
-            f"{segment_names_not_in_records}",
+            f"{segment_names_not_found_in_records}",
         )
 
     return {

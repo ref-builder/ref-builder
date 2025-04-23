@@ -130,7 +130,10 @@ class TestAssignRecordsToSegments:
 
         records = ncbi_genbank_factory.batch(len(otu.plan.required_segments))
 
-        with pytest.raises(ValueError, match="Segment names not found in plan:") as e:
+        with pytest.raises(
+            ValueError,
+            match="Segment names present in records, but not found in plan:",
+        ) as e:
             assign_records_to_segments(records, otu.plan)
 
         assert str(e.value) == snapshot(exclude=props("id"))
