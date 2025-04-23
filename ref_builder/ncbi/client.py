@@ -15,6 +15,7 @@ from structlog import get_logger
 
 from ref_builder.ncbi.cache import NCBICache
 from ref_builder.ncbi.models import (
+    GenbankRecordKey,
     NCBIDatabase,
     NCBIGenbank,
     NCBIRank,
@@ -117,7 +118,7 @@ class NCBIClient:
 
         fetch_list = list(
             set(accessions)
-            - {record.get(GenbankRecordKey.PRIMARY_ACCESSION) for record in records},
+            - {record.get(GenbankRecordKey.ACCESSION_KEY) for record in records},
         )
 
         if fetch_list:
@@ -126,7 +127,7 @@ class NCBIClient:
 
             for record in new_records:
                 versioned_accession = Accession.from_string(
-                    record[GenbankRecordKey.ACCESSION_VERSION],
+                    record[GenbankRecordKey.ACCESSION],
                 )
                 self.cache.cache_genbank_record(
                     record,
@@ -291,18 +292,19 @@ class NCBIClient:
         clean_records = []
 
         for record in records:
-            accession = record.get(GenbankRecordKey.PRIMARY_ACCESSION, "?")
+            accession = record.get(GenbankRecordKey.ACCESSION_KEY, "?")
 
             try:
                 clean_records.append(NCBIGenbank.model_validate(record))
 
             except ValidationError as exc:
-                base_logger.debug(
-                    "Encountered validation errors",
-                    accession=accession,
-                    count=exc.error_count(),
-                    errors=exc.errors(),
-                )
+                for error in exc.errors():
+                    base_logger.debug(
+                        "ValidationError",
+                        accession=accession,
+                        msg=error["msg"],
+                        loc=error["loc"],
+                    )
                 continue
 
         return clean_records
