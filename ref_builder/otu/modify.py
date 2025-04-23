@@ -9,9 +9,9 @@ from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.utils import (
     DeleteRationale,
-    assign_segment_id_to_record,
     create_segments_from_records,
 )
+from ref_builder.otu.assign import assign_segment_id_to_record
 from ref_builder.plan import (
     Plan,
     SegmentName,
