@@ -78,7 +78,9 @@ class NCBISourceMolType(StrEnum):
 class NCBISource(BaseModel):
     """An NCBI source table."""
 
-    taxid: int
+    model_config = ConfigDict(populate_by_name=True)
+
+    taxid: int = Field(validation_alias=AliasChoices("taxid", "taxon", "db_xref"))
     organism: str
     mol_type: NCBISourceMolType
     isolate: str = ""
