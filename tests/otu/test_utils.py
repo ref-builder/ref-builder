@@ -4,7 +4,8 @@ from syrupy.filters import props
 
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBISourceMolType
-from ref_builder.otu.utils import assign_records_to_segments, create_plan_from_records
+from ref_builder.otu.utils import create_plan_from_records
+from ref_builder.otu.assign import assign_records_to_segments
 from ref_builder.plan import (
     Plan,
 )

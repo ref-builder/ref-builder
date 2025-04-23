@@ -8,11 +8,12 @@ from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.utils import (
     RefSeqConflictError,
-    assign_records_to_segments,
+    check_sequence_length,
     fetch_records_from_accessions,
     group_genbank_records_by_isolate,
     parse_refseq_comment,
 )
+from ref_builder.otu.assign import assign_records_to_segments
 from ref_builder.plan import PlanConformationError
 from ref_builder.repo import Repo
 from ref_builder.utils import IsolateName
