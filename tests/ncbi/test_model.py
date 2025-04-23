@@ -79,7 +79,7 @@ class TestParseTaxonomy:
         """
         record = scratch_ncbi_cache.load_taxonomy(1016856)
 
-        assert NCBITaxonomy(**record).rank == NCBIRank.NO_RANK
+        assert NCBITaxonomy.model_validate(record).rank == NCBIRank.NO_RANK
 
         taxonomy = NCBITaxonomy(rank=NCBIRank.ISOLATE, **record)
 
@@ -95,7 +95,7 @@ def test_create_lineage_item_alias():
         "Rank": "kingdom",
     }
 
-    assert NCBILineage(**lineage_data_with_aliases) == NCBILineage(
+    assert NCBILineage.model_validate(lineage_data_with_aliases) == NCBILineage(
         id=2732397,
         name="Pararnavirae",
         rank="kingdom",
