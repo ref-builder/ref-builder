@@ -112,30 +112,49 @@ class NCBISource(BaseModel):
         return v.split(":")[1]
 
 
+class GenbankRecordKey(StrEnum):
+    """Keys used in Genbank XML records."""
+
+    ACCESSION_KEY = "GBSeq_primary-accession"
+    ACCESSION = "GBSeq_accession-version"
+    COMMENT = "GBSeq_comment"
+    DEFINITION = "GBSeq_definition"
+    LENGTH = "GBSeq_length"
+    FEATURE_TABLE = "GBSeq_feature-table"
+    MOLTYPE = "GBSeq_moltype"
+    ORGANISM = "GBSeq_organism"
+    SEQUENCE = "GBSeq_sequence"
+    STRANDEDNESS = "GBSeq_strandedness"
+    TOPOLOGY = "GBSeq_topology"
+
+
 class NCBIGenbank(BaseModel):
     """An NCBI Genbank record."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, use_enum_values=True)
 
-    accession: Annotated[str, Field(validation_alias="GBSeq_primary-accession")]
-    accession_version: Annotated[str, Field(validation_alias="GBSeq_accession-version")]
+    accession: Annotated[str, Field(validation_alias=GenbankRecordKey.ACCESSION_KEY)]
+    accession_version: Annotated[str, Field(validation_alias=GenbankRecordKey.ACCESSION)]
     strandedness: Annotated[
         Strandedness,
-        Field(validation_alias="GBSeq_strandedness"),
+        Field(validation_alias=GenbankRecordKey.STRANDEDNESS),
     ]
-    moltype: Annotated[MolType, Field(validation_alias="GBSeq_moltype")]
-    topology: Annotated[Topology, Field(validation_alias="GBSeq_topology")]
-    definition: Annotated[str, Field(validation_alias="GBSeq_definition")]
-    organism: Annotated[str, Field(validation_alias="GBSeq_organism")]
+    moltype: Annotated[MolType, Field(validation_alias=GenbankRecordKey.MOLTYPE)]
+    topology: Annotated[Topology, Field(validation_alias=GenbankRecordKey.TOPOLOGY)]
+    definition: Annotated[str, Field(validation_alias=GenbankRecordKey.DEFINITION)]
+    organism: Annotated[str, Field(validation_alias=GenbankRecordKey.ORGANISM)]
     sequence: Annotated[
         str,
         Field(
-            validation_alias="GBSeq_sequence",
+            validation_alias=GenbankRecordKey.SEQUENCE,
             pattern=r"^[ATCGRYKMSWBDHVNatcgrykmswbdhvn]+$",
         ),
     ]
-    source: Annotated[NCBISource, Field(validation_alias="GBSeq_feature-table")]
-    comment: Annotated[str, Field(validation_alias="GBSeq_comment")] = ""
+    source: Annotated[
+        NCBISource,
+        Field(validation_alias=GenbankRecordKey.FEATURE_TABLE)
+    ]
+    comment: Annotated[str, Field(validation_alias=GenbankRecordKey.COMMENT)] = ""
 
     @computed_field()
     def refseq(self) -> bool:
