@@ -180,9 +180,9 @@ def get_molecule_from_records(records: list[NCBIGenbank]) -> Molecule:
 
     return Molecule.model_validate(
         {
-            "strandedness": representative_record.strandedness.value,
-            "type": representative_record.moltype.value,
-            "topology": representative_record.topology.value,
+            "strandedness": representative_record.strandedness,
+            "type": representative_record.moltype,
+            "topology": representative_record.topology,
         },
     )
 
