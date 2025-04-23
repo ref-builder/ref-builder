@@ -182,7 +182,9 @@ class Isolate(IsolateBase):
         return [Sequence.model_validate(sequence.model_dump()) for sequence in v]
 
     @field_validator("sequences", mode="after")
-    def check_accession_refseq_or_insdc(cls, v: list[RepoSequence]) -> list[RepoSequence]:
+    def check_accession_refseq_or_insdc(
+        cls, v: list[RepoSequence]
+    ) -> list[RepoSequence]:
         """Check if all sequence accessions are all from RefSeq or all from INSDC.
         If not, warn the user.
         """
