@@ -13,9 +13,9 @@ from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.isolate import (
-    assign_records_to_segments,
     create_isolate,
 )
+from ref_builder.otu.assign import assign_records_to_segments
 from ref_builder.otu.promote import promote_otu_accessions_from_records
 from ref_builder.otu.utils import (
     DeleteRationale,

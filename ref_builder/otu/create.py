@@ -6,13 +6,13 @@ from ref_builder.ncbi.models import NCBIGenbank, NCBIRank, NCBITaxonomy
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.isolate import create_sequence_from_record
 from ref_builder.otu.utils import (
-    assign_records_to_segments,
     create_plan_from_records,
     get_molecule_from_records,
     group_genbank_records_by_isolate,
     parse_refseq_comment,
 )
 from ref_builder.otu.validators.otu import OTU
+from ref_builder.otu.assign import assign_records_to_segments
 from ref_builder.repo import Repo
 from ref_builder.utils import IsolateName
 
