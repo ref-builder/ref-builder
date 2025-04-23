@@ -178,7 +178,6 @@ class NCBIGenbank(BaseModel):
         )
     ]
 
-
     @computed_field()
     def refseq(self) -> bool:
         """Whether this is a RefSeq record.
@@ -187,11 +186,28 @@ class NCBIGenbank(BaseModel):
         """
         return self.accession.startswith("NC_")
 
-    @field_validator("sequence", mode="after")
+    @field_validator("features", mode="before")
     @classmethod
-    def uppercase_sequence(cls, raw: str) -> str:
-        """Force the sequence field to uppercase."""
-        return raw.upper()
+    def convert_feature_table(
+            cls,
+            v: INSDCFeatureTable | list[INSDCFeature] | list[dict[str:Any]],
+    ) -> INSDCFeatureTable:
+        """If the source field isn't a ``NCBISource`` object, extract the data from
+        the feature table and convert.
+        """
+        if isinstance(v, INSDCFeatureTable):
+            return v
+
+        feature_list = []
+        for raw_feature in v:
+            if isinstance(raw_feature, INSDCFeature | INSDCFeatureSource):
+                feature_list.append(raw_feature)
+            else:
+                feature = INSDCFeature.model_validate(raw_feature)
+                if feature.key == "source":
+                    feature_list.append(feature)
+
+        return INSDCFeatureTable(root=feature_list)
 
     @field_validator("source", mode="before")
     @classmethod
@@ -213,8 +229,14 @@ class NCBIGenbank(BaseModel):
 
         raise ValueError("Feature table contains no ``source`` table.")
 
+    @field_validator("sequence", mode="after")
+    @classmethod
+    def uppercase_sequence(cls, raw: str) -> str:
+        """Force the sequence field to uppercase."""
+        return raw.upper()
+
     @model_validator(mode="after")
-    def check_source(self) -> "NCBIGenbank":
+    def check_source_organism_match(self) -> "NCBIGenbank":
         """Check that the source organism matches the record organism."""
         if self.source.organism == self.organism:
             return self
