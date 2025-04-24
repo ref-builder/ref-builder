@@ -26,6 +26,9 @@ class NCBIDatabase(StrEnum):
 class NCBIRank(StrEnum):
     """NCBI ranks used in ref-builder."""
 
+    FAMILY = "family"
+    ORDER = "order"
+    GENUS = "genus"
     SPECIES = "species"
     ISOLATE = "isolate"
     NO_RANK = "no rank"
