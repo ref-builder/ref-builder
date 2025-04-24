@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import ValidationError
 from structlog import get_logger
 
-from ref_builder.ncbi.client import NCBIClient
+from ref_builder.ncbi.client import NCBIClient, TaxonLevelError
 from ref_builder.otu.utils import (
     DeleteRationale,
     assign_segment_id_to_record,
@@ -389,3 +389,75 @@ def set_representative_isolate(
     )
 
     return new_representative_isolate.id
+
+def check_otu_rank(repo: Repo, ignore_cache: bool = False) -> None:
+    """Check that OTUs are all at taxonomy level."""
+    ncbi = NCBIClient(ignore_cache)
+
+    sub_species_taxids = set()
+    over_ranked_taxids = set()
+
+    updated_otu_ids = set()
+
+    for otu in repo.iter_otus():
+        try:
+            taxon_record = ncbi.fetch_taxonomy_record(otu.taxid)
+        except TaxonLevelError:
+            logger.error(
+                "OTU is too high level to work with.",
+                msg=str(TaxonLevelError),
+            )
+
+            over_ranked_taxids.add(otu.taxid)
+
+            continue
+
+        if taxon_record is None:
+            logger.error("Taxonomy record unreadable or not found.", taxid=otu.taxid)
+
+            continue
+
+        if taxon_record.rank != "species":
+            logger.debug(
+                "OTU has a sub-species level taxonomy listing.",
+                rank=taxon_record.rank,
+                species=taxon_record.species
+            )
+            sub_species_taxids.add(otu.taxid)
+
+            logger.debug(
+                "Fetching species-level taxonomy...",
+                species_taxid=taxon_record.species.id,
+                species_name=taxon_record.species.name,
+            )
+
+            species_taxon_record = ncbi.fetch_taxonomy_record(taxon_record.species.id)
+
+            logger.debug(
+                "Updating OTU with new Taxonomy data...",
+                otu_id=otu.id,
+                current_name=otu.name,
+                current_taxid=otu.taxid,
+                new_name=species_taxon_record.name,
+                new_taxid=species_taxon_record.id,
+            )
+
+            with repo.use_transaction():
+                updated_otu = repo.update_otu_identifiers(
+                    otu_id=otu.id,
+                    taxid=species_taxon_record.id,
+                    name=species_taxon_record.name
+                )
+
+                if updated_otu is not None:
+                    updated_otu_ids.add(updated_otu.id)
+
+            repo.get_otu(otu.id)
+
+    if over_ranked_taxids:
+        logger.warning("Over-ranked level OTUs found", otu_ids=over_ranked_taxids)
+
+    if sub_species_taxids:
+        logger.warning("Sub-species level OTUs found", otu_ids=sub_species_taxids)
+
+    return None
