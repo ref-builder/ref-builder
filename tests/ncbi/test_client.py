@@ -3,7 +3,7 @@ import datetime
 import pytest
 from syrupy import SnapshotAssertion
 
-from ref_builder.ncbi.client import NCBIClient
+from ref_builder.ncbi.client import NCBIClient, TaxonLevelError
 from ref_builder.utils import Accession
 
 
@@ -249,17 +249,15 @@ class TestFetchTaxonomy:
         """Test that the client returns None when the taxid does not exist."""
         assert uncached_ncbi_client.fetch_taxonomy_record(99999999) is None
 
-    def test_rank_too_high(
+    def test_rank_too_high_fail(
         self,
         uncached_ncbi_client: NCBIClient,
-        snapshot: SnapshotAssertion,
     ):
-        """Test behaviour when the requested taxonomy rank is above species level."""
-        taxon_record = uncached_ncbi_client.fetch_taxonomy_record(190729)
-
-        assert taxon_record
-
-        print(taxon_record.model_dump())
+        """Test that if the requested taxonomy rank is above species level,
+        the correct error is raised.
+        """
+        with pytest.raises(TaxonLevelError):
+            uncached_ncbi_client.fetch_taxonomy_record(190729)
 
 
 @pytest.mark.ncbi()
