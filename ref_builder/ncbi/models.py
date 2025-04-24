@@ -16,6 +16,10 @@ from pydantic import (
 from ref_builder.models import Molecule, MolType, Strandedness, Topology
 
 
+class TaxonLevelError(ValueError):
+    """Raised when a fetched taxonomy record is above species level."""
+
+
 class NCBIDatabase(StrEnum):
     """NCBI databases used in ref-builder."""
 
@@ -214,6 +218,7 @@ class NCBITaxonomy(BaseModel):
     @computed_field
     def species(self) -> NCBILineage:
         """Return the species level taxon in the lineage."""
+
         if self.rank is NCBIRank.SPECIES:
             return NCBILineage(id=self.id, name=self.name, rank=self.rank)
 
@@ -221,4 +226,7 @@ class NCBITaxonomy(BaseModel):
             if item.rank == "species":
                 return item
 
-        raise ValueError("No species level taxon found in lineage")
+        raise TaxonLevelError(
+            "No species level taxon found in lineage. "
+            f"Taxonomy Id {self.id} level ({self.rank}) is too high."
+        )
