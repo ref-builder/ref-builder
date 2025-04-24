@@ -242,7 +242,8 @@ class TestFetchTaxonomy:
     def test_fetch_taxonomy_by_name(self):
         """Test that the client can fetch a taxid by name."""
         assert (
-            NCBIClient.fetch_taxonomy_id_by_name("Rhynchosia golden mosaic virus") == 117198
+            NCBIClient.fetch_taxonomy_id_by_name("Rhynchosia golden mosaic virus")
+            == 117198
         )
 
     def test_not_found(self, uncached_ncbi_client: NCBIClient):
