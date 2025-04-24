@@ -19,7 +19,6 @@ from ref_builder.ncbi.models import (
     NCBIGenbank,
     NCBIRank,
     NCBITaxonomy,
-    TaxonLevelError,
 )
 from ref_builder.utils import Accession
 
@@ -36,6 +35,10 @@ ESEARCH_PAGE_SIZE = 1000
 
 DATE_TEMPLATE = "%Y/%m/%d"
 """The standard date format used by NCBI Entrez."""
+
+
+class TaxonLevelError(ValueError):
+    """Raised when a fetched taxonomy record is above species level."""
 
 
 class GenbankRecordKey(StrEnum):
@@ -317,9 +320,6 @@ class NCBIClient:
         try:
             return NCBITaxonomy.model_validate(record)
 
-        except TaxonLevelError:
-            raise ValueError(f"Requested Taxonomy {taxid} is too high a level.")
-
         except ValidationError as e:
             for error in e.errors():
                 logger.warning(
@@ -328,6 +328,9 @@ class NCBIClient:
                     location=error["loc"],
                     type=error["type"],
                 )
+
+                if error["type"] == "taxon_rank_too_high":
+                    raise TaxonLevelError(error["msg"])
 
         return None
 
