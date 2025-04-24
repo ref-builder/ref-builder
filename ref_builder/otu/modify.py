@@ -106,7 +106,9 @@ def update_otu_identifiers(
     otu_logger.info("Updating OTU with new Taxonomy data...")
 
     return replace_otu_taxonomy_from_record(
-        repo, otu, taxonomy,
+        repo,
+        otu,
+        taxonomy,
     )
 
 
@@ -387,21 +389,35 @@ def set_representative_isolate(
 
     return new_representative_isolate.id
 
+
 def replace_otu_taxonomy_from_record(
     repo: Repo, otu: RepoOTU, taxon_record: NCBITaxonomy
 ) -> RepoOTU | None:
     """Replace an OTU taxonomy data using a given NCBI taxonomy record."""
     with repo.use_transaction():
         repo.update_otu_identifiers(
-            otu_id=otu.id,
-            taxid=taxon_record.id,
-            name=taxon_record.name
+            otu_id=otu.id, taxid=taxon_record.id, name=taxon_record.name
         )
 
     return repo.get_otu(otu.id)
 
-def check_otu_rank(repo: Repo, ignore_cache: bool = False) -> None:
-    """Check that OTUs are all at taxonomy level."""
+
+def fetch_taxonomy_based_on_otu_contents(
+    otu: RepoOTU, ignore_cache: bool = False
+) -> NCBITaxonomy:
+    """Given an OTU, fetch a taxonomy record based on its contents."""
+    ncbi = NCBIClient(ignore_cache)
+    rep_isolate = otu.get_isolate(otu.representative_isolate)
+
+    records = ncbi.fetch_genbank_records(rep_isolate.accessions)
+
+    record_taxid = records[0].source.taxid
+
+    return ncbi.fetch_taxonomy_record(record_taxid)
+
+
+def correct_otu_ranks(repo: Repo, ignore_cache: bool = False) -> None:
+    """Correct OTU metadata if the Taxonomy rank is above or below species-level."""
     ncbi = NCBIClient(ignore_cache)
 
     sub_species_taxids = set()
@@ -413,25 +429,20 @@ def check_otu_rank(repo: Repo, ignore_cache: bool = False) -> None:
         try:
             taxon_record = ncbi.fetch_taxonomy_record(otu.taxid)
         except TaxonLevelError:
-            logger.error(
+            logger.warning(
                 "OTU is too high level to work with.",
                 msg=str(TaxonLevelError),
             )
 
             over_ranked_taxids.add(otu.taxid)
 
-            continue
-
-        if taxon_record is None:
-            logger.error("Taxonomy record unreadable or not found.", taxid=otu.taxid)
-
-            continue
+            taxon_record = fetch_taxonomy_based_on_otu_contents(otu, ignore_cache)
 
         if taxon_record.rank != "species":
             logger.debug(
                 "OTU has a sub-species level taxonomy listing.",
                 rank=taxon_record.rank,
-                species=taxon_record.species
+                species=taxon_record.species,
             )
             sub_species_taxids.add(otu.taxid)
 
@@ -452,38 +463,9 @@ def check_otu_rank(repo: Repo, ignore_cache: bool = False) -> None:
                 new_taxid=species_taxon_record.id,
             )
 
-            updated_otu = replace_otu_taxonomy_from_record(repo, otu, species_taxon_record)
-            if updated_otu is not None:
-                updated_otu_ids.add(updated_otu.id)
-
-            repo.get_otu(otu.id)
-
-    if over_ranked_taxids:
-        logger.warning("Over-ranked level OTUs found", otu_ids=over_ranked_taxids)
-
-        for taxid in over_ranked_taxids:
-            over_ranked_otu = repo.get_otu_by_taxid(taxid)
-
-            rep_isolate = over_ranked_otu.get_isolate(
-                over_ranked_otu.representative_isolate
-            )
-
-            records = ncbi.fetch_genbank_records(rep_isolate.accessions)
-
-            record_taxid = records[0].source.taxid
-
-            refetched_taxon_record = ncbi.fetch_taxonomy_record(record_taxid)
-
-            if refetched_taxon_record.rank == "species":
-                species_taxon_record = refetched_taxon_record.species
-            else:
-                species_taxon_record = ncbi.fetch_taxonomy_record(
-                    refetched_taxon_record.species.id
-                )
-
             updated_otu = replace_otu_taxonomy_from_record(
                 repo,
-                otu=over_ranked_otu,
+                otu=otu,
                 taxon_record=species_taxon_record,
             )
 
@@ -491,5 +473,9 @@ def check_otu_rank(repo: Repo, ignore_cache: bool = False) -> None:
                 updated_otu_ids.add(updated_otu.id)
 
     if updated_otu_ids:
-        logger.warning("OTU identifiers updated", otu_ids=updated_otu_ids)
-
+        logger.info(
+            "OTU identifiers updated",
+            otu_ids=updated_otu_ids,
+            over_ranked_count=len(over_ranked_taxids),
+            sub_species_count=len(sub_species_taxids),
+        )
