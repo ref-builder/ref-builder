@@ -14,7 +14,13 @@ from pydantic import ValidationError
 from structlog import get_logger
 
 from ref_builder.ncbi.cache import NCBICache
-from ref_builder.ncbi.models import NCBIDatabase, NCBIGenbank, NCBIRank, NCBITaxonomy
+from ref_builder.ncbi.models import (
+    NCBIDatabase,
+    NCBIGenbank,
+    NCBIRank,
+    NCBITaxonomy,
+    TaxonLevelError,
+)
 from ref_builder.utils import Accession
 
 if email := os.environ.get("NCBI_EMAIL"):
@@ -324,12 +330,17 @@ class NCBIClient:
         try:
             return NCBITaxonomy.model_validate(record)
 
-        except ValidationError:
-            rank = self._fetch_taxonomy_rank(taxid)
-            try:
-                return NCBITaxonomy(**record, rank=rank)
-            except ValidationError:
-                logger.exception("Failed to find a valid rank.")
+        except TaxonLevelError:
+            raise ValueError(f"Requested Taxonomy {taxid} is too high a level.")
+
+        except ValidationError as e:
+            for error in e.errors():
+                logger.warning(
+                    "ValidationError",
+                    msg=error["msg"],
+                    location=error["loc"],
+                    type=error["type"],
+                )
 
         return None
 
