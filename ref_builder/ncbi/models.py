@@ -12,12 +12,9 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from pydantic_core import PydanticCustomError
 
 from ref_builder.models import Molecule, MolType, Strandedness, Topology
-
-
-class TaxonLevelError(ValueError):
-    """Raised when a fetched taxonomy record is above species level."""
 
 
 class NCBIDatabase(StrEnum):
@@ -215,6 +212,18 @@ class NCBITaxonomy(BaseModel):
     lineage: Annotated[list[NCBILineage], Field(validation_alias="LineageEx")]
     rank: Annotated[NCBIRank, Field(validation_alias=AliasChoices("rank", "Rank"))]
 
+    @field_validator("rank", mode="before")
+    @classmethod
+    def check_rank_level(cls, v: str | NCBIRank) -> str | NCBIRank:
+        if v not in (NCBIRank.SPECIES, NCBIRank.NO_RANK, NCBIRank.ISOLATE):
+            raise PydanticCustomError(
+                "taxon_rank_too_high",
+                "Taxon rank ({rank}) is too high.",
+                {"rank": v},
+            )
+
+        return v
+
     @computed_field
     def species(self) -> NCBILineage:
         """Return the species level taxon in the lineage."""
@@ -226,7 +235,9 @@ class NCBITaxonomy(BaseModel):
             if item.rank == "species":
                 return item
 
-        raise TaxonLevelError(
-            "No species level taxon found in lineage. "
-            f"Taxonomy Id {self.id} level ({self.rank}) is too high."
+        raise PydanticCustomError(
+            "irrelevant_taxon_lineage",
+            "No species level taxon found in lineage."
+            + "Taxonomy Id {taxid} level ({rank}) is too high.",
+            {"taxid": self.id, "rank": self.rank},
         )
