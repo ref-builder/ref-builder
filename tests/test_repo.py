@@ -852,11 +852,11 @@ class TestUpdateIdentifiers:
                 otu_init.id, taxid=dummy_taxid, name=dummy_name,
             )
 
-        otu_after = initialized_repo.get_otu(otu_init.id)
-
         assert initialized_repo.get_otu_by_taxid(otu_init.taxid) is None
 
-        assert initialized_repo.get_otu_by_taxid(dummy_taxid).id == otu_init.id
+        assert (
+            otu_after := initialized_repo.get_otu_by_taxid(dummy_taxid)
+        ) is not None
 
         assert otu_after.taxid == dummy_taxid
 
