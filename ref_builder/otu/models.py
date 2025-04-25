@@ -88,8 +88,5 @@ class OTUModel(BaseModel):
     plan: Plan
     """The plan for the OTU."""
 
-    representative_isolate: UUID4 | None
-    """The UUID of the representative isolate of this OTU"""
-
     taxid: int
     """The NCBI Taxonomy id for this OTU."""

@@ -67,6 +67,9 @@ def test_isolate_factory():
 
 def test_otu_factory(otu_factory: OTUFactory):
     """Test that OTUFactory creates valid mock OTU data."""
-    assert all(
-        OTU.model_validate(otu.model_dump()) for otu in otu_factory.coverage()
-    )
+    mock_otus = otu_factory.coverage()
+
+    for mock_otu in mock_otus:
+        print(mock_otu.representative_isolate)
+
+    assert all(OTU.model_validate(otu.model_dump()) for otu in mock_otus)
