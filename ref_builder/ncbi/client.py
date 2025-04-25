@@ -3,7 +3,7 @@
 import datetime
 import os
 from collections.abc import Collection
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from enum import StrEnum
 from http import HTTPStatus
 from urllib.error import HTTPError
@@ -452,10 +452,8 @@ class NCBIClient:
         """Filter raw eSearch accession list and return a set of compliant Nucleotide accessions."""
         valid_accessions = set()
         for accession in raw_accessions:
-            try:
+            with suppress(ValueError):
                 valid_accessions.add(Accession.from_string(accession))
-            except ValueError:
-                pass
 
         return valid_accessions
 
