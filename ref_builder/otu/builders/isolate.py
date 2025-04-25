@@ -1,25 +1,14 @@
 from uuid import UUID
 
-from pydantic import UUID4, BaseModel, field_serializer, field_validator
+from pydantic import field_serializer, field_validator
 
 from ref_builder.otu.builders.sequence import SequenceBuilder
+from ref_builder.otu.models import IsolateModel
 from ref_builder.utils import IsolateName
 
 
-class IsolateBuilder(BaseModel):
+class IsolateBuilder(IsolateModel):
     """Represents an isolate in a Virtool reference repository."""
-
-    id: UUID4
-    """The isolate id."""
-
-    legacy_id: str | None
-    """A string based ID carried over from a legacy Virtool reference repository.
-
-    It the isolate was not migrated from a legacy repository, this will be `None`.
-    """
-
-    name: IsolateName | None
-    """The isolate's source name metadata."""
 
     sequences: list[SequenceBuilder]
     """A list of sequences contained by this isolate."""
