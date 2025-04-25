@@ -71,15 +71,15 @@
 # name: TestPrintOTU.test_as_json_ok
   '''
   {"id":"e7019832-f5b4-4b78-b528-9929bf0ec839","acronym":"BabAV","excluded_accessi
-  ons":[],"legacy_id":"","name":"Babuvirus 
-  abacae","representative_isolate":null,"molecule":{"strandedness":"single","topol
-  ogy":"linear","type":"RNA"},"plan":{"id":"aa2ec177-b438-4ece-8984-b1e43a4ad810",
-  "segments":[{"id":"cbfea737-c871-48c8-a200-6d5a316a0900","length":1099,"length_t
-  olerance":0.03,"name":{"prefix":"DNA","key":"R"},"rule":"required"},{"id":"06d3a
-  af1-7e54-4da7-aa64-9d11af726838","length":1074,"length_tolerance":0.03,"name":{"
-  prefix":"DNA","key":"M"},"rule":"required"},{"id":"af02c6ab-7438-4c9a-807e-553a7
-  11a94e3","length":1087,"length_tolerance":0.03,"name":{"prefix":"DNA","key":"S"}
-  ,"rule":"required"}]},"taxid":438782,"isolates":[]}
+  ons":[],"legacy_id":"","molecule":{"strandedness":"single","topology":"linear","
+  type":"RNA"},"name":"Babuvirus 
+  abacae","plan":{"id":"aa2ec177-b438-4ece-8984-b1e43a4ad810","segments":[{"id":"c
+  bfea737-c871-48c8-a200-6d5a316a0900","length":1099,"length_tolerance":0.03,"name
+  ":{"prefix":"DNA","key":"R"},"rule":"required"},{"id":"06d3aaf1-7e54-4da7-aa64-9
+  d11af726838","length":1074,"length_tolerance":0.03,"name":{"prefix":"DNA","key":
+  "M"},"rule":"required"},{"id":"af02c6ab-7438-4c9a-807e-553a711a94e3","length":10
+  87,"length_tolerance":0.03,"name":{"prefix":"DNA","key":"S"},"rule":"required"}]
+  },"taxid":438782,"isolates":[],"representative_isolate":null}
   
   '''
 # ---
