@@ -184,4 +184,3 @@ class OTUBuilder(BaseModel):
     def unlink_sequence(self, isolate_id: UUID4, sequence_id: UUID4) -> None:
         """Unlink the given sequence from the given isolate. Used only during rehydration."""
         self.get_isolate(isolate_id).delete_sequence(sequence_id)
-
