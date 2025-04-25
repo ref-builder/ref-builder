@@ -9,12 +9,13 @@ from pydantic import (
     field_validator,
 )
 
+from ref_builder.otu.models import IsolateModel
 from ref_builder.otu.validators.sequence import Sequence, SequenceBase
 from ref_builder.otu.validators.utils import IsolateInconsistencyWarning
 from ref_builder.utils import Accession, IsolateName, is_refseq
 
 
-class IsolateBase(BaseModel):
+class IsolateBase(IsolateModel):
     """A class representing an isolate with basic validation."""
 
     id: UUID4

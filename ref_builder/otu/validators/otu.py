@@ -12,12 +12,13 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 from ref_builder.models import Molecule
+from ref_builder.otu.models import OTUModel
 from ref_builder.otu.validators.isolate import Isolate, IsolateBase
 from ref_builder.otu.validators.sequence import Sequence, SequenceBase
 from ref_builder.plan import Plan, PlanWarning
 
 
-class OTUBase(BaseModel):
+class OTUBase(OTUModel):
     """A class representing an OTU with basic validation."""
 
     id: UUID4

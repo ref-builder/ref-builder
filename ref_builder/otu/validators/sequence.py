@@ -6,10 +6,11 @@ from pydantic import (
     field_validator,
 )
 
+from ref_builder.otu.models import SequenceModel
 from ref_builder.utils import Accession, is_accession_key_valid, is_refseq
 
 
-class SequenceBase(BaseModel):
+class SequenceBase(SequenceModel):
     """A class representing a sequence with basic validation."""
 
     model_config = ConfigDict(validate_assignment=True)
