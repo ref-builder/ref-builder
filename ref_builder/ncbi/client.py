@@ -89,8 +89,9 @@ class NCBIClient:
 
             if records:
                 logger.debug(
-                    f"Loaded {len(records)} cached records",
-                    cached_accessions=[
+                    "Loaded cached records",
+                    record_count=len(records),
+                    cached_records=[
                         record.get(GenbankRecordKey.PRIMARY_ACCESSION)
                         for record in records
                     ],
@@ -157,7 +158,7 @@ class NCBIClient:
             if e.code == HTTPStatus.BAD_REQUEST:
                 logger.exception("Accessions not found")
             else:
-                logger.exception()
+                logger.exception("HTTPError")
 
             return []
 
@@ -325,7 +326,7 @@ class NCBIClient:
                 logger.warning(
                     "ValidationError",
                     msg=error["msg"],
-                    location=error["loc"],
+                    loc=error["loc"],
                     type=error["type"],
                 )
 
@@ -387,7 +388,7 @@ class NCBIClient:
         logger = base_logger.bind(name=name)
         try:
             with log_http_error():
-                handle = Entrez.esearch(db="taxonomy", term=name)
+                handle = Entrez.esearch(db=NCBIDatabase.TAXONOMY, term=name)
         except HTTPError:
             return None
 
@@ -495,10 +496,12 @@ class NCBIClient:
             if end_date:
                 end_date_string = end_date.strftime(DATE_TEMPLATE)
 
-        return (
-            f'"{start_date_string}"[{filter_type}]'
-            + " : "
-            + f'"{end_date_string}"[{filter_type}]'
+        return " ".join(
+            [
+                f'"{start_date_string}"[{filter_type}]',
+                ":",
+                f'"{end_date_string}"[{filter_type}]',
+            ]
         )
 
 
