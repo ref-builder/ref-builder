@@ -14,8 +14,9 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 from ref_builder.models import Molecule
+from ref_builder.otu.builders.isolate import IsolateBuilder as RepoIsolate
+from ref_builder.otu.builders.otu import SequenceBuilder as RepoSequence
 from ref_builder.plan import Plan, PlanWarning
-from ref_builder.resources import RepoIsolate, RepoSequence
 from ref_builder.utils import Accession, IsolateName, is_accession_key_valid, is_refseq
 
 
