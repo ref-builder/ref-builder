@@ -65,7 +65,7 @@ class IsolateModel(BaseModel):
 
 
 class OTUModel(BaseModel):
-    """A class representing the fields of a model."""
+    """A class representing the fields of an OTU."""
 
     id: UUID4
     """The OTU id."""
