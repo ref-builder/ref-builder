@@ -35,6 +35,9 @@ class RepoSettings(BaseModel):
     fails validation.
     """
 
+    species_otus_only: bool = False
+    """Whether OTUs ranking below OTU can pass validation."""
+
 
 class RepoSequence(BaseModel):
     """Represents a sequence in a Virtool reference repository."""
