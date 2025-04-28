@@ -111,7 +111,7 @@ class TestCreateOTUCommands:
         assert "Duplicate accessions are not allowed." in result.output
 
 
-@pytest.mark.ncbi
+@pytest.mark.ncbi()
 class TestPromoteOTUCommand:
     """Test that the ``ref-builder otu promote`` command works as planned."""
 
@@ -491,3 +491,12 @@ class TestExtendPlanCommand:
         assert result.exit_code == 1
 
         print(result.output)
+
+
+class TestCorrectRanksCommand:
+    def test_ok(self, scratch_repo):
+        result = runner.invoke(
+            otu_command_group, ["--path", str(scratch_repo.path), "correct-ranks"]
+        )
+
+        assert result.exit_code == 0
