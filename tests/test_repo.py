@@ -772,6 +772,38 @@ class TestGetIsolate:
         assert isolate_unnamed_after.accessions == {"NP000001"}
 
 
+class TestUpdateIdentifiers:
+    def test_ok(self, initialized_repo: Repo):
+        otu_init = next(initialized_repo.iter_otus())
+
+        dummy_taxid = 34612644
+
+        dummy_name = "Dummy name"
+
+        isolate_id = otu_init.representative_isolate
+
+        assert isolate_id is not None
+
+        assert initialized_repo.get_otu_id_by_isolate_id(isolate_id) == otu_init.id
+
+        with initialized_repo.lock(), initialized_repo.use_transaction():
+            initialized_repo.update_otu_identifiers(
+                otu_init.id,
+                taxid=dummy_taxid,
+                name=dummy_name,
+            )
+
+        assert initialized_repo.get_otu_by_taxid(otu_init.taxid) is None
+
+        assert (otu_after := initialized_repo.get_otu_by_taxid(dummy_taxid)) is not None
+
+        assert otu_after.taxid == dummy_taxid
+
+        assert otu_after.name == dummy_name
+
+        assert initialized_repo.get_otu_id_by_isolate_id(isolate_id) == otu_after.id
+
+
 def test_get_isolate_id_from_partial(initialized_repo: Repo):
     """Test that an isolate id can be retrieved from a truncated ``partial`` string."""
     otu = next(initialized_repo.iter_otus())
