@@ -209,25 +209,39 @@ class NCBIClient:
         :param refseq_only: Only fetch accessions from NCBI RefSeq database.:
         :return: A list of Genbank accessions
         """
+        logger = base_logger.bind(taxid=taxid)
+
         page = 1
         accessions = []
 
-        term = f"txid{taxid}[orgn]"
+        search_terms = [f"txid{taxid}[orgn]"]
+
         if sequence_min_length > 0 and sequence_max_length > 0:
-            term += " AND " + NCBIClient.generate_sequence_length_filter_string(
-                sequence_min_length,
-                sequence_max_length,
+            search_terms.append(
+                NCBIClient.generate_sequence_length_filter_string(
+                    sequence_min_length,
+                    sequence_max_length,
+                )
             )
 
         if modification_date_start is not None:
-            term += " AND " + NCBIClient.generate_date_filter_string(
-                "MDAT",
-                modification_date_start,
-                modification_date_end,
+            search_terms.append(
+                NCBIClient.generate_date_filter_string(
+                    filter_type="MDAT",
+                    start_date=modification_date_start,
+                    end_date=modification_date_end,
+                )
             )
 
         if refseq_only:
-            term += " AND " + "refseq[filter]"
+            search_terms.append("refseq[filter]")
+
+        search_term_string = " AND ".join(search_terms)
+
+        logger.debug(
+            "Fetching NCBI Nucleotide accessions associated with NCBI Taxonomy ID...",
+            search_string=search_term_string,
+        )
 
         # If there are more than 1000 accessions, we need to paginate.
         while True:
@@ -236,7 +250,7 @@ class NCBIClient:
             with log_http_error():
                 handle = Entrez.esearch(
                     db=NCBIDatabase.NUCCORE,
-                    term=term,
+                    term=search_term_string,
                     idtype="acc",
                     retstart=retstart,
                     retmax=ESEARCH_PAGE_SIZE,
@@ -254,12 +268,11 @@ class NCBIClient:
             if result_count - retstart <= ESEARCH_PAGE_SIZE:
                 break
 
-            base_logger.debug(
+            logger.debug(
                 "Large fetch. May take longer than expected...",
                 result_count=result_count,
                 page=page,
                 page_size=ESEARCH_PAGE_SIZE,
-                taxid=taxid,
             )
 
             page += 1
