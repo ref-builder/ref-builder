@@ -16,15 +16,14 @@ from ref_builder.cli.validate import validate_no_duplicate_accessions
 from ref_builder.console import (
     print_otu,
     print_otu_as_json,
-    print_otu_list,
     print_otu_event_log,
+    print_otu_list,
 )
-from ref_builder.errors import PartialIDConflictError, InvalidInputError
-from ref_builder.cli.options import ignore_cache_option, path_option
 from ref_builder.otu.create import create_otu_with_taxid, create_otu_without_taxid
 from ref_builder.otu.modify import (
     add_segments_to_plan,
     allow_accessions_into_otu,
+    correct_otu_ranks,
     exclude_accessions_from_otu,
     rename_plan_segment,
     set_representative_isolate,
@@ -36,7 +35,6 @@ from ref_builder.otu.update import (
 )
 from ref_builder.plan import SegmentName, SegmentRule
 from ref_builder.repo import Repo, locked_repo
-from ref_builder.utils import IsolateName, IsolateNameType
 
 logger = structlog.get_logger()
 
@@ -402,3 +400,11 @@ def plan_rename_segment(
         )
     except ValueError as e:
         click.echo(e, err=True)
+
+
+@otu.command(name="correct-ranks")
+@ignore_cache_option
+@pass_repo
+def otu_check_ranks(repo: Repo, ignore_cache: bool) -> None:
+    """Ensure all OTUs are at the ``species`` rank."""
+    correct_otu_ranks(repo, ignore_cache)
