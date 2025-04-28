@@ -144,6 +144,7 @@ class Repo:
         path: Path,
         organism: str,
         default_segment_length_tolerance: float = 0.03,
+        species_otus_only: bool = False,
     ) -> "Repo":
         """Create a new reference repository."""
         if path.is_file():
@@ -175,7 +176,8 @@ class Repo:
                     name=name,
                     organism=organism,
                     settings=RepoSettings(
-                        default_segment_length_tolerance=default_segment_length_tolerance
+                        default_segment_length_tolerance=default_segment_length_tolerance,
+                        species_otus_only=species_otus_only,
                     ),
                 ),
                 query=RepoQuery(repository_id=repo_id),
