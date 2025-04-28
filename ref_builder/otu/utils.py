@@ -52,6 +52,10 @@ class RefSeqConflictError(ValueError):
         self.accessions = accessions
 
 
+class InvalidTaxonomyError(ValueError):
+    """Raise when an NCBI Taxonomy record does not match repository settings."""
+
+
 def get_segments_min_length(segments: list[Segment]) -> int:
     """Return the shortest minimum length from a list of segments."""
     shortest_segment = min(segments, key=lambda s: s.length)
