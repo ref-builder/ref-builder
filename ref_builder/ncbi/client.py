@@ -1,9 +1,9 @@
 """A client for fetching data from NCBI databases."""
 
+import datetime
 import os
 from collections.abc import Collection
-from contextlib import contextmanager
-import datetime
+from contextlib import contextmanager, suppress
 from enum import StrEnum
 from http import HTTPStatus
 from urllib.error import HTTPError
@@ -14,7 +14,12 @@ from pydantic import ValidationError
 from structlog import get_logger
 
 from ref_builder.ncbi.cache import NCBICache
-from ref_builder.ncbi.models import NCBIDatabase, NCBIGenbank, NCBIRank, NCBITaxonomy
+from ref_builder.ncbi.models import (
+    NCBIDatabase,
+    NCBIGenbank,
+    NCBIRank,
+    NCBITaxonomy,
+)
 from ref_builder.utils import Accession
 
 if email := os.environ.get("NCBI_EMAIL"):
@@ -30,6 +35,10 @@ ESEARCH_PAGE_SIZE = 1000
 
 DATE_TEMPLATE = "%Y/%m/%d"
 """The standard date format used by NCBI Entrez."""
+
+
+class TaxonLevelError(ValueError):
+    """Raised when a fetched taxonomy record is above species level."""
 
 
 class GenbankRecordKey(StrEnum):
@@ -80,8 +89,9 @@ class NCBIClient:
 
             if records:
                 logger.debug(
-                    f"Loaded {len(records)} cached records",
-                    cached_accessions=[
+                    "Loaded cached records",
+                    record_count=len(records),
+                    cached_records=[
                         record.get(GenbankRecordKey.PRIMARY_ACCESSION)
                         for record in records
                     ],
@@ -148,7 +158,7 @@ class NCBIClient:
             if e.code == HTTPStatus.BAD_REQUEST:
                 logger.exception("Accessions not found")
             else:
-                logger.exception()
+                logger.exception("HTTPError")
 
             return []
 
@@ -186,25 +196,39 @@ class NCBIClient:
         :param refseq_only: Only fetch accessions from NCBI RefSeq database.:
         :return: A list of Genbank accessions
         """
+        logger = base_logger.bind(taxid=taxid)
+
         page = 1
         accessions = []
 
-        term = f"txid{taxid}[orgn]"
+        search_terms = [f"txid{taxid}[orgn]"]
+
         if sequence_min_length > 0 and sequence_max_length > 0:
-            term += " AND " + NCBIClient.generate_sequence_length_filter_string(
-                sequence_min_length,
-                sequence_max_length,
+            search_terms.append(
+                NCBIClient.generate_sequence_length_filter_string(
+                    sequence_min_length,
+                    sequence_max_length,
+                )
             )
 
         if modification_date_start is not None:
-            term += " AND " + NCBIClient.generate_date_filter_string(
-                "MDAT",
-                modification_date_start,
-                modification_date_end,
+            search_terms.append(
+                NCBIClient.generate_date_filter_string(
+                    filter_type="MDAT",
+                    start_date=modification_date_start,
+                    end_date=modification_date_end,
+                )
             )
 
         if refseq_only:
-            term += " AND " + "refseq[filter]"
+            search_terms.append("refseq[filter]")
+
+        search_term_string = " AND ".join(search_terms)
+
+        logger.debug(
+            "Fetching NCBI Nucleotide accessions associated with NCBI Taxonomy ID...",
+            search_string=search_term_string,
+        )
 
         # If there are more than 1000 accessions, we need to paginate.
         while True:
@@ -213,7 +237,7 @@ class NCBIClient:
             with log_http_error():
                 handle = Entrez.esearch(
                     db=NCBIDatabase.NUCCORE,
-                    term=term,
+                    term=search_term_string,
                     idtype="acc",
                     retstart=retstart,
                     retmax=ESEARCH_PAGE_SIZE,
@@ -231,12 +255,11 @@ class NCBIClient:
             if result_count - retstart <= ESEARCH_PAGE_SIZE:
                 break
 
-            base_logger.debug(
+            logger.debug(
                 "Large fetch. May take longer than expected...",
                 result_count=result_count,
                 page=page,
                 page_size=ESEARCH_PAGE_SIZE,
-                taxid=taxid,
             )
 
             page += 1
@@ -311,12 +334,17 @@ class NCBIClient:
         try:
             return NCBITaxonomy.model_validate(record)
 
-        except ValidationError:
-            rank = self._fetch_taxonomy_rank(taxid)
-            try:
-                return NCBITaxonomy(**record, rank=rank)
-            except ValidationError:
-                logger.exception("Failed to find a valid rank.")
+        except ValidationError as e:
+            for error in e.errors():
+                logger.warning(
+                    "ValidationError",
+                    msg=error["msg"],
+                    loc=error["loc"],
+                    type=error["type"],
+                )
+
+                if error["type"] == "taxon_rank_too_high":
+                    raise TaxonLevelError(error["msg"])
 
         return None
 
@@ -373,7 +401,7 @@ class NCBIClient:
         logger = base_logger.bind(name=name)
         try:
             with log_http_error():
-                handle = Entrez.esearch(db="taxonomy", term=name)
+                handle = Entrez.esearch(db=NCBIDatabase.TAXONOMY, term=name)
         except HTTPError:
             return None
 
@@ -425,10 +453,8 @@ class NCBIClient:
         """Filter raw eSearch accession list and return a set of compliant Nucleotide accessions."""
         valid_accessions = set()
         for accession in raw_accessions:
-            try:
+            with suppress(ValueError):
                 valid_accessions.add(Accession.from_string(accession))
-            except ValueError:
-                pass
 
         return valid_accessions
 
@@ -483,10 +509,12 @@ class NCBIClient:
             if end_date:
                 end_date_string = end_date.strftime(DATE_TEMPLATE)
 
-        return (
-            f'"{start_date_string}"[{filter_type}]'
-            + " : "
-            + f'"{end_date_string}"[{filter_type}]'
+        return " ".join(
+            [
+                f'"{start_date_string}"[{filter_type}]',
+                ":",
+                f'"{end_date_string}"[{filter_type}]',
+            ]
         )
 
 

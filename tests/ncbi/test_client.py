@@ -3,7 +3,7 @@ import datetime
 import pytest
 from syrupy import SnapshotAssertion
 
-from ref_builder.ncbi.client import NCBIClient
+from ref_builder.ncbi.client import NCBIClient, TaxonLevelError
 from ref_builder.utils import Accession
 
 
@@ -239,17 +239,26 @@ class TestFetchTaxonomy:
         # Make sure the taxid is now cached.
         assert uncached_ncbi_client.cache.load_taxonomy(1198450)
 
+    def test_fetch_taxonomy_by_name(self):
+        """Test that the client can fetch a taxid by name."""
+        assert (
+            NCBIClient.fetch_taxonomy_id_by_name("Rhynchosia golden mosaic virus")
+            == 117198
+        )
+
     def test_not_found(self, uncached_ncbi_client: NCBIClient):
         """Test that the client returns None when the taxid does not exist."""
         assert uncached_ncbi_client.fetch_taxonomy_record(99999999) is None
 
-
-@pytest.mark.ncbi()
-def test_fetch_taxonomy_by_name():
-    """Test that the client can fetch a taxid by name."""
-    assert (
-        NCBIClient.fetch_taxonomy_id_by_name("Rhynchosia golden mosaic virus") == 117198
-    )
+    def test_rank_too_high_fail(
+        self,
+        uncached_ncbi_client: NCBIClient,
+    ):
+        """Test that if the requested taxonomy rank is above species level,
+        the correct error is raised.
+        """
+        with pytest.raises(TaxonLevelError):
+            uncached_ncbi_client.fetch_taxonomy_record(190729)
 
 
 @pytest.mark.ncbi()
