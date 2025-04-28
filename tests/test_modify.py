@@ -1,17 +1,21 @@
 from uuid import UUID, uuid4
 
-from pydantic import ValidationError
 import pytest
+from pydantic import ValidationError
 from syrupy import SnapshotAssertion
 from syrupy.filters import props
 
+from ref_builder.models import Molecule, MolType, Strandedness, Topology
+from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.create import create_otu_with_taxid
 from ref_builder.otu.modify import (
     add_segments_to_plan,
     allow_accessions_into_otu,
+    correct_otu_ranks,
     delete_isolate_from_otu,
     exclude_accessions_from_otu,
     rename_plan_segment,
+    replace_otu_taxonomy_from_record,
     replace_sequence_in_otu,
     set_plan,
     set_plan_length_tolerances,
@@ -459,3 +463,169 @@ class TestReplaceSequence:
                 new_accession="NC_038792",
                 replaced_accession="DQ178608",
             )
+
+
+class TestCorrectOTURanks:
+    """Test OTU rank auto-correction."""
+
+    client = NCBIClient(False)
+
+    @pytest.mark.parametrize(
+        ("initial_taxid", "corrected_taxid", "accessions"),
+        [
+            (1238162, 2010322, ["NC_018869"]),
+            (
+                3158377,
+                438782,
+                [
+                    "NC_010314",
+                    "NC_010315",
+                    "NC_010316",
+                    "NC_010317",
+                    "NC_010318",
+                    "NC_010319",
+                ],
+            ),
+        ],
+    )
+    def test_replace_otu_taxonomy_with_record(
+        self,
+        precached_repo: Repo,
+        initial_taxid: int,
+        corrected_taxid: int,
+        accessions: list[str],
+    ):
+        """Test individual OTU rank replacement."""
+        with precached_repo.lock():
+            create_otu_with_taxid(
+                precached_repo,
+                initial_taxid,
+                accessions,
+                acronym="",
+            )
+
+        otu_init = precached_repo.get_otu_by_taxid(initial_taxid)
+
+        assert otu_init.taxid == initial_taxid
+
+        taxonomy_record = self.client.fetch_taxonomy_record(corrected_taxid)
+
+        with precached_repo.lock():
+            replace_otu_taxonomy_from_record(precached_repo, otu_init, taxonomy_record)
+
+        otu_after = precached_repo.get_otu(otu_init.id)
+
+        assert otu_after.taxid == corrected_taxid
+
+    def test_correct_all_otus(self, precached_repo: Repo):
+        """Test standard case with isolate-level OTUs."""
+        initial_corrected_taxid_pairs = {
+            (1238162, 2010322): ["NC_018869"],
+            (3158377, 438782): [
+                "NC_010314",
+                "NC_010315",
+                "NC_010316",
+                "NC_010317",
+                "NC_010318",
+                "NC_010319",
+            ],
+        }
+
+        for initial_taxid, corrected_taxid in initial_corrected_taxid_pairs:
+            with precached_repo.lock():
+                create_otu_with_taxid(
+                    precached_repo,
+                    initial_taxid,
+                    initial_corrected_taxid_pairs[(initial_taxid, corrected_taxid)],
+                    acronym="",
+                )
+
+        for initial_taxid, corrected_taxid in initial_corrected_taxid_pairs:
+            otu_before = precached_repo.get_otu_by_taxid(initial_taxid)
+
+            assert otu_before is not None
+
+            assert otu_before.taxid == initial_taxid
+
+        with precached_repo.lock():
+            correct_otu_ranks(precached_repo)
+
+        for initial_taxid, corrected_taxid in initial_corrected_taxid_pairs:
+            otu_after = precached_repo.get_otu_by_taxid(corrected_taxid)
+
+            assert otu_after is not None
+
+            assert otu_after.taxid != initial_taxid
+
+            assert not precached_repo.get_otu_by_taxid(initial_taxid)
+
+    def test_correct_all_otus_where_rank_too_high(self, precached_repo: Repo):
+        """Test OTU rank correction when dealing with a rank that is too high.
+
+        This corner case may come up when dealing with migrated repositories.
+        """
+        genus_taxid = 190729
+
+        sequence_record = self.client.fetch_genbank_records(["NC_018869.1"])[0]
+
+        mock_plan = Plan.new(
+            segments=[
+                Segment.new(
+                    length=len(sequence_record.sequence),
+                    length_tolerance=0.01,
+                    name=None,
+                    rule=SegmentRule.REQUIRED,
+                )
+            ],
+        )
+
+        with precached_repo.lock(), precached_repo.use_transaction():
+            otu_init = precached_repo.create_otu(
+                acronym="",
+                legacy_id="f9122075",
+                molecule=Molecule(
+                    strandedness=Strandedness.DOUBLE,
+                    topology=Topology.CIRCULAR,
+                    type=MolType.DNA,
+                ),
+                name="Mungbean yellow mosaic India virus associated betasatellite",
+                plan=mock_plan,
+                taxid=genus_taxid,
+            )
+
+            sequence_init = precached_repo.create_sequence(
+                otu_id=otu_init.id,
+                accession=sequence_record.accession_version,
+                definition=sequence_record.definition,
+                legacy_id="bxpchyoy",
+                segment=mock_plan.segments[0].id,
+                sequence=sequence_record.sequence,
+            )
+
+            isolate_init = precached_repo.create_isolate(
+                otu_id=otu_init.id,
+                legacy_id="gfkwqnpf",
+                name=IsolateName(
+                    type=IsolateNameType.ISOLATE,
+                    value=sequence_record.source.isolate,
+                ),
+            )
+
+            precached_repo.link_sequence(otu_init.id, isolate_init.id, sequence_init.id)
+
+            precached_repo.set_representative_isolate(otu_init.id, isolate_init.id)
+
+        assert precached_repo.get_otu(otu_init.id).taxid == genus_taxid
+
+        assert precached_repo.get_otu_by_taxid(genus_taxid).id == otu_init.id
+
+        with precached_repo.lock():
+            correct_otu_ranks(precached_repo)
+
+        otu_after = precached_repo.get_otu(otu_init.id)
+
+        assert otu_after.taxid != genus_taxid
+
+        assert not precached_repo.get_otu_by_taxid(genus_taxid)
+
+        assert precached_repo.get_otu_by_taxid(2010322)
