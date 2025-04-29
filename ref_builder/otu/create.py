@@ -4,6 +4,7 @@ import structlog
 
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBIGenbank, NCBIRank, NCBITaxonomy
+from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.isolate import create_sequence_from_record
 from ref_builder.otu.utils import (
     assign_records_to_segments,
@@ -13,7 +14,6 @@ from ref_builder.otu.utils import (
     parse_refseq_comment,
 )
 from ref_builder.repo import Repo
-from ref_builder.resources import RepoOTU
 from ref_builder.utils import IsolateName
 
 logger = structlog.get_logger("otu.create")
@@ -25,7 +25,7 @@ def create_otu_with_taxid(
     accessions: list[str],
     acronym: str,
     ignore_cache: bool = False,
-) -> RepoOTU | None:
+) -> OTUBuilder | None:
     """Create a new OTU by taxonomy ID.
 
     Uses the provided accessions to generate a plan and add a first isolate.
@@ -84,7 +84,7 @@ def create_otu_without_taxid(
     accessions: list[str],
     acronym: str,
     ignore_cache: bool = False,
-) -> RepoOTU | None:
+) -> OTUBuilder | None:
     """Create a new OTU from a list of accessions.
 
     Uses the provided accessions to generate a plan and add a first isolate.
@@ -143,7 +143,7 @@ def write_otu(
     records: list[NCBIGenbank],
     acronym: str,
     isolate_name: IsolateName | None,
-) -> RepoOTU | None:
+) -> OTUBuilder | None:
     """Create a new OTU from an NCBI Taxonomy record and a list of Nucleotide records."""
     otu_logger = logger.bind(taxid=taxonomy.id)
 

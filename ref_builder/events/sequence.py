@@ -5,7 +5,8 @@ from ref_builder.events.base import (
     EventData,
     SequenceQuery,
 )
-from ref_builder.resources import RepoOTU, RepoSequence
+from ref_builder.otu.builders.otu import OTUBuilder
+from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.utils import Accession
 
 
@@ -26,10 +27,10 @@ class CreateSequence(ApplicableEvent):
     data: CreateSequenceData
     query: SequenceQuery
 
-    def apply(self, otu: RepoOTU) -> RepoOTU:
+    def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Create sequence in OTU and return."""
         otu.add_sequence(
-            RepoSequence(
+            SequenceBuilder(
                 id=self.data.id,
                 accession=self.data.accession,
                 definition=self.data.definition,
@@ -59,7 +60,7 @@ class DeleteSequence(ApplicableEvent):
     data: DeleteSequenceData
     query: SequenceQuery
 
-    def apply(self, otu: RepoOTU) -> RepoOTU:
+    def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Delete sequence from OTU and return."""
         otu.delete_sequence(self.data.sequence_id)
 

@@ -3,6 +3,9 @@ from uuid import UUID
 from structlog import get_logger
 
 from ref_builder.ncbi.models import NCBIGenbank
+from ref_builder.otu.builders.isolate import IsolateBuilder
+from ref_builder.otu.builders.otu import OTUBuilder
+from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.utils import (
     RefSeqConflictError,
     assign_records_to_segments,
@@ -12,7 +15,6 @@ from ref_builder.otu.utils import (
 )
 from ref_builder.plan import PlanConformationError
 from ref_builder.repo import Repo
-from ref_builder.resources import RepoIsolate, RepoOTU, RepoSequence
 from ref_builder.utils import IsolateName
 
 logger = get_logger("otu.isolate")
@@ -20,10 +22,10 @@ logger = get_logger("otu.isolate")
 
 def add_genbank_isolate(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     accessions: list[str],
     ignore_cache: bool = False,
-) -> RepoIsolate | None:
+) -> IsolateBuilder | None:
     """Take a list of accessions that make up a new isolate and check that they make up
      a valid isolate before adding new isolate to the OTU.
 
@@ -90,10 +92,10 @@ def add_genbank_isolate(
 
 def add_unnamed_isolate(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     accessions: list[str],
     ignore_cache: bool = False,
-) -> RepoIsolate | None:
+) -> IsolateBuilder | None:
     """Create an unnamed isolate from a list of accessions.
 
     Download the GenBank records and pass the isolate name and records to the add
@@ -119,11 +121,11 @@ def add_unnamed_isolate(
 
 def add_and_name_isolate(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     accessions: list[str],
     isolate_name: IsolateName,
     ignore_cache: bool = False,
-) -> RepoIsolate | None:
+) -> IsolateBuilder | None:
     """Take a list of accessions that make up a new isolate and a preferred isolate name,
      then add a new isolate to the OTU.
 
@@ -149,7 +151,7 @@ def add_and_name_isolate(
 
 def create_isolate(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     isolate_name: IsolateName | None,
     records: list[NCBIGenbank],
 ):
@@ -207,10 +209,10 @@ def create_isolate(
 
 def create_sequence_from_record(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     record: NCBIGenbank,
     segment_id: UUID,
-) -> RepoSequence | None:
+) -> SequenceBuilder | None:
     """Take a NCBI Nucleotide record and create a new sequence."""
     return repo.create_sequence(
         otu.id,

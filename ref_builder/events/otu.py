@@ -1,9 +1,9 @@
-from pydantic import ConfigDict, UUID4, field_serializer
+from pydantic import UUID4, ConfigDict, field_serializer
 
 from ref_builder.events.base import ApplicableEvent, Event, EventData, OTUQuery
 from ref_builder.models import Molecule
+from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.plan import Plan
-from ref_builder.resources import RepoOTU
 from ref_builder.utils import ExcludedAccessionAction
 
 
@@ -25,8 +25,8 @@ class CreateOTU(Event):
     data: CreateOTUData
     query: OTUQuery
 
-    def apply(self) -> RepoOTU:
-        return RepoOTU(
+    def apply(self) -> OTUBuilder:
+        return OTUBuilder(
             id=self.query.otu_id,
             acronym=self.data.acronym,
             excluded_accessions=set(),
@@ -52,7 +52,7 @@ class CreatePlan(ApplicableEvent):
     data: CreatePlanData
     query: OTUQuery
 
-    def apply(self, otu: RepoOTU) -> RepoOTU:
+    def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Apply changed plan to OTU and return."""
         otu.plan = self.data.plan
 
@@ -71,7 +71,7 @@ class SetRepresentativeIsolate(ApplicableEvent):
     data: SetRepresentativeIsolateData
     query: OTUQuery
 
-    def apply(self, otu: RepoOTU) -> RepoOTU:
+    def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Update the OTU's representative isolate and return."""
         otu.representative_isolate = self.data.isolate_id
 
@@ -101,9 +101,8 @@ class UpdateExcludedAccessions(ApplicableEvent):
     data: UpdateExcludedAccessionsData
     query: OTUQuery
 
-    def apply(self, otu: RepoOTU) -> RepoOTU:
+    def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Add accession allowance changes to OTU and return."""
-
         if self.data.action == ExcludedAccessionAction.ALLOW:
             for accession in self.data.accessions:
                 otu.excluded_accessions.discard(accession)

@@ -6,8 +6,9 @@ from rich.text import Text
 
 from ref_builder.events.base import Event, EventMetadata
 from ref_builder.models import OTUMinimal
+from ref_builder.otu.builders.isolate import IsolateBuilder
+from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.plan import Plan, SegmentRule
-from ref_builder.resources import RepoIsolate, RepoOTU
 
 
 def _render_taxonomy_id_link(taxid: int) -> str:
@@ -18,12 +19,12 @@ def _render_nucleotide_link(accession: str) -> str:
     return f"[link=https://www.ncbi.nlm.nih.gov/nuccore/{accession}]{accession}[/link]"
 
 
-def print_isolate_as_json(isolate: RepoIsolate) -> None:
+def print_isolate_as_json(isolate: IsolateBuilder) -> None:
     """Print the isolate data to the console as JSON."""
     console.print(isolate.model_dump_json())
 
 
-def print_isolate(isolate: RepoIsolate, plan: Plan) -> None:
+def print_isolate(isolate: IsolateBuilder, plan: Plan) -> None:
     """Print an isolate to console."""
     max_accession_length = max(
         len(str(sequence.accession)) for sequence in isolate.sequences
@@ -34,12 +35,12 @@ def print_isolate(isolate: RepoIsolate, plan: Plan) -> None:
     _print_isolate(isolate, plan, max_accession_length, max_segment_name_length)
 
 
-def print_otu_as_json(otu: RepoOTU) -> None:
+def print_otu_as_json(otu: OTUBuilder) -> None:
     """Print the OTU data to the console as JSON."""
     console.print(otu.model_dump_json())
 
 
-def print_otu(otu: RepoOTU) -> None:
+def print_otu(otu: OTUBuilder) -> None:
     """Print the details for an OTU to the console.
 
     :param otu: The OTU to print.
@@ -230,7 +231,7 @@ def print_event_as_json(event: Event) -> None:
 
 
 def _print_isolate(
-    isolate: RepoIsolate,
+    isolate: IsolateBuilder,
     plan: Plan,
     max_accession_length: int,
     max_segment_name_length: int,

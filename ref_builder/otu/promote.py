@@ -4,22 +4,22 @@ from structlog import get_logger
 
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBIGenbank
-from ref_builder.repo import Repo
-from ref_builder.resources import RepoOTU, RepoSequence
+from ref_builder.otu.builders.otu import OTUBuilder
+from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.utils import (
     DeleteRationale,
     assign_segment_id_to_record,
-    parse_refseq_comment,
-    get_segments_min_length,
     get_segments_max_length,
+    get_segments_min_length,
+    parse_refseq_comment,
 )
-
+from ref_builder.repo import Repo
 
 logger = get_logger("otu.promote")
 
 
 def promote_otu_accessions(
-    repo: Repo, otu: RepoOTU, ignore_cache: bool = False
+    repo: Repo, otu: OTUBuilder, ignore_cache: bool = False
 ) -> set[str]:
     """Fetch new accessions from NCBI Nucleotide and promote accessions
     with newly added RefSeq equivalents.
@@ -61,7 +61,7 @@ def promote_otu_accessions(
 
 
 def promote_otu_accessions_from_records(
-    repo: Repo, otu: RepoOTU, records: list[NCBIGenbank]
+    repo: Repo, otu: OTUBuilder, records: list[NCBIGenbank]
 ) -> set[str]:
     """Take a list of records and check them against the contents of an OTU
     for promotable RefSeq sequences. Return a list of promoted accessions.
@@ -137,11 +137,11 @@ def promote_otu_accessions_from_records(
 
 def replace_otu_sequence_from_record(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     sequence_id: UUID,
     replacement_record: NCBIGenbank,
     exclude_accession: bool = True,
-) -> RepoSequence | None:
+) -> SequenceBuilder | None:
     """Take the ID of a sequence and a GenBank record and replace the predecessor sequence
     with a new sequence based on the record.
     """

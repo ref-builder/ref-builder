@@ -5,6 +5,8 @@ from pydantic import ValidationError
 from structlog import get_logger
 
 from ref_builder.ncbi.client import NCBIClient
+from ref_builder.otu.builders.otu import OTUBuilder
+from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.utils import (
     DeleteRationale,
     assign_segment_id_to_record,
@@ -12,19 +14,17 @@ from ref_builder.otu.utils import (
 )
 from ref_builder.plan import (
     Plan,
-    Segment,
     SegmentName,
     SegmentRule,
 )
 from ref_builder.repo import Repo
-from ref_builder.resources import RepoOTU, RepoSequence
 
 logger = get_logger("otu.modify")
 
 
 def exclude_accessions_from_otu(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     accessions: Collection[str],
 ) -> None:
     """Exclude accessions from future addition to an OTU."""
@@ -51,7 +51,7 @@ def exclude_accessions_from_otu(
 
 def allow_accessions_into_otu(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     accessions: Collection[str],
 ) -> None:
     """Allow accessions for future addition to an OTU.
@@ -79,7 +79,7 @@ def allow_accessions_into_otu(
         )
 
 
-def delete_isolate_from_otu(repo: Repo, otu: RepoOTU, isolate_id: UUID) -> bool:
+def delete_isolate_from_otu(repo: Repo, otu: OTUBuilder, isolate_id: UUID) -> bool:
     """Remove an isolate from a specified OTU."""
     otu_logger = logger.bind(otu_id=str(otu.id), taxid=otu.taxid)
 
@@ -113,7 +113,7 @@ def delete_isolate_from_otu(repo: Repo, otu: RepoOTU, isolate_id: UUID) -> bool:
 
 def set_plan(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     plan: Plan,
 ) -> Plan | None:
     """Set an OTU's plan to the passed ``plan``."""
@@ -131,7 +131,7 @@ def set_plan(
 
 def set_plan_length_tolerances(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     tolerance: float,
 ) -> Plan | None:
     """Sets a plan's length tolerances to a new float value."""
@@ -161,7 +161,7 @@ def set_plan_length_tolerances(
 
 def add_segments_to_plan(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     rule: SegmentRule,
     accessions: Collection[str],
     ignore_cache: bool = False,
@@ -224,7 +224,7 @@ def add_segments_to_plan(
 
 def rename_plan_segment(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     segment_id: UUID,
     segment_name: SegmentName,
 ) -> Plan | None:
@@ -251,11 +251,11 @@ def rename_plan_segment(
 
 def replace_sequence_in_otu(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     new_accession: str,
     replaced_accession: str,
     ignore_cache: bool = False,
-) -> RepoSequence | None:
+) -> SequenceBuilder | None:
     """Replace a sequence in an OTU."""
     ncbi = NCBIClient(ignore_cache)
 
@@ -315,7 +315,7 @@ def replace_sequence_in_otu(
 
 def set_representative_isolate(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     isolate_id: UUID,
 ) -> UUID | None:
     """Set an OTU's representative isolate to a given existing isolate ID.

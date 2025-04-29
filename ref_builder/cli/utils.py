@@ -4,14 +4,13 @@ from uuid import UUID
 import click
 
 from ref_builder.errors import InvalidInputError, PartialIDConflictError
+from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.repo import Repo
-from ref_builder.resources import RepoOTU
-import contextlib
 
 pass_repo = click.make_pass_decorator(Repo)
 
 
-def get_otu_from_identifier(repo: Repo, identifier: str) -> RepoOTU:
+def get_otu_from_identifier(repo: Repo, identifier: str) -> OTUBuilder:
     """Return an OTU id from the repo if identifier matches a single OTU.
 
     The identifier can either be a stringified UUIDv4, a truncated portion

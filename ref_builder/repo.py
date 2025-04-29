@@ -74,15 +74,12 @@ from ref_builder.events.sequence import (
 from ref_builder.index import Index
 from ref_builder.lock import Lock
 from ref_builder.models import Molecule, OTUMinimal
+from ref_builder.otu.builders.isolate import IsolateBuilder
+from ref_builder.otu.builders.otu import OTUBuilder
+from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.validate import check_otu_is_valid
 from ref_builder.plan import Plan
-from ref_builder.resources import (
-    RepoIsolate,
-    RepoMeta,
-    RepoOTU,
-    RepoSequence,
-    RepoSettings,
-)
+from ref_builder.resources import RepoMeta, RepoSettings
 from ref_builder.store import EventStore
 from ref_builder.transaction import AbortTransactionError, Transaction
 from ref_builder.utils import (
@@ -327,12 +324,12 @@ class Repo:
         """
         return self._index.iter_minimal_otus()
 
-    def iter_otus(self) -> Iterator[RepoOTU]:
+    def iter_otus(self) -> Iterator[OTUBuilder]:
         """Iterate over the OTUs in the repository."""
         for otu_id in self._index.otu_ids:
             yield self.get_otu(otu_id)
 
-    def iter_otus_from_events(self) -> Iterator[RepoOTU]:
+    def iter_otus_from_events(self) -> Iterator[OTUBuilder]:
         """Iterate over the OTUs, bypassing the index."""
         event_ids_by_otu = defaultdict(list)
 
@@ -354,7 +351,7 @@ class Repo:
         name: str,
         plan: Plan,
         taxid: int,
-    ) -> RepoOTU | None:
+    ) -> OTUBuilder | None:
         """Create an OTU."""
         if (otu_id := self.get_otu_id_by_taxid(taxid)) is not None:
             otu = self.get_otu(otu_id)
@@ -391,7 +388,7 @@ class Repo:
         otu_id: uuid.UUID,
         legacy_id: str | None,
         name: IsolateName | None,
-    ) -> RepoIsolate | None:
+    ) -> IsolateBuilder | None:
         """Create and isolate for the OTU with ``otu_id``.
 
         If the isolate name already exists, return None.
@@ -445,7 +442,7 @@ class Repo:
         legacy_id: str | None,
         segment: uuid.UUID,
         sequence: str,
-    ) -> RepoSequence | None:
+    ) -> SequenceBuilder | None:
         """Create and return a new sequence within the given OTU.
         If the accession already exists in this OTU, return None.
         """
@@ -495,7 +492,7 @@ class Repo:
         sequence_id: uuid.UUID,
         replaced_sequence_id: uuid.UUID,
         rationale: str,
-    ) -> RepoSequence | None:
+    ) -> SequenceBuilder | None:
         """Link a new sequence, replacing the old sequence under the isolate.
         Delete the original sequence if it is still in the OTU.
         """
@@ -550,7 +547,7 @@ class Repo:
 
     def link_sequence(
         self, otu_id: uuid.UUID, isolate_id: uuid.UUID, sequence_id: uuid.UUID
-    ) -> RepoSequence | None:
+    ) -> SequenceBuilder | None:
         """Link an existing sequence to an existing isolate."""
         log = logger.bind(otu_id=str(otu_id))
 
@@ -765,7 +762,7 @@ class Repo:
         """Get an OTU ID from an isolate ID that belongs to it."""
         return self._index.get_id_by_isolate_id(isolate_id)
 
-    def get_otu(self, otu_id: uuid.UUID) -> RepoOTU | None:
+    def get_otu(self, otu_id: uuid.UUID) -> OTUBuilder | None:
         """Get the OTU with the given ``otu_id``.
 
         If the OTU does not exist, ``None`` is returned.
@@ -812,7 +809,7 @@ class Repo:
         """Iterate through the event metadata of all events."""
         yield from self._index.iter_event_metadata()
 
-    def get_otu_by_taxid(self, taxid: int) -> RepoOTU | None:
+    def get_otu_by_taxid(self, taxid: int) -> OTUBuilder | None:
         """Return the OTU with the given ``taxid``.
 
         If no OTU is found, return None.
@@ -921,7 +918,7 @@ class Repo:
             return None
 
     @staticmethod
-    def _rehydrate_otu(events: Iterator[Event]) -> RepoOTU:
+    def _rehydrate_otu(events: Iterator[Event]) -> OTUBuilder:
         """Rehydrate an OTU from an event iterator."""
         event = next(events)
 

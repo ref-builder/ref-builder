@@ -14,7 +14,7 @@ import orjson
 from ref_builder.errors import PartialIDConflictError
 from ref_builder.events.base import EventMetadata
 from ref_builder.models import OTUMinimal
-from ref_builder.resources import RepoOTU
+from ref_builder.otu.builders.otu import OTUBuilder
 
 
 @dataclass
@@ -35,7 +35,7 @@ class Snapshot:
     at_event: int
     """The event at which the snapshot was taken."""
 
-    otu: RepoOTU
+    otu: OTUBuilder
     """The OTU that was snapshotted."""
 
 
@@ -449,10 +449,10 @@ class Index:
 
         return Snapshot(
             at_event=at_event,
-            otu=RepoOTU.model_validate(otu),
+            otu=OTUBuilder.model_validate(otu),
         )
 
-    def upsert_otu(self, otu: RepoOTU, at_event: int) -> None:
+    def upsert_otu(self, otu: OTUBuilder, at_event: int) -> None:
         """Update the index based on a list of OTUs.
 
         OTUs that aren't already in the index will be added, and those that are will be

@@ -4,14 +4,13 @@ from typing import Any
 from pydantic import ValidationError
 from structlog import get_logger
 
-from ref_builder.resources import RepoOTU
+from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.validators.otu import OTU
-
 
 logger = get_logger("otu.validate")
 
 
-def check_otu_is_valid(unvalidated_otu: RepoOTU) -> bool:
+def check_otu_is_valid(unvalidated_otu: OTUBuilder) -> bool:
     """Assure that an OTU can pass the validation standard."""
     try:
         with warnings.catch_warnings(record=True) as warning_list:

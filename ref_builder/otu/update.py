@@ -10,6 +10,8 @@ from structlog import get_logger
 
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBIGenbank
+from ref_builder.otu.builders.isolate import IsolateBuilder
+from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.isolate import (
     assign_records_to_segments,
     create_isolate,
@@ -17,13 +19,12 @@ from ref_builder.otu.isolate import (
 from ref_builder.otu.promote import promote_otu_accessions_from_records
 from ref_builder.otu.utils import (
     DeleteRationale,
-    get_segments_min_length,
     get_segments_max_length,
+    get_segments_min_length,
     group_genbank_records_by_isolate,
     parse_refseq_comment,
 )
 from ref_builder.repo import Repo
-from ref_builder.resources import RepoIsolate, RepoOTU
 from ref_builder.utils import IsolateName
 
 logger = get_logger("otu.update")
@@ -52,11 +53,11 @@ class BaseBatchRecordGetter(ABC):
 
 def auto_update_otu(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     fetch_index_path: Path | None = None,
     start_date: datetime.date | None = None,
     ignore_cache: bool = False,
-) -> RepoOTU:
+) -> OTUBuilder:
     """Fetch new accessions for the OTU and create isolates as possible."""
     ncbi = NCBIClient(False)
 
@@ -268,7 +269,7 @@ def batch_update_repo(
 
 
 def batch_fetch_new_accessions(
-    otus: Iterable[RepoOTU],
+    otus: Iterable[OTUBuilder],
     modification_date_start: datetime.date | None = None,
     modification_date_end: datetime.date | None = None,
     ignore_cache: bool = False,
@@ -354,11 +355,11 @@ def batch_fetch_new_records(
 
 def update_isolate_from_accessions(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     isolate_name: IsolateName,
     accessions: list[str],
     ignore_cache: bool = False,
-) -> RepoIsolate | None:
+) -> IsolateBuilder | None:
     """Fetch the records attached to a given list of accessions and rebuild the isolate with it."""
     if (isolate_id := otu.get_isolate_id_by_name(isolate_name)) is None:
         logger.error("OTU does not include isolate.", name=isolate_name)
@@ -373,10 +374,10 @@ def update_isolate_from_accessions(
 
 def update_isolate_from_records(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     isolate_id: UUID,
     records: list[NCBIGenbank],
-) -> RepoIsolate | None:
+) -> IsolateBuilder | None:
     """Take a list of GenBank records and replace the existing sequences,
     adding the previous sequence accessions to the excluded accessions list.
     """
@@ -437,7 +438,7 @@ def update_isolate_from_records(
 
 def promote_and_update_otu_from_records(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     records: list[NCBIGenbank],
 ):
     """Promote new RefSeq accessions and add new isolates."""
@@ -467,7 +468,7 @@ def promote_and_update_otu_from_records(
 
 def update_otu_with_accessions(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     accessions: Collection[str],
     ignore_cache: bool = False,
 ) -> list[UUID]:
@@ -492,7 +493,7 @@ def update_otu_with_accessions(
 
 def update_otu_with_records(
     repo: Repo,
-    otu: RepoOTU,
+    otu: OTUBuilder,
     records: list[NCBIGenbank],
 ) -> list[UUID]:
     """Take a list of downloaded NCBI Genbank records, filter for eligible records

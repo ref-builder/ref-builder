@@ -1,8 +1,8 @@
 import datetime
 
-from pydantic import BaseModel, computed_field, UUID4
+from pydantic import UUID4, BaseModel, computed_field
 
-from ref_builder.resources import RepoOTU
+from ref_builder.otu.builders.otu import OTUBuilder
 
 
 class EventQuery(BaseModel):
@@ -39,7 +39,7 @@ class Event(BaseModel):
 
 
 class ApplicableEvent(Event):
-    def apply(self, otu: RepoOTU) -> RepoOTU:
+    def apply(self, otu: OTUBuilder) -> OTUBuilder:
         return otu
 
 
