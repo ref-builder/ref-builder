@@ -3,15 +3,16 @@ from uuid import uuid4
 import pytest
 
 from ref_builder.models import Molecule, MolType, Strandedness, Topology
-from ref_builder.plan import Plan, PlanWarning, Segment, SegmentRule
+from ref_builder.otu.builders.isolate import IsolateBuilder
+from ref_builder.otu.builders.otu import OTUBuilder
+from ref_builder.plan import Plan, Segment
 from ref_builder.repo import Repo
-from ref_builder.resources import RepoIsolate, RepoOTU
 from ref_builder.utils import IsolateName, IsolateNameType
 from tests.fixtures.factories import IsolateFactory, OTUFactory
 
 
 class TestSequence:
-    """Test properties of RepoSequence."""
+    """Test properties of SequenceBuilder."""
 
     @pytest.mark.parametrize(
         ("taxid", "accessions"),
@@ -33,11 +34,11 @@ class TestSequence:
 
 
 class TestIsolate:
-    """Test properties of RepoIsolate."""
+    """Test properties of IsolateBuilder."""
 
     def test_no_sequences(self):
-        """Test that an isolate intializes correctly with no sequences."""
-        isolate = RepoIsolate(
+        """Test that an isolate initializes correctly with no sequences."""
+        isolate = IsolateBuilder(
             id=uuid4(),
             legacy_id=None,
             name=IsolateName(type=IsolateNameType.ISOLATE, value="A"),
@@ -56,11 +57,11 @@ class TestIsolate:
 
 
 class TestOTU:
-    """Test properties of RepoOTU."""
+    """Test properties of OTUBuilder."""
 
     def test_no_isolates(self):
         """Test that an isolate initializes correctly with no isolates."""
-        otu = RepoOTU(
+        otu = OTUBuilder(
             id=uuid4(),
             acronym="TMV",
             excluded_accessions=set(),
@@ -112,14 +113,13 @@ class TestOTU:
         assert otu.get_isolate(isolate_id) is not None
 
     def test_check_get_sequence_by_id_integrity(self, scratch_repo: Repo):
-        """Test that RepoOTU.get_sequence() can retrieve every sequence ID
+        """Test that OTUBuilder.get_sequence() can retrieve every sequence ID
         within each constituent isolate from its own private index.
         """
-
-        otu_ = RepoOTU(**OTUFactory.build().model_dump())
+        otu_ = OTUBuilder(**OTUFactory.build().model_dump())
 
         for i in range(10):
-            isolate = RepoIsolate.model_validate(
+            isolate = IsolateBuilder.model_validate(
                 IsolateFactory.build_on_plan(otu_.plan).model_dump()
             )
             otu_.add_isolate(isolate)
@@ -132,14 +132,13 @@ class TestOTU:
             assert otu_.get_sequence_by_id(sequence_id) is not None
 
     def test_check_get_sequence_by_accession_integrity(self, scratch_repo: Repo):
-        """Test that RepoOTU.get_sequence() can retrieve every accession
+        """Test that OTUBuilder.get_sequence() can retrieve every accession
         within each constituent isolate.
         """
-
-        otu_ = RepoOTU.model_validate(OTUFactory.build().model_dump())
+        otu_ = OTUBuilder.model_validate(OTUFactory.build().model_dump())
 
         for i in range(10):
-            isolate = RepoIsolate.model_validate(
+            isolate = IsolateBuilder.model_validate(
                 IsolateFactory.build_on_plan(otu_.plan).model_dump()
             )
             otu_.add_isolate(isolate)
@@ -151,12 +150,11 @@ class TestOTU:
                 )
 
     def test_otu_delete_isolate(self):
-        """Test that RepoOTU.delete_isolate() does not affect other isolates."""
-
-        otu_before = RepoOTU.model_validate(OTUFactory.build().model_dump())
+        """Test that OTUBuilder.delete_isolate() does not affect other isolates."""
+        otu_before = OTUBuilder.model_validate(OTUFactory.build().model_dump())
 
         for i in range(10):
-            isolate = RepoIsolate.model_validate(
+            isolate = IsolateBuilder.model_validate(
                 IsolateFactory.build_on_plan(otu_before.plan).model_dump()
             )
             otu_before.add_isolate(isolate)

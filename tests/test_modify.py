@@ -1,10 +1,11 @@
 from uuid import UUID, uuid4
 
-from pydantic import ValidationError
 import pytest
+from pydantic import ValidationError
 from syrupy import SnapshotAssertion
 from syrupy.filters import props
 
+from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.create import create_otu_with_taxid
 from ref_builder.otu.modify import (
     add_segments_to_plan,
@@ -24,7 +25,6 @@ from ref_builder.plan import (
     SegmentRule,
 )
 from ref_builder.repo import Repo
-from ref_builder.resources import RepoSequence
 from ref_builder.utils import IsolateName, IsolateNameType
 from tests.fixtures.factories import IsolateFactory
 
@@ -386,7 +386,7 @@ class TestReplaceSequence:
                 replaced_accession="MK431779",
             )
 
-        assert isinstance(new_sequence, RepoSequence)
+        assert isinstance(new_sequence, SequenceBuilder)
 
         otu_after = precached_repo.get_otu_by_taxid(1169032)
 

@@ -1,19 +1,18 @@
 import pytest
 
 from ref_builder.ncbi.client import NCBIClient
+from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.create import create_otu_with_taxid
 from ref_builder.otu.promote import (
-    replace_otu_sequence_from_record,
     promote_otu_accessions_from_records,
+    replace_otu_sequence_from_record,
 )
 from ref_builder.repo import Repo
-from ref_builder.resources import RepoIsolate
 from tests.fixtures.factories import IsolateFactory
 
 
 def test_replace_sequence(empty_repo):
     """Test OTU sequence replacement."""
-
     with empty_repo.lock():
         otu_init = create_otu_with_taxid(
             empty_repo, 2164102, ["MF062125", "MF062126", "MF062127"], acronym=""
@@ -70,7 +69,7 @@ def test_multi_linked_promotion(empty_repo: Repo):
 
     otu_id = otu_init.id
 
-    mock_isolate = RepoIsolate.model_validate(
+    mock_isolate = IsolateBuilder.model_validate(
         IsolateFactory.build_on_plan(otu_init.plan).model_dump()
     )
 

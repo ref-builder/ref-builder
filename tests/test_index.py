@@ -8,7 +8,7 @@ import pytest
 
 from ref_builder.index import EventIndexItem, Index
 from ref_builder.models import OTUMinimal
-from ref_builder.resources import RepoOTU
+from ref_builder.otu.builders.otu import OTUBuilder
 
 SNAPSHOT_AT_EVENT = (
     31,
@@ -24,7 +24,7 @@ SNAPSHOT_AT_EVENT = (
 
 
 @pytest.fixture()
-def index(indexable_otus: list[RepoOTU], tmp_path: Path) -> Index:
+def index(indexable_otus: list[OTUBuilder], tmp_path: Path) -> Index:
     """An index with eight OTUs already cached."""
     _index = Index(tmp_path / "index.db")
 
@@ -37,7 +37,7 @@ def index(indexable_otus: list[RepoOTU], tmp_path: Path) -> Index:
 class TestDeleteOTU:
     """Test the `delete_otu` method of the Snapshotter class."""
 
-    def test_ok(self, index: Index, indexable_otus: list[RepoOTU]):
+    def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
         """Test that an OTU can be deleted from the index."""
         otu = indexable_otus[2]
 
@@ -47,13 +47,13 @@ class TestDeleteOTU:
         assert index.get_id_by_name(otu.name) is None
         assert index.get_id_by_taxid(otu.taxid) is None
 
-    def test_not_found(self, index: Index, indexable_otus: list[RepoOTU]):
+    def test_not_found(self, index: Index, indexable_otus: list[OTUBuilder]):
         """Test that nothing happens when the OTU ID is not found."""
         index.delete_otu(uuid.uuid4())
         assert index.otu_ids == {otu.id for otu in indexable_otus}
 
 
-def test_iter_otus(index: Index, indexable_otus: list[RepoOTU]):
+def test_iter_otus(index: Index, indexable_otus: list[OTUBuilder]):
     """Test that the index iterates over all OTUs ordered by name."""
     assert list(index.iter_minimal_otus()) == sorted(
         [
@@ -73,7 +73,7 @@ def test_iter_otus(index: Index, indexable_otus: list[RepoOTU]):
 class TestLoadSnapshot:
     """Test the `load_snapshot` method of the Snapshotter class."""
 
-    def test_ok(self, index: Index, indexable_otus: list[RepoOTU]):
+    def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
         """Test that we can load a snapshot from the index."""
         for at_event, otu in zip(SNAPSHOT_AT_EVENT, indexable_otus, strict=False):
             snapshot = index.load_snapshot(otu.id)
@@ -86,7 +86,7 @@ class TestLoadSnapshot:
         assert index.load_snapshot(uuid.uuid4()) is None
 
 
-def test_otu_ids(index: Index, indexable_otus: list[RepoOTU]):
+def test_otu_ids(index: Index, indexable_otus: list[OTUBuilder]):
     """Test that stored OTU IDs are correct."""
     assert index.otu_ids == {otu.id for otu in indexable_otus}
 
@@ -94,7 +94,7 @@ def test_otu_ids(index: Index, indexable_otus: list[RepoOTU]):
 class TestGetIDByLegacyID:
     """Test the `get_id_by_legacy_id` method of the Snapshotter class."""
 
-    def test_ok(self, index: Index, indexable_otus: list[RepoOTU]):
+    def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
         """Test that the correct OTU ID is retrieved by legacy ID."""
         for otu in indexable_otus:
             if otu.legacy_id is not None:
@@ -108,7 +108,7 @@ class TestGetIDByLegacyID:
 class TestEvents:
     """Test the event index functionality of the repository Index."""
 
-    def test_ok(self, index: Index, indexable_otus: list[RepoOTU]):
+    def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
         """Test that we can set and get events IDs for an OTU."""
         otu = indexable_otus[1]
 
@@ -125,7 +125,9 @@ class TestEvents:
         """Test that we get ``None`` when an OTU ID is not found."""
         assert index.get_event_ids_by_otu_id(uuid.uuid4()) is None
 
-    def test_get_first_timestamp_ok(self, index: Index, indexable_otus: list[RepoOTU]):
+    def test_get_first_timestamp_ok(
+        self, index: Index, indexable_otus: list[OTUBuilder]
+    ):
         """Test ``.get_first_timestamp_by_otu_id()`` retrieves the first timestamp."""
         otu = indexable_otus[1]
 
@@ -141,7 +143,9 @@ class TestEvents:
 
         assert index.get_first_timestamp_by_otu_id(otu.id) == first_timestamp
 
-    def test_get_latest_timestamp_ok(self, index: Index, indexable_otus: list[RepoOTU]):
+    def test_get_latest_timestamp_ok(
+        self, index: Index, indexable_otus: list[OTUBuilder]
+    ):
         """Test ``.get_latest_timestamp_by_otu_id()`` retrieves the latest timestamp."""
         otu = indexable_otus[1]
 
@@ -165,7 +169,7 @@ class TestEvents:
 class TestGetIDByPartial:
     """Test the `get_id_by_partial` method of the Snapshotter class."""
 
-    def test_ok(self, index: Index, indexable_otus: list[RepoOTU]):
+    def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
         """Test that the correct OTU ID is retrieved by a truncated partial."""
         for otu in indexable_otus:
             assert otu.id == index.get_id_by_partial(str(otu.id)[:8])
@@ -178,7 +182,7 @@ class TestGetIDByPartial:
 class TestGetIDByName:
     """Test the `get_id_by_name` method of the Snapshotter class."""
 
-    def test_ok(self, index: Index, indexable_otus: list[RepoOTU]):
+    def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
         """Test that the correct OTU ID is retrieved by name."""
         for otu in indexable_otus:
             assert otu.id == index.get_id_by_name(otu.name)
@@ -191,7 +195,7 @@ class TestGetIDByName:
 class TestGetIDByTaxid:
     """Test the `get_id_by_taxid` method of the Snapshotter class."""
 
-    def test_ok(self, index: Index, indexable_otus: list[RepoOTU]):
+    def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
         """Test that the correct OTU ID is retrieved by taxid."""
         for otu in indexable_otus:
             assert index.get_id_by_taxid(otu.taxid) == otu.id
@@ -201,7 +205,7 @@ class TestGetIDByTaxid:
         assert index.get_id_by_taxid(999999999999999) is None
 
 
-def test_get_id_by_isolate_id(index: Index, indexable_otus: list[RepoOTU]):
+def test_get_id_by_isolate_id(index: Index, indexable_otus: list[OTUBuilder]):
     """Test the `get_id_by_isolate_id` method of the Index class."""
     for otu in indexable_otus:
         first_isolate = next(iter(otu.isolate_ids))
@@ -209,7 +213,7 @@ def test_get_id_by_isolate_id(index: Index, indexable_otus: list[RepoOTU]):
         assert index.get_id_by_isolate_id(first_isolate) == otu.id
 
 
-def test_get_isolate_id_by_partial(index: Index, indexable_otus: list[RepoOTU]):
+def test_get_isolate_id_by_partial(index: Index, indexable_otus: list[OTUBuilder]):
     """Test the `get_isolate_id_by_partial` method of the Index class."""
     for otu in indexable_otus:
         first_isolate_id = next(iter(otu.isolate_ids))

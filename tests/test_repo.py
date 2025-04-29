@@ -7,15 +7,12 @@ from structlog.testing import capture_logs
 
 from ref_builder.errors import InvalidInputError
 from ref_builder.models import Molecule, MolType, Strandedness, Topology
+from ref_builder.otu.builders.isolate import IsolateBuilder
+from ref_builder.otu.builders.otu import OTUBuilder
+from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.plan import Plan, Segment, SegmentRule
 from ref_builder.repo import GITIGNORE_CONTENTS, Repo
-from ref_builder.resources import (
-    RepoIsolate,
-    RepoOTU,
-    RepoSequence,
-)
 from ref_builder.utils import Accession, DataType, IsolateName, IsolateNameType
-
 
 SEGMENT_LENGTH = 15
 
@@ -67,7 +64,7 @@ def initialized_repo(empty_repo: Repo):
     return empty_repo
 
 
-def init_otu(repo: Repo) -> RepoOTU:
+def init_otu(repo: Repo) -> OTUBuilder:
     """Create an empty OTU."""
     return repo.create_otu(
         acronym="TMV",
@@ -107,7 +104,7 @@ class TestNew:
 
         assert (empty_repo.path / ".gitignore").exists()
 
-        with open(empty_repo.path / ".gitignore", "r") as f:
+        with open(empty_repo.path / ".gitignore") as f:
             assert f.read() == "\n".join(GITIGNORE_CONTENTS) + "\n"
 
     def test_alternate_settings(self, tmp_path: Path):
@@ -125,7 +122,7 @@ class TestNew:
 
 class TestCreateOTU:
     def test_ok(self, empty_repo: Repo):
-        """Test that creating an OTU returns the expected ``RepoOTU`` object and creates
+        """Test that creating an OTU returns the expected ``OTUBuilder`` object and creates
         the expected event file.
         """
         plan = Plan.new(
@@ -152,7 +149,7 @@ class TestCreateOTU:
                 taxid=12242,
             )
 
-            assert otu == RepoOTU(
+            assert otu == OTUBuilder(
                 id=otu.id,
                 acronym="TMV",
                 excluded_accessions=set(),
@@ -379,7 +376,7 @@ class TestCreateIsolate:
     """Test the creation and addition of new isolates in Repo."""
 
     def test_ok(self, empty_repo: Repo):
-        """Test that creating an isolate returns the expected ``RepoIsolate`` object and
+        """Test that creating an isolate returns the expected ``IsolateBuilder`` object and
         creates the expected event file.
         """
         with empty_repo.lock(), empty_repo.use_transaction():
@@ -418,7 +415,7 @@ class TestCreateIsolate:
             assert empty_repo.last_id == 3
 
     def test_create_unnamed(self, empty_repo):
-        """Test that creating an isolate returns the expected ``RepoIsolate`` object and
+        """Test that creating an isolate returns the expected ``IsolateBuilder`` object and
         creates the expected event file.
         """
         with empty_repo.lock(), empty_repo.use_transaction():
@@ -436,7 +433,7 @@ class TestCreateIsolate:
 
 
 def test_create_sequence(empty_repo: Repo):
-    """Test that creating a sequence returns the expected ``RepoSequence`` object and
+    """Test that creating a sequence returns the expected ``SequenceBuilder`` object and
     creates the expected event file.
     """
     with empty_repo.lock(), empty_repo.use_transaction():
@@ -453,7 +450,7 @@ def test_create_sequence(empty_repo: Repo):
 
         assert sequence is not None
 
-        assert sequence == RepoSequence(
+        assert sequence == SequenceBuilder(
             id=sequence.id,
             accession=Accession(key="TM000001", version=1),
             definition="TMV",
@@ -491,7 +488,7 @@ class TestGetOTU:
     """Test the retrieval of OTU data."""
 
     def test_ok(self, empty_repo: Repo):
-        """Test that getting an OTU returns the expected ``RepoOTU`` object including
+        """Test that getting an OTU returns the expected ``OTUBuilder`` object including
         two isolates with one sequence each.
         """
         monopartite_plan = Plan.new(
@@ -564,12 +561,12 @@ class TestGetOTU:
             otu = empty_repo.get_otu(otu.id)
 
         otu_contents = [
-            RepoIsolate(
+            IsolateBuilder(
                 id=isolate_a.id,
                 legacy_id=None,
                 name=IsolateName(type=IsolateNameType.ISOLATE, value="A"),
                 sequences=[
-                    RepoSequence(
+                    SequenceBuilder(
                         id=otu.isolates[0].sequences[0].id,
                         accession=Accession(key="TM000001", version=1),
                         definition="TMV",
@@ -579,12 +576,12 @@ class TestGetOTU:
                     ),
                 ],
             ),
-            RepoIsolate(
+            IsolateBuilder(
                 id=isolate_b.id,
                 legacy_id=None,
                 name=IsolateName(type=IsolateNameType.ISOLATE, value="B"),
                 sequences=[
-                    RepoSequence(
+                    SequenceBuilder(
                         id=otu.isolates[1].sequences[0].id,
                         accession=Accession(key="TN000001", version=1),
                         definition="TMV",
@@ -598,7 +595,7 @@ class TestGetOTU:
 
         assert (
             otu.model_dump()
-            == RepoOTU(
+            == OTUBuilder(
                 id=otu.id,
                 acronym="TMV",
                 excluded_accessions=set(),
@@ -714,7 +711,7 @@ def test_get_otu_id_from_isolate_id(initialized_repo: Repo):
 
 class TestGetIsolate:
     def test_by_id(self, initialized_repo: Repo):
-        """Test that getting an isolate returns the expected ``RepoIsolate`` object."""
+        """Test that getting an isolate returns the expected ``IsolateBuilder`` object."""
         otu = next(initialized_repo.iter_otus())
 
         for isolate in otu.isolates:
@@ -997,7 +994,7 @@ class TestAllowAccessions:
 
     def test_ok(self, initialized_repo: Repo):
         """Test that Repo.allow_accessions() produces the correct event and
-        creates the expected RepoOTU.excluded_accessions set.
+        creates the expected OTUBuilder.excluded_accessions set.
         """
         target_repo = initialized_repo
 
@@ -1210,7 +1207,7 @@ class TestMalformedEvent:
 
         otu = initialized_repo.get_otu_by_taxid(12242)
 
-        assert type(otu) is RepoOTU
+        assert type(otu) is OTUBuilder
 
         event["type"] = "MalformedEvent"
 
@@ -1230,7 +1227,7 @@ class TestMalformedEvent:
         with initialized_repo.lock():
             otu = initialized_repo.get_otu_by_taxid(12242)
 
-        assert type(otu) is RepoOTU
+        assert type(otu) is OTUBuilder
 
         event["data"]["taxid"] = "popcorn"
 

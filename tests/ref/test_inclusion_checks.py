@@ -1,12 +1,12 @@
 import pytest
-from pydantic import ValidationError
 from faker import Faker
+from pydantic import ValidationError
 
 from ref_builder.ncbi.models import NCBIGenbank
+from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.isolate import create_isolate
 from ref_builder.otu.utils import IsolateName, IsolateNameType, check_sequence_length
 from ref_builder.repo import Repo
-from ref_builder.resources import RepoOTU
 from tests.fixtures.factories import NCBIGenbankFactory, NCBISourceFactory
 from tests.fixtures.providers import AccessionProvider, SequenceProvider
 
@@ -68,7 +68,7 @@ class TestAddMultipartiteIsolate:
         ncbi_source_factory: NCBISourceFactory,
     ):
         def func(
-            otu: RepoOTU,
+            otu: OTUBuilder,
             sequence_length_multiplier: float = 1.0,
         ) -> list[NCBIGenbank]:
             """Generate a collection of mock Genbank records capable of passing the isolate inclusion checks

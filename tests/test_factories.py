@@ -5,11 +5,11 @@ from uuid import uuid4
 
 from syrupy import SnapshotAssertion
 
+from ref_builder.ncbi.models import NCBISource
+from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.validators.isolate import Isolate
 from ref_builder.otu.validators.otu import OTU
 from ref_builder.otu.validators.sequence import Sequence
-from ref_builder.ncbi.models import NCBISource
-from ref_builder.resources import RepoSequence
 from ref_builder.utils import Accession
 from tests.fixtures.factories import (
     IsolateFactory,
@@ -35,7 +35,7 @@ def test_ncbi_genbank_factory(
     records = list(ncbi_genbank_factory.coverage())
 
     assert [
-        RepoSequence(
+        SequenceBuilder(
             id=uuid4(),
             accession=Accession.from_string(record.accession_version),
             definition=record.definition,

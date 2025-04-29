@@ -15,10 +15,10 @@ from ref_builder.legacy.utils import build_legacy_otu
 from ref_builder.logs import configure_logger
 from ref_builder.ncbi.cache import NCBICache
 from ref_builder.ncbi.client import NCBIClient
+from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.create import create_otu_with_taxid
 from ref_builder.otu.isolate import add_genbank_isolate
 from ref_builder.repo import Repo
-from ref_builder.resources import RepoOTU
 from ref_builder.utils import Accession, DataType
 from tests.fixtures.factories import (
     IsolateFactory,
@@ -235,10 +235,10 @@ otu_contents_list_adapter = TypeAdapter(list[OTUContents])
 
 
 @pytest.fixture()
-def indexable_otus() -> list[RepoOTU]:
+def indexable_otus() -> list[OTUBuilder]:
     """A list of eight OTUs for use in Snapshotter testing."""
 
-    class RepoOTUFactory(ModelFactory[RepoOTU]):
+    class RepoOTUFactory(ModelFactory[OTUBuilder]):
         plan = Use(PlanFactory.build)
 
         @classmethod
@@ -267,7 +267,7 @@ def indexable_otus() -> list[RepoOTU]:
 
 
 isolate_factory = register_fixture(IsolateFactory)
-"""Fixture for a factory that generates Isolate instances."""
+"""Fixture for a factory that generates IsolateBase instances."""
 
 ncbi_genbank_factory = register_fixture(NCBIGenbankFactory)
 """Fixture for a factory that generates NCBIGenbank instances."""
@@ -276,7 +276,7 @@ ncbi_source_factory = register_fixture(NCBISourceFactory)
 """Fixture for a factory that generates NCBISource instances."""
 
 otu_factory = register_fixture(OTUFactory)
-"""Fixture for a factory that generates OTU instances."""
+"""Fixture for a factory that generates OTUBase instances."""
 
 otu_minimal_factory = register_fixture(OTUMinimalFactory)
 
@@ -284,4 +284,4 @@ plan_factory = register_fixture(PlanFactory)
 """Fixture for generating Plan instances."""
 
 sequence_factory = register_fixture(SequenceFactory)
-"""Fixture for a factory that generates RepoSequence instances."""
+"""Fixture for a factory that generates SequenceBase instances."""

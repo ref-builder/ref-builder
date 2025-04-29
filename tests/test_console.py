@@ -11,10 +11,12 @@ from ref_builder.console import (
     print_otu_list,
 )
 from ref_builder.models import Molecule, MolType, OTUMinimal, Strandedness, Topology
+from ref_builder.otu.builders.isolate import IsolateBuilder
+from ref_builder.otu.builders.otu import OTUBuilder
+from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.plan import Plan, Segment, SegmentName, SegmentRule
-from ref_builder.resources import RepoIsolate, RepoOTU, RepoSequence
 from ref_builder.utils import Accession, IsolateName, IsolateNameType
-from tests.fixtures.factories import OTUMinimalFactory, IsolateFactory
+from tests.fixtures.factories import IsolateFactory, OTUMinimalFactory
 from tests.fixtures.providers import AccessionProvider, SequenceProvider
 
 
@@ -76,7 +78,7 @@ class TestPrintIsolate:
             ],
         )
 
-        isolate = RepoIsolate(**IsolateFactory.build_on_plan(plan).model_dump())
+        isolate = IsolateBuilder(**IsolateFactory.build_on_plan(plan).model_dump())
 
         with console.capture() as capture:
             print_isolate(isolate, plan)
@@ -116,7 +118,7 @@ class TestPrintIsolate:
             ],
         )
 
-        isolate = RepoIsolate(**IsolateFactory.build_on_plan(plan).model_dump())
+        isolate = IsolateBuilder(**IsolateFactory.build_on_plan(plan).model_dump())
 
         with console.capture() as capture:
             print_isolate_as_json(isolate)
@@ -134,7 +136,7 @@ class TestPrintOTU:
         fake.add_provider(SequenceProvider)
         fake.seed_instance(8801)
 
-        otu = RepoOTU(
+        otu = OTUBuilder(
             id=fake.uuid4(),
             acronym="BabAV",
             excluded_accessions=set(),
@@ -177,7 +179,7 @@ class TestPrintOTU:
 
         for _ in range(2):
             sequences = [
-                RepoSequence(
+                SequenceBuilder(
                     id=fake.uuid4(),
                     accession=Accession.from_string(fake.accession() + ".1"),
                     definition=fake.sentence(),
@@ -189,7 +191,7 @@ class TestPrintOTU:
             ]
 
             otu.isolates.append(
-                RepoIsolate(
+                IsolateBuilder(
                     id=fake.uuid4(),
                     legacy_id=None,
                     name=IsolateName(type=IsolateNameType.ISOLATE, value=fake.word()),
@@ -209,7 +211,7 @@ class TestPrintOTU:
         fake.add_provider(SequenceProvider)
         fake.seed_instance(8801)
 
-        otu = RepoOTU(
+        otu = OTUBuilder(
             id=fake.uuid4(),
             acronym="BabAV",
             excluded_accessions=set(),
