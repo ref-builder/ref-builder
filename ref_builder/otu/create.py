@@ -53,6 +53,21 @@ def create_otu_with_taxid(
         otu_logger.fatal(f"Could not retrieve {taxid} from NCBI Taxonomy")
         return None
 
+    if taxonomy.rank != NCBIRank.SPECIES:
+        if repo.settings.species_otus_only:
+            otu_logger.error(
+                "Non-species rank is not allowed in this repo.",
+                rank=taxonomy.rank,
+            )
+            return None
+
+        otu_logger.warning(
+            "Non-species rank detected. Consider correcting the rank later.",
+            rank=taxonomy.rank,
+            name=taxonomy.name,
+            species_taxid=taxonomy.species.id,
+        )
+
     if not acronym and taxonomy.other_names.acronym:
         acronym = taxonomy.other_names.acronym[0]
 
