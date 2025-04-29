@@ -5,7 +5,7 @@ from pydantic import UUID4
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.models import OTUModel
-from ref_builder.utils import IsolateName
+from ref_builder.utils import Accession, IsolateName
 
 
 class OTUBuilder(OTUModel):
@@ -37,6 +37,11 @@ class OTUBuilder(OTUModel):
     def accessions(self) -> set[str]:
         """A set of accessions contained in this isolate."""
         return {sequence.accession.key for sequence in self._sequences_by_id.values()}
+
+    @property
+    def versioned_accessions(self) -> set[Accession]:
+        """A set of versioned accessions contained in this OTU."""
+        return {sequence.accession for sequence in self._sequences_by_id.values()}
 
     @property
     def blocked_accessions(self) -> set[str]:
