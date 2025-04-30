@@ -4,7 +4,7 @@ from pydantic import field_serializer, field_validator
 
 from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.models import IsolateModel
-from ref_builder.utils import IsolateName
+from ref_builder.utils import Accession, IsolateName
 
 
 class IsolateBuilder(IsolateModel):
@@ -17,6 +17,11 @@ class IsolateBuilder(IsolateModel):
     def accessions(self) -> set[str]:
         """A set of accession numbers for sequences in the isolate."""
         return {sequence.accession.key for sequence in self.sequences}
+
+    @property
+    def versioned_accessions(self) -> set[Accession]:
+        """A set of versioned accessions contained in this isolate."""
+        return {sequence.accession for sequence in self.sequences}
 
     @property
     def sequence_ids(self) -> set[UUID]:
