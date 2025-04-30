@@ -1,3 +1,4 @@
+import datetime
 from uuid import UUID
 
 from structlog import get_logger
@@ -219,3 +220,49 @@ def replace_otu_sequence_from_record(
             repo.exclude_accession(otu.id, predecessor_sequence.accession.key)
 
     return repo.get_otu(otu.id).get_sequence_by_id(replacement_sequence.id)
+
+
+def upgrade_outdated_sequences_in_otu(
+    repo: Repo,
+    otu: OTUBuilder,
+    modification_date_start: datetime.datetime | None = None,
+    ignore_cache: bool = False,
+) -> set[UUID]:
+    """Fetch all extant accessions in the OTU and check if the record has been
+    modified since last addition. Replace the sequence if an upgrade is found. 
+    """
+    ncbi = NCBIClient(ignore_cache)
+
+    all_server_accessions = ncbi.filter_accessions(
+        ncbi.fetch_accessions_by_taxid(
+            otu.taxid,
+            modification_date_start=modification_date_start,
+            sequence_min_length=get_segments_min_length(otu.plan.segments),
+            sequence_max_length=get_segments_max_length(otu.plan.segments),
+        ),
+    )
+
+    server_upgraded_accessions = {
+        accession for accession in all_server_accessions if accession.version > 2
+    }
+
+    replacement_index = {}
+    for accession in server_upgraded_accessions:
+        if (
+            accession.key in otu.accessions
+            and accession not in otu.versioned_accessions
+        ):
+            replacement_index[accession.key] = otu.get_sequence_by_accession(
+                accession.key
+            )
+
+    if not replacement_index:
+        logger.info("All sequences are up to date.")
+        return set()
+
+    logger.info(
+        "Upgradable sequences found",
+        upgradable_accessions=list(replacement_index.keys()),
+    )
+
+    return set()
