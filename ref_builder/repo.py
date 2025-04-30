@@ -453,7 +453,7 @@ class Repo:
         if versioned_accession.key in otu.accessions:
             extant_sequence = otu.get_sequence_by_accession(versioned_accession.key)
 
-            if extant_sequence is not None:
+            if extant_sequence.accession == versioned_accession:
                 raise ValueError(
                     f"Accession {versioned_accession} already exists in the OTU.",
                 )
