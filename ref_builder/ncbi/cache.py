@@ -47,7 +47,7 @@ class NCBICache:
 
         Returns ``None`` if the record is not found in the cache.
 
-        :param accession: The NCBI accession of the record
+        :param accession: The primary NCBI accession of the record, sans version.
         :param version: The accession's version number. Defaults to wildcard.
         :return: Deserialized Genbank data if file is found in cache, else None
         """
