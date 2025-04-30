@@ -167,7 +167,7 @@ def replace_otu_sequence_from_record(
         logger.error("This segment does not match the plan.")
         return None
 
-    with repo.use_transaction():
+    with repo.use_transaction() as active_transaction:
         if otu.get_sequence_by_accession(replacement_record.accession) is None:
             replacement_sequence = repo.create_sequence(
                 otu.id,
@@ -180,6 +180,9 @@ def replace_otu_sequence_from_record(
 
             if replacement_sequence is None:
                 logger.error("Isolate update failed when creating new sequence.")
+
+                active_transaction.abort()
+
                 return None
 
         else:
@@ -188,13 +191,29 @@ def replace_otu_sequence_from_record(
             )
 
         for isolate_id in containing_isolate_ids:
-            repo.replace_sequence(
-                otu.id,
-                isolate_id,
-                replacement_sequence.id,
-                replaced_sequence_id=predecessor_sequence.id,
-                rationale=DeleteRationale.REFSEQ,
-            )
+            try:
+                repo.replace_sequence(
+                    otu.id,
+                    isolate_id,
+                    replacement_sequence.id,
+                    replaced_sequence_id=predecessor_sequence.id,
+                    rationale=DeleteRationale.REFSEQ,
+                )
+            except ValueError as e:
+                logger.error(
+                    "Replacement sequence was not created before unlinking.",
+                    error=str(e),
+                )
+
+                active_transaction.abort()
+
+                return None
+            except RuntimeError as e:
+                logger.error("Replacement failed.", error=str(e))
+
+                active_transaction.abort()
+
+                return None
 
         if exclude_accession:
             repo.exclude_accession(otu.id, predecessor_sequence.accession.key)
