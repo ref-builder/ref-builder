@@ -1,9 +1,9 @@
 """A client for fetching data from NCBI databases."""
 
+import datetime
 import os
 from collections.abc import Collection
 from contextlib import contextmanager
-import datetime
 from enum import StrEnum
 from http import HTTPStatus
 from urllib.error import HTTPError
@@ -55,7 +55,10 @@ class NCBIClient:
         self.cache = NCBICache()
         self.ignore_cache = ignore_cache
 
-    def fetch_genbank_records(self, accessions: Collection[str]) -> list[NCBIGenbank]:
+    def fetch_genbank_records(
+        self,
+        accessions: Collection[str | Accession],
+    ) -> list[NCBIGenbank]:
         """Fetch or load NCBI Nucleotide records corresponding to a list of accessions.
 
         Cache fetched records if found. Returns validated records.
@@ -74,7 +77,17 @@ class NCBIClient:
             uncached_accessions = []
 
             for accession in accessions:
-                record = self.cache.load_genbank_record(accession)
+                if isinstance(accession, Accession):
+                    version = accession.version
+                else:
+                    try:
+                        versioned_accession = Accession.from_string(accession)
+                        version = versioned_accession.version
+                    except ValueError:
+                        version = "*"
+
+                record = self.cache.load_genbank_record(accession, version)
+
                 if record is not None:
                     records.append(record)
 

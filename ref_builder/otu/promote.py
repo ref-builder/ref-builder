@@ -259,7 +259,7 @@ def upgrade_outdated_sequences_in_otu(
             accession.key in otu.accessions
             and accession not in otu.versioned_accessions
         ):
-            replacement_index[accession.key] = otu.get_sequence_by_accession(
+            replacement_index[accession] = otu.get_sequence_by_accession(
                 accession.key
             ).id
 
@@ -269,7 +269,7 @@ def upgrade_outdated_sequences_in_otu(
 
     logger.info(
         "Upgradable sequences found. Fetching records...",
-        upgradable_accessions=list(replacement_index.keys()),
+        upgradable_accessions=[str(accession) for accession in replacement_index],
     )
 
     records = ncbi.fetch_genbank_records(
@@ -280,17 +280,19 @@ def upgrade_outdated_sequences_in_otu(
     for record in records:
         outmoded_sequence = otu.get_sequence_by_accession(record.accession)
 
+        versioned_accession = Accession.from_string(record.accession_version)
+
         logger.info(
             "Replacing sequence...",
             sequence_id=str(outmoded_sequence.id),
             outdated_accession=str(outmoded_sequence.accession),
-            new_accession=str(record.accession_version),
+            new_accession=str(versioned_accession),
         )
 
         new_sequence = replace_otu_sequence_from_record(
             repo,
             otu,
-            sequence_id=replacement_index[record.accession],
+            sequence_id=replacement_index[versioned_accession],
             replacement_record=record,
             exclude_accession=False,
         )
