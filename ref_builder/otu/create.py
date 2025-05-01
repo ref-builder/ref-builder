@@ -1,4 +1,3 @@
-import sys
 
 import structlog
 
@@ -157,18 +156,14 @@ def write_otu(
 
     molecule = get_molecule_from_records(records)
 
-    try:
-        otu = repo.create_otu(
-            acronym=acronym,
-            legacy_id=None,
-            molecule=molecule,
-            name=taxonomy.name,
-            plan=plan,
-            taxid=taxonomy.id,
-        )
-    except ValueError as e:
-        otu_logger.fatal(e)
-        sys.exit(1)
+    otu = repo.create_otu(
+        acronym=acronym,
+        legacy_id=None,
+        molecule=molecule,
+        name=taxonomy.name,
+        plan=plan,
+        taxid=taxonomy.id,
+    )
 
     isolate = repo.create_isolate(
         otu_id=otu.id,
