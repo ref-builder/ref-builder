@@ -12,7 +12,7 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 from ref_builder.models import Molecule
-from ref_builder.otu.models import OTUModel
+from ref_builder.otu.models import LegacyId, OTUModel
 from ref_builder.otu.validators.isolate import Isolate, IsolateBase
 from ref_builder.otu.validators.sequence import Sequence, SequenceBase
 from ref_builder.plan import Plan, PlanWarning
@@ -27,19 +27,19 @@ class OTUBase(OTUModel):
     acronym: str
     """The OTU acronym (eg. TMV for Tobacco mosaic virus)."""
 
-    legacy_id: str | None
+    legacy_id: LegacyId | None
     """A string based ID carried over from a legacy Virtool reference repository."""
 
     molecule: Molecule
     """The type of molecular information contained in this OTU."""
 
-    name: str
+    name: str = Field(min_length=1)
     """The name of the OTU (eg. TMV for Tobacco mosaic virus)"""
 
     plan: Plan
     """The plan for the OTU."""
 
-    taxid: int
+    taxid: int = Field(gt=0)
     """The NCBI Taxonomy id for this OTU."""
 
     excluded_accessions: set[str]

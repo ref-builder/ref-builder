@@ -4,7 +4,10 @@ from pydantic import UUID4, BaseModel, Field, field_serializer, field_validator
 
 from ref_builder.models import Molecule
 from ref_builder.plan import Plan
-from ref_builder.utils import Accession, IsolateName
+from ref_builder.utils import (
+    Accession,
+    IsolateName,
+)
 
 LegacyId = Annotated[str, Field(min_length=6, max_length=10, pattern=r"[A-Za-z0-9]+")]
 
