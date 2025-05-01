@@ -55,13 +55,24 @@ class Accession:
         if isinstance(other, Accession):
             return self.key == other.key and self.version == other.version
 
+        raise ValueError(
+            f"Invalid comparison against invalid value {other} (type {type(other)})"
+        )
+
     def __lt__(self, other: "Accession") -> bool:
         if isinstance(other, Accession):
             return self.key < other.key or self.version < other.version
 
+        raise ValueError(
+            f"Invalid comparison against invalid value {other} (type {type(other)})"
+        )
+
     def __gt__(self, other: "Accession") -> bool:
         if isinstance(other, Accession):
             return self.key > other.key or self.version > other.version
+        raise ValueError(
+            f"Invalid comparison against invalid value {other} (type {type(other)})"
+        )
 
     def __str__(self) -> str:
         """Return the accession as a string."""
