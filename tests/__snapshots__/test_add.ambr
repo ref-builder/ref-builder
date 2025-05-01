@@ -36,3 +36,40 @@
     'taxid': 345184,
   })
 # ---
+# name: TestCreateOTU.test_empty_repo_ok
+  dict({
+    'acronym': '',
+    'excluded_accessions': set({
+    }),
+    'legacy_id': None,
+    'molecule': dict({
+      'strandedness': 'double',
+      'topology': 'circular',
+      'type': 'DNA',
+    }),
+    'name': 'Cabbage leaf curl Jamaica virus',
+    'plan': dict({
+      'segments': list([
+        dict({
+          'length': 2575,
+          'length_tolerance': 0.03,
+          'name': dict({
+            'key': 'A',
+            'prefix': 'DNA',
+          }),
+          'rule': 'required',
+        }),
+        dict({
+          'length': 2494,
+          'length_tolerance': 0.03,
+          'name': dict({
+            'key': 'B',
+            'prefix': 'DNA',
+          }),
+          'rule': 'required',
+        }),
+      ]),
+    }),
+    'taxid': 345184,
+  })
+# ---
