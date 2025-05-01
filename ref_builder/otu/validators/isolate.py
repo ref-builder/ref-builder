@@ -9,7 +9,7 @@ from pydantic import (
     field_validator,
 )
 
-from ref_builder.otu.models import IsolateModel
+from ref_builder.otu.models import IsolateModel, LegacyId
 from ref_builder.otu.validators.sequence import Sequence, SequenceBase
 from ref_builder.otu.validators.utils import IsolateInconsistencyWarning
 from ref_builder.utils import Accession, IsolateName, is_refseq
@@ -21,7 +21,7 @@ class IsolateBase(IsolateModel):
     id: UUID4
     """The isolate id."""
 
-    legacy_id: str | None
+    legacy_id: LegacyId | None
     """A string based ID carried over from a legacy Virtool reference repository.
 
     It the isolate was not migrated from a legacy repository, this will be `None`.
@@ -108,6 +108,7 @@ class Isolate(IsolateBase):
         return [Sequence.model_validate(sequence.model_dump()) for sequence in v]
 
     @field_validator("sequences", mode="after")
+    @classmethod
     def check_accession_refseq_or_insdc(cls, v: list[Sequence]) -> list[Sequence]:
         """Check if all sequence accessions are all from RefSeq or all from INSDC.
         If not, warn the user.
@@ -121,3 +122,15 @@ class Isolate(IsolateBase):
             )
 
         return v
+
+    @field_validator("name", mode="after")
+    @classmethod
+    def check_isolate_name_has_value(cls, v: IsolateName | None) -> IsolateName | None:
+        """Check if ``name.value`` is a string with at least one character."""
+        if v is None:
+            return v
+
+        if isinstance(v, IsolateName) and v.value:
+            return v
+
+        raise ValueError(f"Invalid isolate name {v}.")
