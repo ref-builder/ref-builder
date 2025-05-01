@@ -256,17 +256,22 @@ class Repo:
                 if not check_otu_is_valid(self.get_otu(otu_id)):
                     self._transaction.abort()
 
+        except AbortTransactionError:
+            logger.debug("Transaction aborted. Pruning events...")
+
+            self.prune()
+
         except Exception as e:
             logger.debug(
                 "Error encountered mid-transaction. Pruning events...",
+                message=str(e),
                 head_id=self.head_id,
                 last_id=self.last_id,
             )
 
             self.prune()
 
-            if not isinstance(e, AbortTransactionError):
-                raise
+            raise
 
         else:
             self._head_id = self.last_id
