@@ -1,4 +1,3 @@
-
 import structlog
 
 from ref_builder.ncbi.client import NCBIClient
@@ -69,13 +68,24 @@ def create_otu_with_taxid(
         return None
 
     with repo.use_transaction():
-        return write_otu(
-            repo,
-            taxonomy,
-            records,
-            acronym=acronym,
-            isolate_name=next(iter(binned_records.keys())) if binned_records else None,
-        )
+        try:
+            return write_otu(
+                repo,
+                taxonomy,
+                records,
+                acronym=acronym,
+                isolate_name=next(iter(binned_records.keys()))
+                if binned_records
+                else None,
+            )
+        except ValueError:
+            otu_logger.error(
+                "OTU could not be created to spec based on given data.",
+                taxid=taxonomy.id,
+                accessions=accessions,
+            )
+
+            return None
 
 
 def create_otu_without_taxid(
@@ -94,6 +104,13 @@ def create_otu_without_taxid(
     :param ignore_cache: whether to ignore the cache.
 
     """
+    otu_logger = logger.bind(accessions=accessions)
+
+    if not accessions:
+        otu_logger.error(
+            "OTU could not be created to spec based on given data.",
+        )
+
     ncbi = NCBIClient(ignore_cache)
 
     records = ncbi.fetch_genbank_records(accessions)
@@ -152,7 +169,7 @@ def write_otu(
     )
 
     if plan is None:
-        logger.fatal("Could not create plan from records.")
+        otu_logger.fatal("Could not create plan from records.")
 
     molecule = get_molecule_from_records(records)
 
