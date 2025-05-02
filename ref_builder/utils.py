@@ -30,26 +30,32 @@ class Accession:
 
     @classmethod
     def from_string(cls, string: str) -> "Accession":
-        """Create an Accession from a raw accession string."""
+        """Create an Accession from a versioned accession string,
+        e.g. "MN908947.3".
+        """
         try:
             key, string_version = string.split(".")
         except ValueError as e:
             if "not enough values to unpack" in str(e):
                 raise ValueError(
-                    "Accession does not contain two parts delimited by a period."
-                )
+                    f'Given accession string "{string}" does not contain two parts'
+                    "delimited by a period."
+                ) from e
 
             raise
 
-        try:
+        if string_version.isdigit():
             version = int(string_version)
-        except ValueError as e:
-            if "invalid literal for int() with base 10" in str(e):
-                raise ValueError("Accession version is not an integer.")
+        else:
+            raise ValueError(f"Accession version ({string_version})is not an integer.")
 
-            raise
+        if (
+            GENBANK_ACCESSION_PATTERN.match(key) is not None
+            or REFSEQ_ACCESSION_PATTERN.match(key) is not None
+        ):
+            return Accession(key=key, version=version)
 
-        return Accession(key=key, version=version)
+        raise ValueError(f"Invalid accession key: {key}.")
 
     def __eq__(self, other: "Accession") -> bool:
         if isinstance(other, Accession):
