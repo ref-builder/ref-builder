@@ -35,6 +35,7 @@ from ref_builder.events.base import (
     ApplicableEvent,
     Event,
     EventData,
+    EventMetadata,
     EventQuery,
     IsolateQuery,
     OTUQuery,
@@ -810,7 +811,7 @@ class Repo:
             for event_id in event_index_item.event_ids:
                 yield self._event_store.read_event(event_id)
 
-    def iter_event_metadata(self):
+    def iter_event_metadata(self) -> Generator[EventMetadata, None, None]:
         """Iterate through the event metadata of all events."""
         yield from self._index.iter_event_metadata()
 
