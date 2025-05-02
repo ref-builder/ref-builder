@@ -17,6 +17,46 @@ from ref_builder.utils import Accession, DataType, IsolateName, IsolateNameType
 SEGMENT_LENGTH = 15
 
 
+def init_otu_with_contents(repo: Repo, otu: OTUBuilder, isolate: IsolateBuilder):
+    """Add an unvalidated OTU to a given repo."""
+    otu_init = repo.create_otu(
+        acronym=otu.acronym,
+        legacy_id=otu.legacy_id,
+        molecule=otu.molecule,
+        name=otu.name,
+        plan=otu.plan,
+        taxid=otu.taxid,
+    )
+
+    isolate_init = repo.create_isolate(
+        otu_init.id,
+        legacy_id=otu_init.legacy_id,
+        name=isolate.name,
+    )
+
+    for sequence in isolate.sequences:
+        matching_segment = (
+            otu_init.plan.segments[0].id
+            if len(otu_init.plan.segments)
+            else otu_init.plan.get_segment_by_name_key(sequence.segment).id
+        )
+
+        sequence_init = repo.create_sequence(
+            otu_init.id,
+            accession=sequence.accession,
+            definition=sequence.definition,
+            legacy_id=sequence.legacy_id,
+            segment=matching_segment,
+            sequence=sequence.sequence,
+        )
+
+        repo.link_sequence(otu.id, isolate_init.id, sequence_init.id)
+
+    repo.set_representative_isolate(otu.id, isolate_init.id)
+
+    return repo.get_otu(otu_init.id)
+
+
 @pytest.fixture()
 def initialized_repo(empty_repo: Repo):
     """Return a pre-initialized mock Repo."""
@@ -62,7 +102,6 @@ def initialized_repo(empty_repo: Repo):
         empty_repo.set_representative_isolate(otu.id, isolate_a.id)
 
     return empty_repo
-
 
 def init_otu(repo: Repo) -> OTUBuilder:
     """Create an empty OTU."""
@@ -777,6 +816,26 @@ def test_get_isolate_id_from_partial(initialized_repo: Repo):
     isolate = otu.isolates[0]
 
     assert initialized_repo.get_isolate_id_by_partial(str(isolate.id)[:8]) == isolate.id
+
+
+class TestCreateOTUWithValidation:
+    def test_ok(self, initialized_repo: Repo):
+        assert next(iter(initialized_repo.iter_otus())) is not None
+
+    def test_bad_data(self, empty_repo: Repo, initialized_repo: Repo):
+        base_otu = next(iter(initialized_repo.iter_otus()))
+
+        assert isinstance(base_otu, OTUBuilder)
+
+        with empty_repo.lock(), empty_repo.use_transaction():
+            otu_init = empty_repo.create_otu(
+                acronym=base_otu.acronym,
+                legacy_id=base_otu.legacy_id,
+                molecule=base_otu.molecule,
+                name=base_otu.name,
+                plan=base_otu.plan,
+                taxid=base_otu.taxid,
+            )
 
 
 class TestCreateIsolateValidation:
