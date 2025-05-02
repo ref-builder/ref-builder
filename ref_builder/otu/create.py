@@ -119,7 +119,7 @@ def create_otu_without_taxid(
         logger.fatal("Could not retrieve all requested accessions.")
         return None
 
-    if len(set(record.source.taxid for record in records)) > 1:
+    if len({record.source.taxid for record in records}) > 1:
         logger.fatal("Not all records are from the same organism.")
 
         return None
@@ -160,7 +160,9 @@ def write_otu(
     acronym: str,
     isolate_name: IsolateName | None,
 ) -> OTUBuilder | None:
-    """Create a new OTU from an NCBI Taxonomy record and a list of Nucleotide records."""
+    """Create a new OTU from an NCBI Taxonomy record and a list of
+    Nucleotide records.
+    """
     otu_logger = logger.bind(taxid=taxonomy.id)
 
     plan = create_plan_from_records(
