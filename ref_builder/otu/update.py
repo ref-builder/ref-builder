@@ -108,7 +108,7 @@ class PrecachedRecordStore(BaseBatchRecordGetter):
         self,
         batch_fetch_index: dict[int, set[str]],
         record_index: dict[str, NCBIGenbank],
-    ):
+    ) -> None:
         self.batch_fetch_index = batch_fetch_index
         self.record_index = record_index
 
@@ -131,7 +131,7 @@ class RecordFetcher(BaseBatchRecordGetter):
 
     def __init__(
         self, batch_fetch_index: dict[int, set[str]], ignore_cache: bool = False
-    ):
+    ) -> None:
         self.batch_fetch_index = batch_fetch_index
         self.ncbi = NCBIClient(ignore_cache)
 
@@ -360,7 +360,9 @@ def update_isolate_from_accessions(
     accessions: list[str],
     ignore_cache: bool = False,
 ) -> IsolateBuilder | None:
-    """Fetch the records attached to a given list of accessions and rebuild the isolate with it."""
+    """Fetch the records attached to a given list of accessions and
+    rebuild the isolate with it.
+    """
     if (isolate_id := otu.get_isolate_id_by_name(isolate_name)) is None:
         logger.error("OTU does not include isolate.", name=isolate_name)
         return None
@@ -440,7 +442,7 @@ def promote_and_update_otu_from_records(
     repo: Repo,
     otu: OTUBuilder,
     records: list[NCBIGenbank],
-):
+) -> list[UUID]:
     """Promote new RefSeq accessions and add new isolates."""
     genbank_records, refseq_records = [], []
 
@@ -543,7 +545,7 @@ def iter_fetch_list(
         yield fetch_list[iterator * page_size : (iterator + 1) * page_size]
 
 
-def _generate_datestamp_filename():
+def _generate_datestamp_filename() -> str:
     """Get the current UTC date and return as a a filename_safe string."""
     timestamp = arrow.utcnow().naive
 
@@ -567,6 +569,8 @@ def _cache_fetch_index(
     if fetch_index_path.exists():
         return fetch_index_path
 
+    return None
+
 
 def _load_fetch_index(path: Path) -> dict[int, set[str]] | None:
     """Load a batch fetch index from file."""
@@ -581,6 +585,8 @@ def _load_fetch_index(path: Path) -> dict[int, set[str]] | None:
 
     if fetch_index:
         return fetch_index.model_dump()
+
+    return None
 
 
 def _otu_is_cooled(
