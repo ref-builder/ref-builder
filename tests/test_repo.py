@@ -121,7 +121,7 @@ class TestNew:
 
 
 class TestCreateOTU:
-    def test_ok(self, empty_repo: Repo):
+    def test_empty_ok(self, empty_repo: Repo):
         """Test that creating an OTU returns the expected ``OTUBuilder`` object and creates
         the expected event file.
         """
@@ -216,7 +216,8 @@ class TestCreateOTU:
 
             assert empty_repo.last_id == 2
 
-    def test_duplicate_name(self, empty_repo: Repo):
+
+    def test_duplicate_name_fail(self, empty_repo: Repo):
         """Test that creating an OTU with a name that already exists raises a
         ``ValueError``.
         """
@@ -267,7 +268,7 @@ class TestCreateOTU:
                     taxid=438782,
                 )
 
-    def test_duplicate_legacy_id(self, empty_repo: Repo):
+    def test_duplicate_legacy_id_fail(self, empty_repo: Repo):
         """Test that creating an OTU with a legacy ID that already exists raises a
         ``ValueError``.
         """
