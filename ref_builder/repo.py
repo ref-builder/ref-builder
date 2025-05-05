@@ -343,7 +343,11 @@ class Repo:
 
         for event in self._event_store.iter_events():
             if hasattr(event.query, "otu_id"):
-                event_ids_by_otu[event.query.otu_id].append(event.id)
+                if isinstance(event, DeleteOTU):
+                    event_ids_by_otu.pop(event.query.otu_id)
+
+                else:
+                    event_ids_by_otu[event.query.otu_id].append(event.id)
 
         for otu_id in event_ids_by_otu:
             yield self._rehydrate_otu(
