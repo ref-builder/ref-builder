@@ -420,7 +420,7 @@ class Repo:
     ) -> bool:
         """Delete an OTU from the repository. Return True if successful."""
         if self.get_otu(otu_id) is None:
-            logger.warning("OTU does not exist.")
+            logger.error("Requested OTU id does not exist.", otu_id=str(otu_id))
 
             return False
 
@@ -440,7 +440,7 @@ class Repo:
             OTUQuery(otu_id=otu_id),
         )
 
-        self._index.delete_otu(otu_id)
+        self._index.delete_otu(otu_id, delete_from_event_index=False)
 
         otu = self.get_otu(otu_id)
 

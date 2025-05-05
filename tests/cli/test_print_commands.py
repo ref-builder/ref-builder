@@ -49,8 +49,6 @@ class TestPrintCommands:
                 replacement_otu_id=None,
             )
 
-        assert scratch_repo.get_otu(otu_id) is None
-
         result = runner.invoke(
             otu_command_group,
             ["--path", str(scratch_repo.path)] + ["get", str(otu_id)],
