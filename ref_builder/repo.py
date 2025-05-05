@@ -848,7 +848,11 @@ class Repo:
             otu = self._rehydrate_otu(events)
 
         except OTUDeletedError:
-            warnings.warn(OTUDeletedWarning)
+            warnings.warn(
+                f"OTU {otu_id} has already been deleted.",
+                category=OTUDeletedWarning,
+                stacklevel=1,
+            )
 
             return None
 
