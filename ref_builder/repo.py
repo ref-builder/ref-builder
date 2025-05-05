@@ -28,6 +28,7 @@ from structlog import get_logger
 from ref_builder.errors import (
     InvalidInputError,
     LockRequiredError,
+    OTUDeletedError,
     TransactionExistsError,
     TransactionRequiredError,
 )
@@ -57,6 +58,7 @@ from ref_builder.events.otu import (
     CreateOTUData,
     CreatePlan,
     CreatePlanData,
+    DeleteOTU,
     SetRepresentativeIsolate,
     SetRepresentativeIsolateData,
     UpdateExcludedAccessions,
@@ -957,6 +959,9 @@ class Repo:
                 )
 
             for event in events:
+                if isinstance(event, DeleteOTU):
+                    raise OTUDeletedError(otu_id=event.query.otu_id)
+
                 if not isinstance(event, ApplicableEvent):
                     raise TypeError(
                         f"Event {event.id} {event.type} is not an applicable event."
