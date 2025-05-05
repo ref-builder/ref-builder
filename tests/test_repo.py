@@ -779,6 +779,15 @@ def test_get_otu_id_from_isolate_id(initialized_repo: Repo):
     assert initialized_repo.get_otu_id_by_isolate_id(isolate.id) == otu.id
 
 
+class TestDeleteOTU:
+    """Test OTU deletion."""
+
+    def test_ok(self, initialized_repo: Repo):
+        otu_before = next(initialized_repo.iter_otus())
+
+        assert isinstance(otu_before, OTUBuilder)
+
+
 class TestGetIsolate:
     def test_by_id(self, initialized_repo: Repo):
         """Test that getting an isolate returns the expected ``IsolateBuilder`` object."""
