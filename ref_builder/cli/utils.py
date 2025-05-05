@@ -11,6 +11,8 @@ from ref_builder.utils import OTUDeletedWarning
 
 pass_repo = click.make_pass_decorator(Repo)
 
+UUID_STRING_LENGTH = 36
+
 
 def get_otu_from_identifier(repo: Repo, identifier: str) -> OTUBuilder:
     """Return an OTU id from the repo if identifier matches a single OTU.
@@ -27,7 +29,7 @@ def get_otu_from_identifier(repo: Repo, identifier: str) -> OTUBuilder:
     """
     otu_id = None
 
-    if len(identifier) == 32:
+    if len(identifier) == UUID_STRING_LENGTH:
         try:
             otu_id = UUID(identifier)
         except ValueError:
