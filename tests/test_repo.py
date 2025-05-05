@@ -265,7 +265,6 @@ class TestCreateOTU:
 
             assert empty_repo.last_id == 2
 
-
     def test_duplicate_name_fail(self, empty_repo: Repo):
         """Test that creating an OTU with a name that already exists raises a
         ``ValueError``.
@@ -850,9 +849,7 @@ class TestCreateOTUWithValidation:
 
         assert any(
             [
-                log["event"] == "ValidationError"
-                and
-                log["log_level"] == "warning"
+                log["event"] == "ValidationError" and log["log_level"] == "warning"
                 for log in logs
             ]
         )

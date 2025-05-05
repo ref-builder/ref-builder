@@ -235,10 +235,7 @@ otu_contents_list_adapter = TypeAdapter(list[OTUContents])
 def indexable_otus() -> list[OTUBuilder]:
     """A list of eight OTUs for use in Snapshotter testing."""
     otus = [
-        OTUBuilder.model_validate(
-            OTUFactory.build().model_dump()
-        )
-        for _ in range(8)
+        OTUBuilder.model_validate(OTUFactory.build().model_dump()) for _ in range(8)
     ]
 
     # We want at least one OTU with a `None` legacy ID to test `get_id_by_legacy_id`.
