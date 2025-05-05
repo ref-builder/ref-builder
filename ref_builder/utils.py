@@ -12,6 +12,10 @@ GENBANK_ACCESSION_PATTERN = re.compile(pattern=r"^[A-Z]{1,2}[0-9]{5,6}$")
 REFSEQ_ACCESSION_PATTERN = re.compile(pattern=r"^NC_[0-9]{6}$")
 
 
+class OTUDeletedWarning(UserWarning):
+    """A warning raised when a previously deleted OTU is requested."""
+
+
 @dataclass(frozen=True)
 class Accession:
     """A Genbank accession number."""
