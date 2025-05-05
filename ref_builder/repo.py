@@ -419,7 +419,12 @@ class Repo:
         replacement_otu_id: uuid.UUID | None,
     ) -> bool:
         """Delete an OTU from the repository. Return True if successful."""
-        if self.get_otu(otu_id) is None:
+        with warnings.catch_warnings(category=OTUDeletedWarning):
+            warnings.simplefilter("ignore", OTUDeletedWarning)
+
+            otu_ = self.get_otu(otu_id)
+
+        if otu_ is None:
             logger.error("Requested OTU id does not exist.", otu_id=str(otu_id))
 
             return False
@@ -442,9 +447,10 @@ class Repo:
 
         self._index.delete_otu(otu_id, delete_from_event_index=False)
 
-        otu = self.get_otu(otu_id)
+        with warnings.catch_warnings(category=OTUDeletedWarning):
+            warnings.simplefilter("ignore", OTUDeletedWarning)
 
-        return otu is None
+            return self.get_otu(otu_id) is None
 
     def create_isolate(
         self,
