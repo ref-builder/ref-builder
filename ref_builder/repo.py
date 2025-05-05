@@ -792,6 +792,11 @@ class Repo:
 
             otu = self._rehydrate_otu(events)
 
+        except OTUDeletedError as e:
+            logger.error("Requested OTU has been deleted from the Repo.", msg=e)
+
+            return None
+
         except FileNotFoundError:
             logger.error("Event exists in index, but not in source. Deleting index...")
 
