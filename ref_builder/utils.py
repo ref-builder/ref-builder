@@ -49,13 +49,7 @@ class Accession:
         else:
             raise ValueError(f"Accession version ({string_version})is not an integer.")
 
-        if (
-            GENBANK_ACCESSION_PATTERN.match(key) is not None
-            or REFSEQ_ACCESSION_PATTERN.match(key) is not None
-        ):
-            return Accession(key=key, version=version)
-
-        raise ValueError(f"Invalid accession key: {key}.")
+        return Accession(key=key, version=version)
 
     def __eq__(self, other: "Accession") -> bool:
         if isinstance(other, Accession):
