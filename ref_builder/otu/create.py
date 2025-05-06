@@ -1,4 +1,5 @@
 import structlog
+from pydantic import ValidationError
 
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBIGenbank, NCBIRank, NCBITaxonomy
@@ -11,6 +12,7 @@ from ref_builder.otu.utils import (
     group_genbank_records_by_isolate,
     parse_refseq_comment,
 )
+from ref_builder.otu.validators.otu import OTU
 from ref_builder.repo import Repo
 from ref_builder.utils import IsolateName
 
@@ -224,3 +226,84 @@ def write_otu(
                 )
 
     return repo.get_otu(otu.id)
+
+
+def import_otu_from_json(repo: Repo, otu_json: str) -> OTUBuilder | None:
+    """Take JSON data exported from an OTU and create a new OTU in this repo."""
+    try:
+        validated_otu = OTU.model_validate_json(otu_json)
+
+    except ValidationError as e:
+        for error in e.errors():
+            logger.warning(
+                "ValidationError",
+                msg=error["msg"],
+                loc=error["loc"],
+                type=error["type"],
+            )
+        return None
+
+    otu_logger = logger.bind(
+        name=validated_otu.name,
+        otu_id=validated_otu.id,
+        taxid=validated_otu.taxid,
+    )
+
+    otu_logger.info("Imported data is valid. Creating events...")
+
+    with repo.use_transaction() as transaction:
+        try:
+            otu_builder = repo.create_otu(
+                acronym=validated_otu.acronym,
+                legacy_id=validated_otu.legacy_id,
+                molecule=validated_otu.molecule,
+                name=validated_otu.name,
+                plan=validated_otu.plan,
+                taxid=validated_otu.taxid,
+            )
+        except ValueError as e:
+            otu_logger.fatal(e)
+            sys.exit(1)
+
+        for validated_isolate in validated_otu.isolates:
+            isolate_builder = repo.create_isolate(
+                otu_id=otu_builder.id,
+                legacy_id=validated_isolate.legacy_id,
+                name=validated_isolate.name,
+            )
+
+            for validated_sequence in validated_isolate.sequences:
+                if validated_sequence.accession not in otu_builder.versioned_accessions:
+                    sequence_builder = repo.create_sequence(
+                        otu_builder.id,
+                        accession=validated_sequence.accession,
+                        definition=validated_sequence.definition,
+                        legacy_id=validated_sequence.legacy_id,
+                        segment=validated_sequence.segment,
+                        sequence=validated_sequence.sequence,
+                    )
+                else:
+                    sequence_builder = otu_builder.get_sequence_by_accession(
+                        validated_sequence.accession.key
+                    )
+
+                repo.link_sequence(
+                    otu_builder.id, isolate_builder.id, sequence_builder.id
+                )
+
+            if validated_isolate.id == validated_otu.representative_isolate:
+                otu_builder.representative_isolate = repo.set_representative_isolate(
+                    otu_id=otu_builder.id, isolate_id=isolate_builder.id
+                )
+
+        if validated_otu.excluded_accessions:
+            repo.exclude_accessions(
+                otu_id=otu_builder.id, accessions=otu_builder.excluded_accessions
+            )
+
+        if otu_builder is None:
+            transaction.abort()
+
+            return None
+
+    return otu_builder
