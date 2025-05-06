@@ -111,7 +111,7 @@ class TestCreateOTUCommands:
         assert "Duplicate accessions are not allowed." in result.output
 
 
-@pytest.mark.ncbi
+@pytest.mark.ncbi()
 class TestPromoteOTUCommand:
     """Test that the ``ref-builder otu promote`` command works as planned."""
 
