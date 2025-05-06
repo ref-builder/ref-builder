@@ -460,3 +460,19 @@ class TestImportOTU:
         assert empty_repo.get_otu(otu_init.id).model_dump() == snapshot(
             exclude=props("id", "representative_isolate")
         )
+
+    def test_batch_ok(self, empty_repo: Repo, scratch_repo: Repo):
+        """Test the population of an empty repo with data from another repo."""
+        for scratch_otu in scratch_repo.iter_otus():
+            scratch_otu_json = scratch_otu.model_dump_json()
+
+            with empty_repo.lock():
+                import_otu_from_json(empty_repo, scratch_otu_json)
+
+        assert len(list(empty_repo.iter_otus())) == len(list(scratch_repo.iter_otus()))
+
+        for mini_scratch_otu in scratch_repo.iter_minimal_otus():
+            assert (
+                empty_repo.get_otu_by_taxid(mini_scratch_otu.taxid).taxid
+                == mini_scratch_otu.taxid
+            )
