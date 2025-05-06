@@ -10,6 +10,10 @@ from rich.table import Table
 from ref_builder.build import build_json
 from ref_builder.cli.event import event
 from ref_builder.cli.isolate import isolate
+from ref_builder.cli.options import (
+    legacy_repo_path_option,
+    path_option,
+)
 from ref_builder.cli.otu import otu
 from ref_builder.console import console
 from ref_builder.legacy.convert import convert_legacy_repo
@@ -17,10 +21,6 @@ from ref_builder.legacy.utils import iter_legacy_otus
 from ref_builder.legacy.validate import validate_legacy_repo
 from ref_builder.logs import configure_logger
 from ref_builder.ncbi.client import NCBIClient
-from ref_builder.cli.options import (
-    legacy_repo_path_option,
-    path_option,
-)
 from ref_builder.repo import Repo
 from ref_builder.utils import DataType, format_json
 
@@ -33,12 +33,13 @@ logger = structlog.get_logger()
 @click.group()
 @click.option("--debug", is_flag=True, help="Show debug logs")
 @click.option("-v", "--verbose", "verbosity", count=True)
-def entry(debug: bool, verbosity: int) -> None:
+@click.option("--no-color", is_flag=True, help="Disable colored output.")
+def entry(debug: bool, verbosity: int, no_color: bool) -> None:
     """Build and maintain reference sets of pathogen genome sequences."""
     if debug:
         verbosity = 2
 
-    configure_logger(verbosity)
+    configure_logger(verbosity, no_color)
 
 
 @entry.command()

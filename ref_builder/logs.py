@@ -1,12 +1,16 @@
 import logging
+import os
 
 import structlog
 
+NO_COLOR = os.environ.get("NO_COLOR") is not None
 
-def configure_logger(verbosity: int) -> None:
+
+def configure_logger(verbosity: int, no_color: bool = False) -> None:
     """Configure structlog-based logging.
 
     :param verbosity: The verbosity level of the logger.
+    :param no_color: Disable colored input, even if global settings allow it.
     """
     # Disable faker logging.
     logging.getLogger("faker").setLevel(logging.ERROR)
@@ -31,8 +35,11 @@ def configure_logger(verbosity: int) -> None:
                 ]
             )
         )
+    if no_color or NO_COLOR:
+        processors.append(structlog.processors.JSONRenderer())
 
-    processors.append(structlog.dev.ConsoleRenderer())
+    else:
+        processors.append(structlog.dev.ConsoleRenderer())
 
     structlog.configure(
         logger_factory=structlog.PrintLoggerFactory(),
