@@ -137,12 +137,19 @@ def isolate_delete(repo: Repo, identifier: str) -> None:
 
     if (otu_ := repo.get_otu(otu_id)) is None:
         click.echo("OTU not found.", err=True)
+
         sys.exit(1)
 
     if delete_isolate_from_otu(repo, otu_, isolate_id):
-        click.echo("Isolate deleted.")
+        click.echo(f"Isolate {isolate_id} deleted.")
 
     else:
+        click.echo(
+            f"Isolate cannot be deleted, "
+            f"due to being the representative isolate of OTU {otu_id}.",
+            err=True,
+        )
+
         sys.exit(1)
 
 
