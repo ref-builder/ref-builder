@@ -4,7 +4,6 @@ import datetime
 import os
 from collections.abc import Collection
 from contextlib import contextmanager, suppress
-from enum import StrEnum
 from http import HTTPStatus
 from urllib.error import HTTPError
 from urllib.parse import quote_plus
@@ -40,18 +39,6 @@ DATE_TEMPLATE = "%Y/%m/%d"
 
 class TaxonLevelError(ValueError):
     """Raised when a fetched taxonomy record is above species level."""
-
-
-class GenbankRecordKey(StrEnum):
-    """Genbank record keys."""
-
-    ACCESSION_VERSION = "GBSeq_accession-version"
-    COMMENT = "GBSeq_comment"
-    DEFINITION = "GBSeq_definition"
-    FEATURE_TABLE = "GBSeq_feature-table"
-    LENGTH = "GBSeq_length"
-    PRIMARY_ACCESSION = "GBSeq_primary-accession"
-    SEQUENCE = "GBSeq_sequence"
 
 
 class NCBIClient:
