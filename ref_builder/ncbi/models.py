@@ -126,17 +126,20 @@ class NCBISource(BaseModel):
 
         return crossref.identifier
 
+
 class GenbankRecordKey(StrEnum):
     """Keys used in Genbank XML records."""
 
     ACCESSION_KEY = "GBSeq_primary-accession"
     ACCESSION = "GBSeq_accession-version"
+    ACCESSION_VERSION = "GBSeq_accession-version"
     COMMENT = "GBSeq_comment"
     DEFINITION = "GBSeq_definition"
     LENGTH = "GBSeq_length"
     FEATURE_TABLE = "GBSeq_feature-table"
     MOLTYPE = "GBSeq_moltype"
     ORGANISM = "GBSeq_organism"
+    PRIMARY_ACCESSION = "GBSeq_primary-accession"
     SEQUENCE = "GBSeq_sequence"
     STRANDEDNESS = "GBSeq_strandedness"
     TOPOLOGY = "GBSeq_topology"
@@ -305,7 +308,6 @@ class NCBITaxonomy(BaseModel):
     @computed_field
     def species(self) -> NCBILineage:
         """Return the species level taxon in the lineage."""
-
         if self.rank is NCBIRank.SPECIES:
             return NCBILineage(id=self.id, name=self.name, rank=self.rank)
 
