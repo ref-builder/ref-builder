@@ -1,8 +1,10 @@
+from uuid import UUID
+
 from click.testing import CliRunner
 
-from ref_builder.utils import IsolateName, IsolateNameType
-from ref_builder.cli.otu import otu as otu_command_group
 from ref_builder.cli.isolate import isolate as isolate_command_group
+from ref_builder.cli.otu import otu as otu_command_group
+from ref_builder.utils import IsolateName, IsolateNameType
 
 runner = CliRunner()
 
@@ -38,7 +40,13 @@ class TestIsolateCreateCommand:
 
         assert result.exit_code == 0
 
-        assert "Isolate created" in result.output
+        second_isolate_id = UUID(result.output.strip("\n"))
+
+        second_isolate = precached_repo.get_isolate(second_isolate_id)
+
+        assert second_isolate is not None
+
+        assert second_isolate.accessions == set(second_isolate_accessions)
 
     def test_overwrite_name_option_ok(self, precached_repo):
         """Test that --name option exits smoothly"""
@@ -65,7 +73,13 @@ class TestIsolateCreateCommand:
 
         assert result.exit_code == 0
 
-        assert "Isolate created" and "Isolate dummy" in result.output
+        second_isolate_id = UUID(result.output.strip("\n"))
+
+        second_isolate = precached_repo.get_isolate(second_isolate_id)
+
+        assert second_isolate is not None
+
+        assert second_isolate.accessions == {"DQ178613", "DQ178614"}
 
     def test_unnamed_option_ok(self, precached_repo):
         """Test that --unnamed option exits smoothly."""
@@ -92,11 +106,18 @@ class TestIsolateCreateCommand:
 
         assert result.exit_code == 0
 
-        assert "Isolate created" and "Unnamed" in result.output
+        second_isolate_id = UUID(result.output.strip("\n"))
+
+        second_isolate = precached_repo.get_isolate(second_isolate_id)
+
+        assert second_isolate is not None
+
+        assert second_isolate.accessions == {"DQ178613", "DQ178614"}
+
+
 
     def test_duplicate_accessions_error(self, scratch_repo):
         """Test that an error is raised when duplicate accessions are provided."""
-
         result = runner.invoke(
             isolate_command_group,
             ["--path", str(scratch_repo.path)]
@@ -200,7 +221,6 @@ class TestIsolateDeleteCommand:
 
     def test_with_partial_id_ok(self, scratch_repo):
         """Test that a partial isolate ID can also be a valid identifier."""
-
         otu = scratch_repo.get_otu_by_taxid(1169032)
 
         isolate_id = otu.get_isolate_id_by_name(
