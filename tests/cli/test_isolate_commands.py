@@ -114,8 +114,6 @@ class TestIsolateCreateCommand:
 
         assert second_isolate.accessions == {"DQ178613", "DQ178614"}
 
-
-
     def test_duplicate_accessions_error(self, scratch_repo):
         """Test that an error is raised when duplicate accessions are provided."""
         result = runner.invoke(
@@ -215,7 +213,7 @@ class TestIsolateDeleteCommand:
 
         assert result.exit_code == 0
 
-        assert "Isolate deleted" in result.output
+        assert f"Isolate {isolate_id} deleted" in result.output
 
         assert isolate_id not in scratch_repo.get_otu_by_taxid(1169032).isolate_ids
 
@@ -236,7 +234,7 @@ class TestIsolateDeleteCommand:
 
         assert result.exit_code == 0
 
-        assert "Isolate deleted" in result.output
+        assert f"Isolate {isolate_id} deleted" in result.output
 
         assert isolate_id not in scratch_repo.get_otu_by_taxid(1169032).isolate_ids
 
@@ -264,4 +262,7 @@ class TestIsolateDeleteCommand:
 
         assert result.exit_code == 1
 
-        assert "representative isolate cannot be deleted from the OTU" in result.output
+        assert (
+            f"Isolate cannot be deleted, due to being the representative isolate of OTU {otu.id}"
+            in result.output
+        )
