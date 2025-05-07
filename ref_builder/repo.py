@@ -857,7 +857,7 @@ class Repo:
 
         return self._index.get_id_by_partial(partial)
 
-    def get_isolate(self, isolate_id: uuid.UUID) -> uuid.UUID | None:
+    def get_isolate(self, isolate_id: uuid.UUID) -> IsolateBuilder | None:
         """Return the isolate with the given id if it exists, else None."""
         if otu_id := self.get_otu_id_by_isolate_id(isolate_id):
             return self.get_otu(otu_id).get_isolate(isolate_id)
