@@ -1,11 +1,8 @@
 import shutil
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 
 import orjson
 import pytest
-from polyfactory import Use
 from polyfactory.factories.pydantic_factory import ModelFactory
 from polyfactory.pytest_plugin import register_fixture
 from pydantic import BaseModel, TypeAdapter
@@ -19,7 +16,7 @@ from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.create import create_otu_with_taxid
 from ref_builder.otu.isolate import add_genbank_isolate
 from ref_builder.repo import Repo
-from ref_builder.utils import Accession, DataType
+from ref_builder.utils import DataType
 from tests.fixtures.factories import (
     IsolateFactory,
     NCBIGenbankFactory,
@@ -237,23 +234,9 @@ otu_contents_list_adapter = TypeAdapter(list[OTUContents])
 @pytest.fixture()
 def indexable_otus() -> list[OTUBuilder]:
     """A list of eight OTUs for use in Snapshotter testing."""
-
-    class RepoOTUFactory(ModelFactory[OTUBuilder]):
-        plan = Use(PlanFactory.build)
-
-        @classmethod
-        def get_provider_map(cls) -> dict[Any, Callable[[], Any]]:
-            providers_map = super().get_provider_map()
-
-            return {
-                **providers_map,
-                Accession: lambda: Accession(
-                    key="".join(cls.__faker__.random_letters(8)).upper(),
-                    version=cls.__faker__.random_int(1, 4),
-                ),
-            }
-
-    otus = [RepoOTUFactory.build() for _ in range(8)]
+    otus = [
+        OTUBuilder.model_validate(OTUFactory.build().model_dump()) for _ in range(8)
+    ]
 
     # We want at least one OTU with a `None` legacy ID to test `get_id_by_legacy_id`.
     if all(otu.legacy_id is not None for otu in otus):

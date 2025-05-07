@@ -29,8 +29,8 @@ def add_genbank_isolate(
     """Take a list of accessions that make up a new isolate and check that they make up
      a valid isolate before adding new isolate to the OTU.
 
-    Download the GenBank records, categorize into an isolate bin and pass the isolate name
-    and records to the add method.
+    Download the GenBank records, categorize into an isolate bin and pass
+    the isolate name and records to the add method.
     """
     otu_logger = logger.bind(taxid=otu.taxid, otu_id=str(otu.id), name=otu.name)
 
@@ -126,10 +126,11 @@ def add_and_name_isolate(
     isolate_name: IsolateName,
     ignore_cache: bool = False,
 ) -> IsolateBuilder | None:
-    """Take a list of accessions that make up a new isolate and a preferred isolate name,
-     then add a new isolate to the OTU.
+    """Take a list of accessions that make up a new isolate and a preferred
+    isolate name, then add a new isolate to the OTU.
 
-    Download the GenBank records and pass the isolate name and records to the add method.
+    Download the GenBank records and pass the isolate name and records to
+    the add method.
     """
     records = fetch_records_from_accessions(
         accessions, otu.blocked_accessions, ignore_cache
@@ -154,7 +155,7 @@ def create_isolate(
     otu: OTUBuilder,
     isolate_name: IsolateName | None,
     records: list[NCBIGenbank],
-):
+) -> IsolateBuilder | None:
     """Take a dictionary of records keyed by segment name and add them to the OTU."""
     log = get_logger(
         name=str("Unnamed" if isolate_name is None else str(isolate_name)),

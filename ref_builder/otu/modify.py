@@ -35,17 +35,17 @@ def exclude_accessions_from_otu(
             otu_id=otu.id, accessions=accessions
         )
 
-    if excluded_accessions != original_excluded_accessions:
-        logger.info(
-            "Updated excluded accession list.",
-            otu_id=str(otu.id),
-            excluded_accessions=sorted(excluded_accessions),
-        )
-
     if excluded_accessions == original_excluded_accessions:
         logger.info(
             "Excluded accession list already up to date.",
             excluded_accessions=excluded_accessions,
+        )
+
+    else:
+        logger.info(
+            "Updated excluded accession list.",
+            otu_id=str(otu.id),
+            excluded_accessions=sorted(excluded_accessions),
         )
 
 
@@ -65,17 +65,17 @@ def allow_accessions_into_otu(
             otu_id=otu.id, accessions=accessions
         )
 
-    if excluded_accessions != original_excluded_accessions:
-        logger.info(
-            "Updated excluded accession list.",
-            otu_id=str(otu.id),
-            excluded_accessions=sorted(excluded_accessions),
-        )
-
     if excluded_accessions == original_excluded_accessions:
         logger.info(
             "Excluded accession list already up to date.",
             excluded_accessions=excluded_accessions,
+        )
+
+    else:
+        logger.info(
+            "Updated excluded accession list.",
+            otu_id=str(otu.id),
+            excluded_accessions=sorted(excluded_accessions),
         )
 
 

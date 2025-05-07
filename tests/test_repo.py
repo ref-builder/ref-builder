@@ -17,11 +17,60 @@ from ref_builder.utils import Accession, DataType, IsolateName, IsolateNameType
 SEGMENT_LENGTH = 15
 
 
+def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
+    """Add an unvalidated OTU to a given repo."""
+    isolate_to_copy = otu.get_isolate(otu.representative_isolate)
+
+    otu_init = repo.create_otu(
+        acronym=otu.acronym,
+        legacy_id=otu.legacy_id,
+        molecule=otu.molecule,
+        name=otu.name,
+        plan=otu.plan,
+        taxid=otu.taxid,
+    )
+
+    isolate_init = repo.create_isolate(
+        otu_init.id,
+        legacy_id=otu_init.legacy_id,
+        name=isolate_to_copy.name,
+    )
+
+    for sequence in isolate_to_copy.sequences:
+        matching_segment = (
+            otu_init.plan.segments[0].id
+            if len(otu_init.plan.segments)
+            else otu_init.plan.get_segment_by_name_key(sequence.segment).id
+        )
+
+        sequence_init = repo.create_sequence(
+            otu_init.id,
+            accession=sequence.accession,
+            definition=sequence.definition,
+            legacy_id=sequence.legacy_id,
+            segment=matching_segment,
+            sequence=sequence.sequence,
+        )
+
+        repo.link_sequence(otu_init.id, isolate_init.id, sequence_init.id)
+
+    repo.set_representative_isolate(otu_init.id, isolate_init.id)
+
+    return repo.get_otu(otu_init.id)
+
+
 @pytest.fixture()
-def initialized_repo(empty_repo: Repo):
+def initialized_repo(tmp_path: Path):
     """Return a pre-initialized mock Repo."""
-    with empty_repo.lock(), empty_repo.use_transaction():
-        otu = empty_repo.create_otu(
+    repo = Repo.new(
+        DataType.GENOME,
+        "Generic Viruses",
+        tmp_path / "initialized_repo",
+        "virus",
+    )
+
+    with repo.lock(), repo.use_transaction():
+        otu = repo.create_otu(
             acronym="TMV",
             legacy_id=None,
             molecule=Molecule(
@@ -34,7 +83,7 @@ def initialized_repo(empty_repo: Repo):
                 [
                     Segment.new(
                         length=SEGMENT_LENGTH,
-                        length_tolerance=empty_repo.settings.default_segment_length_tolerance,
+                        length_tolerance=repo.settings.default_segment_length_tolerance,
                         name=None,
                     )
                 ]
@@ -42,7 +91,7 @@ def initialized_repo(empty_repo: Repo):
             taxid=12242,
         )
 
-        sequence_1 = empty_repo.create_sequence(
+        sequence_1 = repo.create_sequence(
             otu.id,
             "TM000001.1",
             "TMV",
@@ -51,17 +100,17 @@ def initialized_repo(empty_repo: Repo):
             "ACGTACGTACGTACG",
         )
 
-        isolate_a = empty_repo.create_isolate(
+        isolate_a = repo.create_isolate(
             otu.id,
             None,
             IsolateName(IsolateNameType.ISOLATE, "A"),
         )
 
-        empty_repo.link_sequence(otu.id, isolate_a.id, sequence_1.id)
+        repo.link_sequence(otu.id, isolate_a.id, sequence_1.id)
 
-        empty_repo.set_representative_isolate(otu.id, isolate_a.id)
+        repo.set_representative_isolate(otu.id, isolate_a.id)
 
-    return empty_repo
+    return repo
 
 
 def init_otu(repo: Repo) -> OTUBuilder:
@@ -121,7 +170,7 @@ class TestNew:
 
 
 class TestCreateOTU:
-    def test_ok(self, empty_repo: Repo):
+    def test_empty_ok(self, empty_repo: Repo):
         """Test that creating an OTU returns the expected ``OTUBuilder`` object and creates
         the expected event file.
         """
@@ -216,7 +265,7 @@ class TestCreateOTU:
 
             assert empty_repo.last_id == 2
 
-    def test_duplicate_name(self, empty_repo: Repo):
+    def test_duplicate_name_fail(self, empty_repo: Repo):
         """Test that creating an OTU with a name that already exists raises a
         ``ValueError``.
         """
@@ -267,7 +316,7 @@ class TestCreateOTU:
                     taxid=438782,
                 )
 
-    def test_duplicate_legacy_id(self, empty_repo: Repo):
+    def test_duplicate_legacy_id_fail(self, empty_repo: Repo):
         """Test that creating an OTU with a legacy ID that already exists raises a
         ``ValueError``.
         """
@@ -776,6 +825,34 @@ def test_get_isolate_id_from_partial(initialized_repo: Repo):
     isolate = otu.isolates[0]
 
     assert initialized_repo.get_isolate_id_by_partial(str(isolate.id)[:8]) == isolate.id
+
+
+class TestCreateOTUWithValidation:
+    def test_ok(self, initialized_repo: Repo):
+        """Test that a complete OTU can be created, validated and retrieved."""
+        assert next(iter(initialized_repo.iter_otus())) is not None
+
+    def test_bad_otu_data_fail(self, empty_repo: Repo, initialized_repo: Repo):
+        """Test that a bad OTU with bad data fails at validation stage."""
+        base_otu = next(iter(initialized_repo.iter_otus()))
+
+        assert isinstance(base_otu, OTUBuilder)
+
+        base_otu.taxid = -3000
+
+        with capture_logs() as logs:
+            with empty_repo.lock(), empty_repo.use_transaction():
+                init_otu_with_contents(
+                    empty_repo,
+                    base_otu,
+                )
+
+        assert any(
+            [
+                log["event"] == "ValidationError" and log["log_level"] == "warning"
+                for log in logs
+            ]
+        )
 
 
 class TestCreateIsolateValidation:

@@ -164,7 +164,7 @@ def get_molecule_from_records(records: list[NCBIGenbank]) -> Molecule:
     from record[0].
     """
     if not records:
-        raise IndexError("No records given")
+        raise ValueError("No records given")
 
     # Assign first record as benchmark to start
     representative_record = records[0]

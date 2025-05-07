@@ -1,5 +1,3 @@
-import sys
-
 import structlog
 
 from ref_builder.ncbi.client import NCBIClient
@@ -70,13 +68,24 @@ def create_otu_with_taxid(
         return None
 
     with repo.use_transaction():
-        return write_otu(
-            repo,
-            taxonomy,
-            records,
-            acronym=acronym,
-            isolate_name=next(iter(binned_records.keys())) if binned_records else None,
-        )
+        try:
+            return write_otu(
+                repo,
+                taxonomy,
+                records,
+                acronym=acronym,
+                isolate_name=next(iter(binned_records.keys()))
+                if binned_records
+                else None,
+            )
+        except ValueError:
+            otu_logger.error(
+                "OTU could not be created to spec based on given data.",
+                taxid=taxonomy.id,
+                accessions=accessions,
+            )
+
+            return None
 
 
 def create_otu_without_taxid(
@@ -95,6 +104,13 @@ def create_otu_without_taxid(
     :param ignore_cache: whether to ignore the cache.
 
     """
+    otu_logger = logger.bind(accessions=accessions)
+
+    if not accessions:
+        otu_logger.error(
+            "OTU could not be created to spec based on given data.",
+        )
+
     ncbi = NCBIClient(ignore_cache)
 
     records = ncbi.fetch_genbank_records(accessions)
@@ -103,7 +119,7 @@ def create_otu_without_taxid(
         logger.fatal("Could not retrieve all requested accessions.")
         return None
 
-    if len(set(record.source.taxid for record in records)) > 1:
+    if len({record.source.taxid for record in records}) > 1:
         logger.fatal("Not all records are from the same organism.")
 
         return None
@@ -144,7 +160,9 @@ def write_otu(
     acronym: str,
     isolate_name: IsolateName | None,
 ) -> OTUBuilder | None:
-    """Create a new OTU from an NCBI Taxonomy record and a list of Nucleotide records."""
+    """Create a new OTU from an NCBI Taxonomy record and a list of
+    Nucleotide records.
+    """
     otu_logger = logger.bind(taxid=taxonomy.id)
 
     plan = create_plan_from_records(
@@ -153,22 +171,18 @@ def write_otu(
     )
 
     if plan is None:
-        logger.fatal("Could not create plan from records.")
+        otu_logger.fatal("Could not create plan from records.")
 
     molecule = get_molecule_from_records(records)
 
-    try:
-        otu = repo.create_otu(
-            acronym=acronym,
-            legacy_id=None,
-            molecule=molecule,
-            name=taxonomy.name,
-            plan=plan,
-            taxid=taxonomy.id,
-        )
-    except ValueError as e:
-        otu_logger.fatal(e)
-        sys.exit(1)
+    otu = repo.create_otu(
+        acronym=acronym,
+        legacy_id=None,
+        molecule=molecule,
+        name=taxonomy.name,
+        plan=plan,
+        taxid=taxonomy.id,
+    )
 
     isolate = repo.create_isolate(
         otu_id=otu.id,

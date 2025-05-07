@@ -1,5 +1,5 @@
 # serializer version: 1
-# name: TestCreateOTU.test_empty_repo
+# name: TestCreateOTU.test_empty_repo_ok
   dict({
     'acronym': '',
     'excluded_accessions': set({

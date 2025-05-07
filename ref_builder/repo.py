@@ -35,6 +35,7 @@ from ref_builder.events.base import (
     ApplicableEvent,
     Event,
     EventData,
+    EventMetadata,
     EventQuery,
     IsolateQuery,
     OTUQuery,
@@ -256,17 +257,22 @@ class Repo:
                 if not check_otu_is_valid(self.get_otu(otu_id)):
                     self._transaction.abort()
 
+        except AbortTransactionError:
+            logger.debug("Transaction aborted. Pruning events...")
+
+            self.prune()
+
         except Exception as e:
             logger.debug(
                 "Error encountered mid-transaction. Pruning events...",
+                message=str(e),
                 head_id=self.head_id,
                 last_id=self.last_id,
             )
 
             self.prune()
 
-            if not isinstance(e, AbortTransactionError):
-                raise
+            raise
 
         else:
             self._head_id = self.last_id
@@ -805,7 +811,7 @@ class Repo:
             for event_id in event_index_item.event_ids:
                 yield self._event_store.read_event(event_id)
 
-    def iter_event_metadata(self):
+    def iter_event_metadata(self) -> Generator[EventMetadata, None, None]:
         """Iterate through the event metadata of all events."""
         yield from self._index.iter_event_metadata()
 
@@ -851,7 +857,7 @@ class Repo:
 
         return self._index.get_id_by_partial(partial)
 
-    def get_isolate(self, isolate_id: uuid.UUID) -> uuid.UUID | None:
+    def get_isolate(self, isolate_id: uuid.UUID) -> IsolateBuilder | None:
         """Return the isolate with the given id if it exists, else None."""
         if otu_id := self.get_otu_id_by_isolate_id(isolate_id):
             return self.get_otu(otu_id).get_isolate(isolate_id)

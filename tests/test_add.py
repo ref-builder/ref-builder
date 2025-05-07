@@ -1,11 +1,8 @@
 import pytest
-from click.testing import CliRunner
+from structlog.testing import capture_logs
 from syrupy import SnapshotAssertion
 from syrupy.filters import props
 
-
-from ref_builder.console import console, print_otu
-from ref_builder.cli.otu import otu as otu_command_group
 from ref_builder.otu.create import create_otu_with_taxid, create_otu_without_taxid
 from ref_builder.otu.isolate import (
     add_and_name_isolate,
@@ -48,7 +45,26 @@ class TestCreateOTU:
         assert otu_.accessions == set(accessions)
         assert otu_.representative_isolate == otu_.isolates[0].id
 
-    def test_empty_repo(
+    @pytest.mark.parametrize(
+        ("accessions", "expected_taxid"),
+        [
+            (["DQ178610", "DQ178611"], 345184),
+            (["NC_043170"], 3240630),
+        ],
+    )
+    def test_create_without_taxid_ok(self, accessions, expected_taxid, precached_repo):
+        with precached_repo.lock():
+            made_otu = create_otu_without_taxid(
+                precached_repo, accessions=accessions, acronym=""
+            )
+
+        assert made_otu.taxid == expected_taxid
+
+        otu = precached_repo.get_otu_by_taxid(expected_taxid)
+
+        assert otu is not None
+
+    def test_empty_repo_ok(
         self,
         precached_repo: Repo,
         snapshot: SnapshotAssertion,
@@ -70,7 +86,23 @@ class TestCreateOTU:
         # value of the creation function.
         assert list(precached_repo.iter_otus()) == [otu_]
 
-    def test_duplicate_taxid(self, precached_repo: Repo):
+    def test_no_accessions_fail(self, empty_repo: Repo):
+        with empty_repo.lock(), capture_logs() as logs:
+            """Test that creating an OTU with not accession fails with the expected log."""
+            otu_ = create_otu_with_taxid(
+                empty_repo,
+                345184,
+                [],
+                "",
+            )
+
+            assert otu_ is None
+
+            assert any(
+                ["OTU could not be created to spec" in log.get("event") for log in logs]
+            )
+
+    def test_duplicate_taxid_fail(self, precached_repo: Repo):
         """Test that an OTU with the same taxid cannot be created."""
         accessions = ["DQ178610", "DQ178611"]
         taxid = 345184
@@ -148,25 +180,6 @@ class TestCreateOTU:
             )
 
         assert otu_.acronym == "FBNSV"
-
-    @pytest.mark.parametrize(
-        ("accessions", "expected_taxid"),
-        [
-            (["DQ178610", "DQ178611"], 345184),
-            (["NC_043170"], 3240630),
-        ],
-    )
-    def test_create_without_taxid_ok(self, accessions, expected_taxid, precached_repo):
-        with precached_repo.lock():
-            made_otu = create_otu_without_taxid(
-                precached_repo, accessions=accessions, acronym=""
-            )
-
-        assert made_otu.taxid == expected_taxid
-
-        otu = precached_repo.get_otu_by_taxid(expected_taxid)
-
-        assert otu is not None
 
 
 class TestAddIsolate:
