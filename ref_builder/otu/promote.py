@@ -5,18 +5,15 @@ from structlog import get_logger
 
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBIGenbank
+from ref_builder.otu.assign import assign_segment_id_to_record
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.utils import (
     DeleteRationale,
-    assign_segment_id_to_record,
-    parse_refseq_comment,
-    get_segments_min_length,
     get_segments_max_length,
     get_segments_min_length,
     parse_refseq_comment,
 )
-from ref_builder.otu.assign import assign_segment_id_to_record
 from ref_builder.repo import Repo
 from ref_builder.utils import Accession
 
