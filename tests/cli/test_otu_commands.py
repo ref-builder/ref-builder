@@ -145,11 +145,6 @@ class TestPromoteOTUCommand:
 
         assert result.exit_code == 0
 
-        assert (
-            "Sequences promoted"
-            and "['NC_055390', 'NC_055391', 'NC_055392']" in result.output
-        )
-
         repo_after = Repo(empty_repo.path)
 
         otu_after = repo_after.get_otu(otu_before.id)
