@@ -110,8 +110,7 @@ class NCBISource(BaseModel):
 
             else:
                 qualifier_data[raw_qualifier.name] = (
-                    True if raw_qualifier.value is None
-                    else raw_qualifier.value
+                    True if raw_qualifier.value is None else raw_qualifier.value
                 )
 
         return NCBISource.model_validate(qualifier_data)
@@ -119,7 +118,7 @@ class NCBISource(BaseModel):
     @field_validator("taxid", mode="before")
     def convert_taxid(cls, v: int | str):
         """Extract TaxId from db_xref string as an integer."""
-        if type(v) == int:
+        if type(v) is int:
             return v
 
         crossref = INSDCDatabaseCrossReference.from_string(v.value)
@@ -151,7 +150,9 @@ class NCBIGenbank(BaseModel):
     model_config = ConfigDict(populate_by_name=True, use_enum_values=True)
 
     accession: Annotated[str, Field(validation_alias=GenbankRecordKey.ACCESSION_KEY)]
-    accession_version: Annotated[str, Field(validation_alias=GenbankRecordKey.ACCESSION)]
+    accession_version: Annotated[
+        str, Field(validation_alias=GenbankRecordKey.ACCESSION)
+    ]
     strandedness: Annotated[
         Strandedness,
         Field(validation_alias=GenbankRecordKey.STRANDEDNESS),
@@ -168,8 +169,7 @@ class NCBIGenbank(BaseModel):
         ),
     ]
     source: Annotated[
-        NCBISource,
-        Field(validation_alias=GenbankRecordKey.FEATURE_TABLE)
+        NCBISource, Field(validation_alias=GenbankRecordKey.FEATURE_TABLE)
     ]
     comment: Annotated[str, Field(validation_alias=GenbankRecordKey.COMMENT)] = ""
     features: Annotated[
@@ -178,7 +178,7 @@ class NCBIGenbank(BaseModel):
             default_factory=list,
             exclude=True,
             validation_alias=GenbankRecordKey.FEATURE_TABLE,
-        )
+        ),
     ]
 
     @computed_field()
@@ -192,8 +192,8 @@ class NCBIGenbank(BaseModel):
     @field_validator("features", mode="before")
     @classmethod
     def convert_feature_table(
-            cls,
-            v: INSDCFeatureTable | list[INSDCFeature] | list[dict[str:Any]],
+        cls,
+        v: INSDCFeatureTable | list[INSDCFeature] | list[dict[str:Any]],
     ) -> INSDCFeatureTable:
         """If the source field isn't a ``NCBISource`` object, extract the data from
         the feature table and convert.
