@@ -1,4 +1,5 @@
 import logging
+import sys
 
 import structlog
 
@@ -40,7 +41,7 @@ def configure_logger(verbosity: int, no_color: bool = False) -> None:
         processors.append(structlog.dev.ConsoleRenderer())
 
     structlog.configure(
-        logger_factory=structlog.PrintLoggerFactory(),
+        logger_factory=structlog.PrintLoggerFactory(sys.stderr),
         processors=processors,
         wrapper_class=structlog.make_filtering_bound_logger(level),
     )
