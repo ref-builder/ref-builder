@@ -65,12 +65,14 @@ def isolate_create(
         sys.exit(1)
 
     if unnamed:
-        add_unnamed_isolate(
+        isolate_ = add_unnamed_isolate(
             repo,
             otu_,
             accessions_,
             ignore_cache=ignore_cache,
         )
+
+        click.echo(str(isolate_.id))
 
         sys.exit(0)
 
@@ -79,14 +81,13 @@ def isolate_create(
         isolate_name_ = IsolateName(type=isolate_name_type, value=isolate_name_value)
 
         try:
-            add_and_name_isolate(
+            isolate_ = add_and_name_isolate(
                 repo,
                 otu_,
                 accessions_,
                 ignore_cache=ignore_cache,
                 isolate_name=isolate_name_,
             )
-            sys.exit(0)
 
         except RefSeqConflictError as e:
             click.echo(
@@ -95,18 +96,29 @@ def isolate_create(
             )
             sys.exit(1)
 
+        else:
+            click.echo(str(isolate_.id))
+
+            sys.exit(0)
+
     try:
-        add_genbank_isolate(
+        isolate_ = add_genbank_isolate(
             repo,
             otu_,
             accessions_,
             ignore_cache=ignore_cache,
         )
+
     except RefSeqConflictError as e:
         click.echo(
             f"{e.isolate_name} already exists, but RefSeq items may be promotable,",
         )
         sys.exit(1)
+
+    else:
+        click.echo(str(isolate_.id))
+
+        sys.exit(0)
 
 
 @isolate.command(name="delete")  # type: ignore
