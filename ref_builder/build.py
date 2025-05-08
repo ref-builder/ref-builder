@@ -21,23 +21,6 @@ from ref_builder.plan import Plan, SegmentRule
 from ref_builder.repo import Repo
 
 
-def _get_molecule_string(molecule: Molecule) -> str:
-    """Return a string representation of the molecule."""
-    string = ""
-
-    if molecule.strandedness == Strandedness.SINGLE:
-        string += "ss"
-    else:
-        string += "ds"
-
-    if "DNA" in molecule.type:
-        string += "DNA"
-    else:
-        string += "RNA"
-
-    return string
-
-
 class ProductionSegment(BaseModel):
     """A segment belonging to a production OTU schema."""
 
