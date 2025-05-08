@@ -73,7 +73,6 @@ def check_otu_is_valid(unvalidated_otu: OTUBuilder) -> bool:
         return False
 
 
-
 def otu_error_handler(e: ValidationError) -> list[dict[str, Any]]:
     """Add contextual metadata to OTU validation errors."""
     new_errors: list[dict[str, Any]] = e.errors()

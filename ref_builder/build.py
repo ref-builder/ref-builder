@@ -67,13 +67,16 @@ class ProductionSchema(RootModel):
         else:
             molecule_string += "RNA"
 
-        return ProductionSchema([
-            ProductionSegment(
-                molecule=molecule_string,
-                name=str(segment.name) if segment.name else "Unnamed",
-                required=segment.rule == SegmentRule.REQUIRED,
-            ) for segment in plan.segments
-        ])
+        return ProductionSchema(
+            [
+                ProductionSegment(
+                    molecule=molecule_string,
+                    name=str(segment.name) if segment.name else "Unnamed",
+                    required=segment.rule == SegmentRule.REQUIRED,
+                )
+                for segment in plan.segments
+            ]
+        )
 
 
 class ProductionResource(BaseModel):
@@ -82,6 +85,7 @@ class ProductionResource(BaseModel):
     model_config = ConfigDict(serialize_by_alias=True)
 
     id: str
+
 
 class ProductionSequence(ProductionResource):
     """A production sequence belonging to a production isolate."""
@@ -95,7 +99,9 @@ class ProductionSequence(ProductionResource):
 
     @classmethod
     def build_from_validated_sequence_and_plan(
-        cls, validated_sequence: Sequence, otu_plan: Plan,
+        cls,
+        validated_sequence: Sequence,
+        otu_plan: Plan,
     ) -> "ProductionSequence":
         segment = otu_plan.get_segment_by_id(validated_sequence.segment)
 
@@ -126,17 +132,21 @@ class ProductionIsolate(ProductionResource):
             id=str(validated_isolate.id),
             default=is_representative,
             sequences=[
-                ProductionSequence.build_from_validated_sequence_and_plan(validated_sequence, plan)
+                ProductionSequence.build_from_validated_sequence_and_plan(
+                    validated_sequence, plan
+                )
                 for validated_sequence in validated_isolate.sequences
             ],
             source_name=(
-                validated_isolate.name.value if validated_isolate.name is not None else "unknown"
+                validated_isolate.name.value
+                if validated_isolate.name is not None
+                else "unknown"
             ),
             source_type=(
                 str(validated_isolate.name.type)
                 if validated_isolate.name is not None
                 else "unknown"
-            )
+            ),
         )
 
 
@@ -147,10 +157,7 @@ class ProductionOTU(ProductionResource):
     abbreviation: str
     isolates: list[ProductionIsolate]
     name: str
-    plan: Annotated[
-        ProductionSchema,
-        Field(serialization_alias="schema")
-    ]
+    plan: Annotated[ProductionSchema, Field(serialization_alias="schema")]
     taxid: int
 
     @classmethod
@@ -226,9 +233,7 @@ def build_json(indent: bool, output_path: Path, path: Path, version: str) -> Pat
         except ValidationError:
             continue
 
-        otus.append(
-            ProductionOTU.build_from_validated_otu(validated_otu)
-        )
+        otus.append(ProductionOTU.build_from_validated_otu(validated_otu))
 
     production_reference = ProductionReference(
         created_at=arrow.utcnow().datetime,
