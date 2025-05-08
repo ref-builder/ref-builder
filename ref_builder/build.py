@@ -208,7 +208,7 @@ class ProductionReference(BaseModel):
         return v
 
 
-def build_json(indent: bool, output_path: Path, path: Path, version: str) -> None:
+def build_json(indent: bool, output_path: Path, path: Path, version: str) -> Path:
     """Build a Virtool reference JSON file from a data directory.
 
     :param indent: whether to indent the JSON output
@@ -245,3 +245,8 @@ def build_json(indent: bool, output_path: Path, path: Path, version: str) -> Non
                 option=orjson.OPT_INDENT_2 if indent else 0,
             ),
         )
+
+    if not output_path.exists():
+        raise FileNotFoundError(f"Built reference not found at {output_path}.")
+
+    return output_path
