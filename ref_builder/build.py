@@ -222,18 +222,18 @@ def build_json(indent: bool, output_path: Path, path: Path, version: str) -> Non
             ProductionOTU.build_from_validated_otu(validated_otu)
         )
 
-    otus.sort(key=lambda x: x.name)
+    production_reference = ProductionReference(
+        created_at=arrow.utcnow().datetime.isoformat(),
+        data_type=repo.meta.data_type,
+        name=version,
+        organism=repo.meta.organism,
+        otus=otus,
+    )
 
     with open(output_path, "wb") as f:
         f.write(
             orjson.dumps(
-                {
-                    "created_at": arrow.utcnow().isoformat(),
-                    "data_type": repo.meta.data_type,
-                    "name": version,
-                    "organism": repo.meta.organism,
-                    "otus": [otu.model_dump(mode="json") for otu in otus],
-                },
+                production_reference.model_dump(mode="json"),
                 option=orjson.OPT_INDENT_2 if indent else 0,
             ),
         )
