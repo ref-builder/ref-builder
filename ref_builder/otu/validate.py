@@ -10,8 +10,10 @@ from ref_builder.otu.validators.otu import OTU
 logger = get_logger("otu.validate")
 
 
-def check_otu_is_valid(unvalidated_otu: OTUBuilder) -> bool:
-    """Assure that an OTU can pass the validation standard."""
+def get_validated_otu(unvalidated_otu: OTUBuilder) -> OTU:
+    """Return a fully validated OTU from OTUBuilder data.
+    Also logs validation errors and warnings.
+    """
     try:
         with warnings.catch_warnings(record=True) as warning_list:
             validated_otu = OTU.model_validate(
@@ -47,7 +49,7 @@ def check_otu_is_valid(unvalidated_otu: OTUBuilder) -> bool:
                 loc=error["loc"],
                 input=error["input"] if not isinstance(error["input"], dict) else {},
             )
-        return False
+        raise
 
     if warning_list:
         logger.warning("Outstanding warnings found.", warning_count=len(warning_list))
@@ -59,7 +61,17 @@ def check_otu_is_valid(unvalidated_otu: OTUBuilder) -> bool:
                 warning_category=warning_msg.category.__name__,
             )
 
-    return True
+    return validated_otu
+
+
+def check_otu_is_valid(unvalidated_otu: OTUBuilder) -> bool:
+    """Assure that an OTU can pass the validation standard."""
+    try:
+        return isinstance(get_validated_otu(unvalidated_otu), OTU)
+
+    except ValidationError:
+        return False
+
 
 
 def otu_error_handler(e: ValidationError) -> list[dict[str, Any]]:
