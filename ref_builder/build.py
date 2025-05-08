@@ -1,3 +1,4 @@
+import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -9,6 +10,7 @@ from pydantic import (
     Field,
     RootModel,
     ValidationError,
+    field_serializer,
     field_validator,
 )
 
@@ -186,15 +188,21 @@ class ProductionOTU(ProductionResource):
 class ProductionReference(BaseModel):
     """A production-ready reference."""
 
-    created_at: str
+    created_at: datetime.datetime
     data_type: str
     name: str
     organism: str
     otus: list[ProductionOTU]
 
+    @field_serializer("created_at")
+    def convert_datetime_to_iso(self, v: datetime.datetime) -> str:
+        """Convert ``created_at`` datetime format to an ISO 8601 formatted string."""
+        return v.isoformat()
+
     @field_validator("otus", mode="after")
     @classmethod
     def sort_otus(cls, v: list[ProductionOTU]) -> list[ProductionOTU]:
+        """Sort OTUs by named alphabetical order."""
         v.sort(key=lambda x: x.name)
 
         return v
@@ -223,7 +231,7 @@ def build_json(indent: bool, output_path: Path, path: Path, version: str) -> Non
         )
 
     production_reference = ProductionReference(
-        created_at=arrow.utcnow().datetime.isoformat(),
+        created_at=arrow.utcnow().datetime,
         data_type=repo.meta.data_type,
         name=version,
         organism=repo.meta.organism,
