@@ -183,6 +183,23 @@ class ProductionOTU(ProductionResource):
         return v
 
 
+class ProductionReference(BaseModel):
+    """A production-ready reference."""
+
+    created_at: str
+    data_type: str
+    name: str
+    organism: str
+    otus: list[ProductionOTU]
+
+    @field_validator("otus", mode="after")
+    @classmethod
+    def sort_otus(cls, v: list[ProductionOTU]) -> list[ProductionOTU]:
+        v.sort(key=lambda x: x.name)
+
+        return v
+
+
 def build_json(indent: bool, output_path: Path, path: Path, version: str) -> None:
     """Build a Virtool reference JSON file from a data directory.
 
