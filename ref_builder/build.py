@@ -195,67 +195,17 @@ def build_json(indent: bool, output_path: Path, path: Path, version: str) -> Non
 
     otus = []
 
-    for otu in repo.iter_otus():
-        isolates = []
-
-        for isolate in otu.isolates:
-            sequences = []
-
-            for sequence in isolate.sequences:
-                segment_name = otu.plan.get_segment_by_id(sequence.segment).name
-
-                sequences.append(
-                    {
-                        "_id": sequence.legacy_id or str(sequence.id),
-                        "accession": str(sequence.accession),
-                        "definition": sequence.definition,
-                        "host": "",
-                        "segment": "Unnamed"
-                        if segment_name is None
-                        else str(segment_name),
-                        "sequence": sequence.sequence,
-                    }
-                )
-
-            isolates.append(
-                {
-                    "id": isolate.legacy_id or str(isolate.id),
-                    "default": isolate.id == otu.representative_isolate,
-                    "sequences": sequences,
-                    "source_name": isolate.name.value
-                    if isolate.name is not None
-                    else "unknown",
-                    "source_type": str(isolate.name.type)
-                    if isolate.name is not None
-                    else "unknown",
-                },
-            )
-
-        isolates.sort(key=lambda x: x["source_type"] + x["source_name"])
-
-        molecule = _get_molecule_string(otu.molecule)
-
-        schema = [
-            {
-                "molecule": molecule,
-                "name": str(segment.name) if segment.name else "Unnamed",
-                "required": segment.rule == SegmentRule.REQUIRED,
-            }
-            for segment in otu.plan.segments
-        ]
+    for unvalidated_otu in repo.iter_otus():
+        try:
+            validated_otu = get_validated_otu(unvalidated_otu)
+        except ValidationError:
+            continue
 
         otus.append(
-            {
-                "_id": otu.legacy_id or otu.id,
-                "abbreviation": otu.acronym,
-                "isolates": isolates,
-                "name": otu.name,
-                "schema": schema,
-                "taxid": otu.taxid,
-            },
+            ProductionOTU.build_from_validated_otu(validated_otu)
         )
 
-    otus.sort(key=lambda x: x["name"])
+    otus.sort(key=lambda x: x.name)
 
     with open(output_path, "wb") as f:
         f.write(
@@ -265,7 +215,7 @@ def build_json(indent: bool, output_path: Path, path: Path, version: str) -> Non
                     "data_type": repo.meta.data_type,
                     "name": version,
                     "organism": repo.meta.organism,
-                    "otus": otus,
+                    "otus": [otu.model_dump(mode="json") for otu in otus],
                 },
                 option=orjson.OPT_INDENT_2 if indent else 0,
             ),
