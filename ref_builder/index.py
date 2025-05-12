@@ -255,8 +255,8 @@ class Index:
 
     def get_id_by_acronym(self, acronym: str) -> UUID | None:
         """Get an OTU ID by its acronym."""
-        if acronym == "":
-            return None
+        if not acronym:
+            raise ValueError("Acronym must contain at least one character.")
 
         cursor = self.con.execute(
             'SELECT id AS "id [uuid]" FROM otus WHERE acronym = ?',
