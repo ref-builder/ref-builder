@@ -19,7 +19,7 @@ from ref_builder.otu.validate import get_validated_otu
 from ref_builder.otu.validators.isolate import Isolate
 from ref_builder.otu.validators.otu import OTU
 from ref_builder.otu.validators.sequence import Sequence
-from ref_builder.plan import Plan, SegmentRule
+from ref_builder.plan import Plan, SegmentName, SegmentRule
 from ref_builder.repo import Repo
 
 
@@ -46,6 +46,45 @@ class ProductionSegment(BaseModel):
     molecule: str
     name: str
     required: bool
+
+    @field_validator("molecule", mode="before")
+    @classmethod
+    def convert_from_molecule_object(cls, v: str | Molecule) -> str:
+        """Convert molecule field from object to string."""
+        if isinstance(v, Molecule):
+            return _get_molecule_string(v)
+
+        if type(v) is str:
+            return v
+
+        raise ValueError(f"Invalid molecule field input: {v}, {type(v)}")
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def convert_from_segment_name(cls, v: str | SegmentName | None) -> str:
+        """Convert segment name from either a SegmentName or a null."""
+        if v is None:
+            return "Unnamed"
+
+        if isinstance(v, SegmentName):
+            return str(v)
+
+        if isinstance(v, str):
+            return v
+
+        raise ValueError(f"Invalid segment name input: {v}, {type(v)}")
+
+    @field_validator("required", mode="before")
+    @classmethod
+    def convert_required_field_to_boolean(cls, v: bool | SegmentRule) -> bool:
+        """Convert required field from SegmentRule to boolean."""
+        if isinstance(v, SegmentRule | str):
+            return v == SegmentRule.REQUIRED
+
+        if isinstance(v, bool):
+            return v
+
+        raise ValueError(f"Invalid required field input: {v}, {type(v)}")
 
 
 class ProductionSchema(RootModel):
