@@ -106,26 +106,13 @@ class ProductionSchema(RootModel):
     root: list[ProductionSegment]
 
     @classmethod
-    def build_from_plan_and_molecule(cls, plan: Plan, molecule: Molecule):
-        molecule_string = ""
-
-        if molecule.strandedness == Strandedness.SINGLE:
-            molecule_string += "ss"
-        else:
-            molecule_string += "ds"
-
-        if "DNA" in molecule.type:
-            molecule_string += "DNA"
-        else:
-            molecule_string += "RNA"
-
+    def build_from_plan_and_molecule(
+        cls, plan: Plan, molecule: Molecule
+    ) -> "ProductionSchema":
+        """Build a schema from plan and molecule data."""
         return ProductionSchema(
             [
-                ProductionSegment(
-                    molecule=molecule_string,
-                    name=str(segment.name) if segment.name else "Unnamed",
-                    required=segment.rule == SegmentRule.REQUIRED,
-                )
+                ProductionSegment.build_from_segment_and_molecule(segment, molecule)
                 for segment in plan.segments
             ]
         )
