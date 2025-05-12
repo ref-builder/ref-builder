@@ -188,7 +188,10 @@ class TestGetIDByAcronym:
             assert otu.id == index.get_id_by_acronym(otu.acronym)
 
     def test_empty(self, index: Index, indexable_otus: list[OTUBuilder]):
-        assert index.get_id_by_acronym("") is None
+        with pytest.raises(
+            ValueError, match="Acronym must contain at least one character."
+        ):
+            index.get_id_by_acronym("")
 
     def test_not_found(self, index: Index):
         """Test that `None` is returned when the acronym is not found."""
