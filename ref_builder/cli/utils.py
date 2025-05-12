@@ -14,9 +14,14 @@ def get_otu_from_identifier(repo: Repo, identifier: str) -> OTUBuilder:
     """Return an OTU id from the repo if identifier matches a single OTU.
 
     The identifier can either be a stringified UUIDv4, a truncated portion
-    of a UUID or a NCBI Taxonomy ID.
+    of a UUID, a NCBI Taxonomy ID or an acronym associated with the OTU.
 
     Raise a PartialIDConflictError if >1 OTU is found.
+
+    :param repo: the repository to be searched.
+    :param identifier: a non-UUID identifier.
+        Can be an integer Taxonomy ID, acronym or truncated partial UUID.
+    :return: the UUID of the OTU or ``None``
     """
     otu_id = None
 
@@ -35,6 +40,9 @@ def get_otu_from_identifier(repo: Repo, identifier: str) -> OTUBuilder:
             otu_id = repo.get_otu_id_by_taxid(taxid)
 
     else:
+        if (otu_id := repo.get_otu_id_by_acronym(identifier)) is not None:
+            return repo.get_otu(otu_id)
+
         try:
             otu_id = repo.get_otu_id_by_partial(identifier)
 
