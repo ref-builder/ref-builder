@@ -4,9 +4,9 @@ from syrupy import SnapshotAssertion
 from syrupy.filters import props
 
 from ref_builder.otu.create import (
+    create_otu_from_json,
     create_otu_with_taxid,
     create_otu_without_taxid,
-    import_otu_from_json,
 )
 from ref_builder.otu.isolate import (
     add_and_name_isolate,
@@ -453,7 +453,7 @@ class TestImportOTU:
         )
 
         with empty_repo.lock():
-            otu_init = import_otu_from_json(empty_repo, mock_otu.model_dump_json())
+            otu_init = create_otu_from_json(empty_repo, mock_otu.model_dump_json())
 
             assert otu_init is not None
 
@@ -467,7 +467,7 @@ class TestImportOTU:
             scratch_otu_json = scratch_otu.model_dump_json()
 
             with empty_repo.lock():
-                import_otu_from_json(empty_repo, scratch_otu_json)
+                create_otu_from_json(empty_repo, scratch_otu_json)
 
         assert len(list(empty_repo.iter_otus())) == len(list(scratch_repo.iter_otus()))
 

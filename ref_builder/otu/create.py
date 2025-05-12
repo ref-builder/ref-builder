@@ -228,10 +228,10 @@ def write_otu(
     return repo.get_otu(otu.id)
 
 
-def import_otu_from_json(repo: Repo, otu_json: str) -> OTUBuilder | None:
+def create_otu_from_json(repo: Repo, json_: str) -> OTUBuilder | None:
     """Take JSON data exported from an OTU and create a new OTU in this repo."""
     try:
-        validated_otu = OTU.model_validate_json(otu_json)
+        validated_otu = OTU.model_validate_json(json_)
 
     except ValidationError as e:
         for error in e.errors():
