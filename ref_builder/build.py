@@ -19,7 +19,7 @@ from ref_builder.otu.validate import get_validated_otu
 from ref_builder.otu.validators.isolate import Isolate
 from ref_builder.otu.validators.otu import OTU
 from ref_builder.otu.validators.sequence import Sequence
-from ref_builder.plan import Plan, SegmentName, SegmentRule
+from ref_builder.plan import Plan, Segment, SegmentName, SegmentRule
 from ref_builder.repo import Repo
 
 
@@ -85,6 +85,19 @@ class ProductionSegment(BaseModel):
             return v
 
         raise ValueError(f"Invalid required field input: {v}, {type(v)}")
+
+    @classmethod
+    def build_from_segment_and_molecule(
+        cls, segment: Segment, molecule: Molecule
+    ) -> "ProductionSegment":
+        """Return a production segment from Segment and Molecule data."""
+        return ProductionSegment.model_validate(
+            {
+                "molecule": molecule,
+                "name": segment.name,
+                "required": segment.rule,
+            }
+        )
 
 
 class ProductionSchema(RootModel):
