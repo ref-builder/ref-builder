@@ -836,8 +836,17 @@ class Repo:
         :param acronym: the exact acronym of the OTU
         :return: the UUID of the OTU or ``None``
         """
+        try:
+            return self._index.get_id_by_acronym(acronym)
 
-        return self._index.get_id_by_acronym(acronym)
+        except ValueError as e:
+            logger.error(
+                "Bad input. Search acronym cannot be empty.",
+                acronym=acronym,
+                error=str(e),
+            )
+
+        return None
 
     def get_otu_id_by_taxid(self, taxid: int) -> uuid.UUID | None:
         """Return the UUID of the OTU with the given ``taxid``.
