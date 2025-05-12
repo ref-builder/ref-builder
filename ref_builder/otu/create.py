@@ -251,7 +251,7 @@ def create_otu_from_json(repo: Repo, json_: str) -> OTUBuilder | None:
 
     otu_logger.info("Imported data is valid. Creating events...")
 
-    with repo.use_transaction() as transaction:
+    with repo.use_transaction():
         try:
             otu_builder = repo.create_otu(
                 acronym=validated_otu.acronym,
@@ -300,10 +300,5 @@ def create_otu_from_json(repo: Repo, json_: str) -> OTUBuilder | None:
             repo.exclude_accessions(
                 otu_id=otu_builder.id, accessions=otu_builder.excluded_accessions
             )
-
-        if otu_builder is None:
-            transaction.abort()
-
-            return None
 
     return otu_builder
