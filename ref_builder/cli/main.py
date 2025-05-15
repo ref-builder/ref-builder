@@ -219,4 +219,10 @@ def validate(fix: bool, limit: int, no_ok: bool, path: Path) -> None:
 @path_option
 def build(indent: bool, path: Path, target_path: Path, version: str) -> None:
     """Build a Virtool reference.json file from the reference repository."""
+    if not is_repo_path(path):
+        click.echo(
+            f'Given path "{path}" is not a reference repository.', err=True
+        )
+        sys.exit(1)
+
     build_json(indent, target_path, path, version)
