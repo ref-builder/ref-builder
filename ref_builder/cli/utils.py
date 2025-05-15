@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 from uuid import UUID
 
 import click
@@ -6,9 +7,14 @@ import click
 from ref_builder.errors import InvalidInputError, PartialIDConflictError
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.repo import Repo
+from ref_builder.utils import pad_zeroes
 
 pass_repo = click.make_pass_decorator(Repo)
 
+
+def is_repo_path(path: Path) -> bool:
+    """Return True if the given path is a repo path."""
+    return (path / "src" / f"{pad_zeroes(1)}.json").exists()
 
 def get_otu_from_identifier(repo: Repo, identifier: str) -> OTUBuilder:
     """Return an OTU id from the repo if identifier matches a single OTU.
