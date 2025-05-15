@@ -1,6 +1,7 @@
 """Command-line interface for reference builder."""
 
 import glob
+import sys
 from pathlib import Path
 
 import click
@@ -15,6 +16,7 @@ from ref_builder.cli.options import (
     path_option,
 )
 from ref_builder.cli.otu import otu
+from ref_builder.cli.utils import is_repo_path
 from ref_builder.console import console
 from ref_builder.legacy.convert import convert_legacy_repo
 from ref_builder.legacy.utils import iter_legacy_otus
@@ -46,6 +48,12 @@ def entry(debug: bool, verbosity: int, no_color: bool) -> None:
 @path_option
 def status(path: Path) -> None:
     """Show the status of the reference repository."""
+    if not is_repo_path(path):
+        click.echo(
+            f'Given path "{path}" is not a reference repository.', err=True
+        )
+        sys.exit(1)
+
     repo = Repo(path)
 
     table = Table(show_header=False)
