@@ -13,6 +13,12 @@ def configure_logger(verbosity: int, no_color: bool = False) -> None:
     # Disable faker logging.
     logging.getLogger("faker").setLevel(logging.ERROR)
 
+    logging.basicConfig(
+        format="%(message)s",
+        stream=sys.stderr,
+        level=logging.INFO,
+    )
+
     processors = [
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
