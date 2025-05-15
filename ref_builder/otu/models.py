@@ -9,7 +9,7 @@ from ref_builder.utils import (
     IsolateName,
 )
 
-LegacyId = Annotated[str, Field(min_length=6, max_length=10, pattern=r"[A-Za-z0-9]+")]
+LegacyId = Annotated[str, Field(min_length=1, max_length=10, pattern=r"[A-Za-z0-9]+")]
 
 
 class SequenceModel(BaseModel):
