@@ -27,7 +27,7 @@ from tests.fixtures.factories import (
     SequenceFactory,
 )
 
-configure_logger(True)
+configure_logger(verbosity=2)
 
 
 @pytest.fixture(autouse=True)
