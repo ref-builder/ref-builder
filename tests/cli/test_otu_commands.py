@@ -188,7 +188,7 @@ class TestPromoteOTUCommand:
 
         assert "Isolate updated" not in result.output
 
-
+@pytest.mark.ncbi()
 class TestUpgradeOTUCommand:
     """Test that the ``ref-builder otu upgrade`` command works as planned."""
 
