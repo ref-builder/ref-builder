@@ -1,3 +1,4 @@
+import math
 import warnings
 from collections import Counter
 
@@ -165,8 +166,12 @@ class OTU(OTUBase):
                         },
                     )
 
-                min_length = int(segment.length * (1.0 - segment.length_tolerance))
-                max_length = int(segment.length * (1.0 + segment.length_tolerance))
+                min_length = math.floor(
+                    segment.length * (1.0 - segment.length_tolerance)
+                )
+                max_length = math.ceil(
+                    segment.length * (1.0 + segment.length_tolerance)
+                )
 
                 if len(sequence.sequence) < min_length:
                     raise PydanticCustomError(
