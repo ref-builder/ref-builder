@@ -105,8 +105,8 @@ def promote_otu_accessions_from_records(
             replacement_record=records_by_promotable_sequence_id[sequence_id],
             exclude_accession=True,
         )
-
-        promoted_sequence_ids.add(promoted_sequence.id)
+        if promoted_sequence is not None:
+            promoted_sequence_ids.add(promoted_sequence.id)
 
         otu = repo.get_otu(otu.id)
 
