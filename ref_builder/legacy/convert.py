@@ -1,4 +1,5 @@
 import json
+import math
 from collections import defaultdict
 from pathlib import Path
 
@@ -81,15 +82,23 @@ def convert_legacy_repo(name: str, path: Path, target_path: Path) -> None:
                 # Calculate tolerance based on min, max, and mean observed lengths.
                 length_tolerance = max(
                     0.01,
-                    (
-                        max(mean_length - min(lengths), max(lengths) - mean_length)
-                        / mean_length
+                    round(
+                        math.ceil(
+                            max(
+                                mean_length - min(lengths),
+                                max(lengths) - mean_length,
+                            )
+                            / mean_length
+                            * 100
+                        )
+                        / 100,
+                        ndigits=2,
                     ),
                 )
 
                 new_segment = Segment.new(
                     length=int(mean_length),
-                    length_tolerance=round(length_tolerance, 2),
+                    length_tolerance=length_tolerance,
                     name=name,
                     rule=SegmentRule.REQUIRED
                     if segment["required"]
