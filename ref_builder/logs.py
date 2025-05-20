@@ -1,9 +1,6 @@
 import logging
-import os
 
 import structlog
-
-NO_COLOR = os.environ.get("NO_COLOR") is not None
 
 
 def configure_logger(verbosity: int, no_color: bool = False) -> None:
@@ -35,7 +32,8 @@ def configure_logger(verbosity: int, no_color: bool = False) -> None:
                 ]
             )
         )
-    if no_color or NO_COLOR:
+
+    if no_color:
         processors.append(structlog.processors.JSONRenderer())
 
     else:
