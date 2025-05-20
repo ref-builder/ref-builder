@@ -33,7 +33,12 @@ logger = structlog.get_logger()
 @click.group()
 @click.option("--debug", is_flag=True, help="Show debug logs")
 @click.option("-v", "--verbose", "verbosity", count=True)
-@click.option("--no-color", is_flag=True, help="Disable colored output.")
+@click.option(
+    "--no-color",
+    envvar="NO_COLOR",
+    is_flag=True,
+    help="Disable colored output.",
+)
 def entry(debug: bool, verbosity: int, no_color: bool) -> None:
     """Build and maintain reference sets of pathogen genome sequences."""
     if debug:
