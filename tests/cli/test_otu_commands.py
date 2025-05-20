@@ -13,7 +13,9 @@ runner = click.testing.CliRunner()
 
 
 def run_otu_with_debug_logs(
-    repo: Repo, args: list, env_mapping: dict[str, str] | None = None,
+    repo: Repo,
+    args: list,
+    env_mapping: dict[str, str] | None = None,
 ) -> click.testing.Result:
     """Invoke OTU command with debug logs enabled."""
     env = env_mapping if env_mapping is not None else {}
@@ -27,7 +29,7 @@ def run_otu_with_debug_logs(
             str(repo.path),
             *args,
         ],
-        env=env
+        env=env,
     )
 
 
@@ -49,11 +51,9 @@ class TestCreateOTUCommands:
 
         Also check resulting print_otu() console output.
         """
-        result = runner.invoke(
-            otu_command_group,
-            ["--path", str(precached_repo.path)]
-            + ["create", "--taxid", str(taxid)]
-            + accessions,
+        result = run_otu_with_debug_logs(
+            precached_repo,
+            ["create", "--taxid", str(taxid)] + accessions,
         )
 
         assert result.exit_code == 0
@@ -119,8 +119,6 @@ class TestCreateOTUCommands:
 
     def test_duplicate_accessions(self, precached_repo: Repo):
         """Test that an error is raised when duplicate accessions are provided."""
-        runner = CliRunner()
-
         result = runner.invoke(
             otu_command_group,
             ["--path", str(precached_repo.path)]
@@ -271,42 +269,36 @@ class TestExcludeAccessionsCommand:
 
     def test_excludable_ok(self, scratch_repo):
         """Test that command lists out new excluded accessions"""
-        result = runner.invoke(
-            otu_command_group,
-            ["--path", str(scratch_repo.path)]
-            + ["exclude-accessions", str(345184)]
-            + ["DQ178608", "DQ178609"],
+        result = run_otu_with_debug_logs(
+            scratch_repo,
+            ["exclude-accessions", str(345184), "DQ178608", "DQ178609"],
         )
 
         assert result.exit_code == 0
 
-        assert "Added accessions to excluded accession list" in result.output
+        assert "Added accessions to excluded accession list" in result.stderr
 
-        assert "['DQ178608', 'DQ178609']" in result.output
+        assert "['DQ178608', 'DQ178609']" in result.stderr
 
     def test_redundant_ok(self, scratch_repo):
         """Test that the command informs the user when excluded accessions are already up to date."""
-        result = runner.invoke(
-            otu_command_group,
-            ["--path", str(scratch_repo.path)]
-            + ["exclude-accessions", str(345184)]
-            + ["DQ178608", "DQ178609"],
+        result = run_otu_with_debug_logs(
+            scratch_repo,
+            ["exclude-accessions", str(345184), "DQ178608", "DQ178609"],
         )
 
         assert result.exit_code == 0
 
-        assert "['DQ178608', 'DQ178609']" in result.output
+        assert "['DQ178608', 'DQ178609']" in result.stderr
 
-        result = runner.invoke(
-            otu_command_group,
-            ["--path", str(scratch_repo.path)]
-            + ["exclude-accessions", str(345184)]
-            + ["DQ178608", "DQ178609"],
+        result = run_otu_with_debug_logs(
+            scratch_repo,
+            ["exclude-accessions", str(345184), "DQ178608", "DQ178609"],
         )
 
         assert result.exit_code == 0
 
-        assert "Excluded accession list already up to date" in result.output
+        assert "Excluded accession list already up to date" in result.stderr
 
 
 class TestSetDefaultIsolateCommand:
@@ -420,11 +412,9 @@ class TestAllowAccessionsCommand:
 
         assert result.exit_code == 0
 
-        result = runner.invoke(
-            otu_command_group,
-            ["--path", str(scratch_repo.path)]
-            + ["allow-accessions", str(taxid)]
-            + ["DQ178608"],
+        result = run_otu_with_debug_logs(
+            scratch_repo,
+            args=["allow-accessions", str(taxid), "DQ178608"],
         )
 
         assert result.exit_code == 0
@@ -439,11 +429,9 @@ class TestAllowAccessionsCommand:
 
     def test_redundant_ok(self, scratch_repo: Repo):
         """Test that the command informs the user when excluded accessions are already up to date."""
-        result = runner.invoke(
-            otu_command_group,
-            ["--path", str(scratch_repo.path)]
-            + ["allow-accessions", str(345184)]
-            + ["DQ178612", "DQ178613"],
+        result = run_otu_with_debug_logs(
+            scratch_repo,
+            ["allow-accessions", str(345184), "DQ178612", "DQ178613"],
         )
 
         assert result.exit_code == 0
@@ -502,12 +490,9 @@ class TestExtendPlanCommand:
         """Test the addition of segments to an OTU plan."""
         taxid = 2164102
 
-        filled_path_options = ["--path", str(precached_repo.path)]
-
-        result = runner.invoke(
-            otu_command_group,
+        result = run_otu_with_debug_logs(
+            precached_repo,
             [
-                *filled_path_options,
                 "create",
                 *initial_accessions,
                 "--taxid",
@@ -521,10 +506,9 @@ class TestExtendPlanCommand:
 
         assert len(otu_init.plan.segments) == len(initial_accessions)
 
-        result = runner.invoke(
-            otu_command_group,
+        result = run_otu_with_debug_logs(
+            precached_repo,
             [
-                *filled_path_options,
                 "extend-plan",
                 str(otu_init.id),
                 *new_accessions,
