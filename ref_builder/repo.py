@@ -126,7 +126,7 @@ class Repo:
         except FileNotFoundError:
             self._head_id = self.last_id
 
-        self._prune()
+        self._prune_events()
 
         # Populate the index if it is empty.
         if not self._index.otu_ids:
@@ -982,7 +982,7 @@ class Repo:
 
         return otu
 
-    def _prune(self) -> None:
+    def _prune_events(self) -> None:
         """Prune events beyond the ID in the head file."""
         head_path = self.path / "head"
 
