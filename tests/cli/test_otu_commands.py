@@ -1,6 +1,6 @@
+import click.testing
 import orjson
 import pytest
-from click.testing import CliRunner
 from syrupy import SnapshotAssertion
 from syrupy.filters import props
 
@@ -9,7 +9,26 @@ from ref_builder.cli.otu import otu as otu_command_group
 from ref_builder.console import console, print_otu
 from ref_builder.repo import Repo
 
-runner = CliRunner()
+runner = click.testing.CliRunner()
+
+
+def run_otu_with_debug_logs(
+    repo: Repo, args: list, env_mapping: dict[str, str] | None = None,
+) -> click.testing.Result:
+    """Invoke OTU command with debug logs enabled."""
+    env = env_mapping if env_mapping is not None else {}
+
+    return runner.invoke(
+        top_command_group,
+        [
+            "--debug",
+            "otu",
+            "--path",
+            str(repo.path),
+            *args,
+        ],
+        env=env
+    )
 
 
 class TestCreateOTUCommands:
