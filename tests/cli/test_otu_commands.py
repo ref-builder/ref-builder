@@ -1,8 +1,10 @@
+import orjson
 import pytest
 from click.testing import CliRunner
 from syrupy import SnapshotAssertion
 from syrupy.filters import props
 
+from ref_builder.cli.main import entry as top_command_group
 from ref_builder.cli.otu import otu as otu_command_group
 from ref_builder.console import console, print_otu
 from ref_builder.repo import Repo
@@ -552,3 +554,81 @@ class TestExtendPlanCommand:
         assert result.exit_code == 1
 
         print(result.output)
+
+
+@pytest.mark.parametrize(
+    ("taxid", "accessions"),
+    [(1278205, ["NC_020160"]), (345184, ["DQ178610", "DQ178611"])],
+)
+class TestNoColorOutput:
+    """Test that ``NO_COLOR`` option turns JSON logs on."""
+
+    def test_option_ok(
+        self,
+        taxid: int,
+        accessions: list[str],
+        precached_repo: Repo,
+    ):
+        """Test that --no-color option logs output as JSON."""
+        result = runner.invoke(
+            top_command_group,
+            [
+                "--no-color",
+                "--debug",
+                "otu",
+                "--path",
+                str(precached_repo.path),
+                "create",
+                "--taxid",
+                str(taxid),
+                *accessions,
+            ],
+            color=True,
+        )
+
+        assert result.exit_code == 0
+
+        json_logs = []
+
+        for line in result.output.splitlines():
+            try:
+                json_logs.append(orjson.loads(line))
+            except orjson.JSONDecodeError:
+                continue
+
+        assert json_logs
+
+    def test_env_var_ok(
+        self,
+        taxid: int,
+        accessions: list[str],
+        precached_repo: Repo,
+    ):
+        """Test that NO_COLOR logs output as JSON."""
+        result = runner.invoke(
+            top_command_group,
+            [
+                "--debug",
+                "otu",
+                "--path",
+                str(precached_repo.path),
+                "create",
+                "--taxid",
+                str(taxid),
+                *accessions,
+            ],
+            color=True,
+            env={"NO_COLOR": "1"},
+        )
+
+        assert result.exit_code == 0
+
+        json_logs = []
+
+        for line in result.output.splitlines():
+            try:
+                json_logs.append(orjson.loads(line))
+            except orjson.JSONDecodeError:
+                continue
+
+        assert json_logs
