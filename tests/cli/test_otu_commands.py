@@ -68,7 +68,7 @@ class TestCreateOTUCommands:
         with console.capture() as capture:
             print_otu(otus[0])
 
-        assert capture.get() in result.output
+        assert capture.get() in result.stdout
 
     @pytest.mark.parametrize(
         ("taxid", "accessions"),
@@ -127,7 +127,8 @@ class TestCreateOTUCommands:
         )
 
         assert result.exit_code == 2
-        assert "Duplicate accessions are not allowed." in result.output
+
+        assert "Duplicate accessions are not allowed." in result.stderr
 
 
 @pytest.mark.ncbi()
@@ -200,7 +201,7 @@ class TestPromoteOTUCommand:
 
         assert result.exit_code == 0
 
-        assert "Isolate updated" not in result.output
+        assert "Isolate updated" not in result.stderr
 
 
 class TestUpgradeOTUCommand:
@@ -367,8 +368,6 @@ class TestSetDefaultIsolateCommand:
             ],
         )
 
-        print(result.output)
-
         assert result.exit_code == 0
 
         otu_after = scratch_repo.get_otu_by_taxid(taxid)
@@ -393,7 +392,7 @@ class TestSetDefaultIsolateCommand:
 
         assert result.exit_code == 1
 
-        assert "Isolate ID could not be found" in result.output
+        assert "Isolate ID could not be found" in result.stderr
 
 
 class TestAllowAccessionsCommand:
@@ -419,13 +418,13 @@ class TestAllowAccessionsCommand:
 
         assert result.exit_code == 0
 
-        assert "Removed accessions from excluded accession list" in result.output
+        assert "Removed accessions from excluded accession list" in result.stderr
 
-        assert "['DQ178608']" in result.output
+        assert "['DQ178608']" in result.stderr
 
-        assert "Updated excluded accession list" in result.output
+        assert "Updated excluded accession list" in result.stderr
 
-        assert "['DQ178609']" in result.output
+        assert "['DQ178609']" in result.stderr
 
     def test_redundant_ok(self, scratch_repo: Repo):
         """Test that the command informs the user when excluded accessions are already up to date."""
@@ -436,7 +435,7 @@ class TestAllowAccessionsCommand:
 
         assert result.exit_code == 0
 
-        assert "Excluded accession list already up to date" in result.output
+        assert "Excluded accession list already up to date" in result.stderr
 
 
 class TestRenamePlanSegmentCommand:
@@ -550,8 +549,6 @@ class TestExtendPlanCommand:
         )
 
         assert result.exit_code == 1
-
-        print(result.output)
 
 
 @pytest.mark.parametrize(
