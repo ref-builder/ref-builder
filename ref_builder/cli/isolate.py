@@ -91,8 +91,9 @@ def isolate_create(
 
         except RefSeqConflictError as e:
             click.echo(
-                f"{e.isolate_name} already exists, but RefSeq items may be "
-                "promotable.",
+                f"{e.isolate_name} already exists, "
+                "but RefSeq items may be promotable.",
+                err=True,
             )
             sys.exit(1)
 
@@ -112,6 +113,7 @@ def isolate_create(
     except RefSeqConflictError as e:
         click.echo(
             f"{e.isolate_name} already exists, but RefSeq items may be promotable,",
+            err=True,
         )
         sys.exit(1)
 
@@ -141,7 +143,7 @@ def isolate_delete(repo: Repo, identifier: str) -> None:
         sys.exit(1)
 
     if delete_isolate_from_otu(repo, otu_, isolate_id):
-        click.echo(f"Isolate {isolate_id} deleted.")
+        click.echo(f"Isolate {isolate_id} deleted.", err=True)
 
     else:
         click.echo(
