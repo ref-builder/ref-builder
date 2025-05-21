@@ -1,5 +1,5 @@
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import click.testing
 
@@ -315,3 +315,60 @@ class TestIsolateDeleteCommand:
             f"Isolate cannot be deleted, due to being the representative isolate of OTU {otu.id}"
             in result.stderr
         )
+
+
+class TestIsolateGetOTUCommand:
+    """Test that ``ref-builder isolate get-otu-id ISOLATE_ID`` works as expected."""
+
+    def test_ok(self, scratch_repo):
+        otu = scratch_repo.get_otu_by_taxid(1169032)
+
+        result = runner.invoke(
+            isolate_command_group,
+            [
+                "--path",
+                str(scratch_repo.path),
+                "get-otu-id",
+                str(otu.representative_isolate),
+            ],
+        )
+
+        assert result.exit_code == 0
+
+        assert UUID(result.stdout.strip("\n")) == otu.id
+
+    def test_partial_id_ok(self, scratch_repo):
+        """Test with a truncated isolate id as identifier."""
+        otu = scratch_repo.get_otu_by_taxid(1169032)
+
+        result = runner.invoke(
+            isolate_command_group,
+            [
+                "--path",
+                str(scratch_repo.path),
+                "get-otu-id",
+                str(otu.representative_isolate)[0:8],
+            ],
+        )
+
+        assert result.exit_code == 0
+
+        assert UUID(result.stdout.strip("\n")) == otu.id
+
+    def test_nonexistent_isolate_id_fail(self, scratch_repo):
+        """Test that a nonexistent isolate ID returns nothing in stdout."""
+        result = runner.invoke(
+            isolate_command_group,
+            [
+                "--path",
+                str(scratch_repo.path),
+                "get-otu-id",
+                str(uuid4()),
+            ],
+        )
+
+        assert result.exit_code == 1
+
+        assert "Isolate ID could not be found" in result.stderr
+
+        assert not result.stdout
