@@ -134,10 +134,11 @@ def otu_get(repo: Repo, identifier: str, as_json: bool) -> None:
 
 
 @otu.command(name="list")
+@click.option("--name", type=str, help="A search limiting string, e.g. ``Apple``.")
 @pass_repo
-def otu_list(repo: Repo) -> None:
+def otu_list(repo: Repo, name: str | None) -> None:
     """List all OTUs in the repository."""
-    print_otu_list(repo.iter_minimal_otus())
+    print_otu_list(repo.iter_minimal_otus(name))
 
 
 @otu.command(name="list-events")

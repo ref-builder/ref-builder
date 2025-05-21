@@ -424,10 +424,10 @@ class Index:
                 """
                 SELECT acronym, id AS "id [uuid]", legacy_id, name, taxid
                 FROM otus
-                LIKE name = ?
+                WHERE name LIKE ?
                 ORDER BY name
                 """,
-                (f"%{name_limiter}%",)
+                (f"%{name_limiter}%",),
             ).fetchall()
 
         for row in rows:
