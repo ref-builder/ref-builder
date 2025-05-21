@@ -8,6 +8,7 @@ from ref_builder.events.base import Event, EventMetadata
 from ref_builder.models import OTUMinimal
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
+from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.plan import Plan, SegmentRule
 
 
@@ -33,6 +34,11 @@ def print_isolate(isolate: IsolateBuilder, plan: Plan) -> None:
     max_segment_name_length = max(len(str(segment.name)) for segment in plan.segments)
 
     _print_isolate(isolate, plan, max_accession_length, max_segment_name_length)
+
+
+def print_sequence_as_json(sequence: SequenceBuilder) -> None:
+    """Print the sequence data to the console as JSON."""
+    console.print(sequence.model_dump_json())
 
 
 def print_otu_as_json(otu: OTUBuilder) -> None:
