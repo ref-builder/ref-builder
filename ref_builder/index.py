@@ -366,6 +366,25 @@ class Index:
 
         return None
 
+    def get_sequence_id_by_partial(self, partial: str) -> UUID | None:
+        """Get a sequence ID beginning with a truncated ``partial`` string."""
+        if partial == "":
+            raise ValueError("Empty partial given.")
+
+        cursor = self.con.execute(
+            'SELECT id AS "id [uuid]" FROM sequence WHERE id LIKE ?',
+            (f"{partial}%",),
+        )
+
+        if result := cursor.fetchmany(size=2):
+            if len(result) > 1:
+                raise PartialIDConflictError
+
+            if result:
+                return result[0][0]
+
+        return None
+
     def get_otu_id_by_sequence_id(self, sequence_id: UUID) -> UUID | None:
         """Get an OTU ID from a Sequence ID that belongs to it."""
         cursor = self.con.execute(
