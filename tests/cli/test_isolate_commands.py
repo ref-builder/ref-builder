@@ -1,12 +1,35 @@
+from pathlib import Path
 from uuid import UUID
 
-from click.testing import CliRunner
+import click.testing
 
 from ref_builder.cli.isolate import isolate as isolate_command_group
+from ref_builder.cli.main import entry as top_command_group
 from ref_builder.cli.otu import otu as otu_command_group
 from ref_builder.utils import IsolateName, IsolateNameType
 
-runner = CliRunner()
+runner = click.testing.CliRunner()
+
+
+def run_isolate_with_debug_logs(
+    repo_path: Path,
+    args: list,
+    env_mapping: dict[str, str] | None = None,
+) -> click.testing.Result:
+    """Invoke OTU command with debug logs enabled."""
+    env = env_mapping if env_mapping is not None else {}
+
+    return runner.invoke(
+        top_command_group,
+        [
+            "--debug",
+            "isolate",
+            "--path",
+            str(repo_path),
+            *args,
+        ],
+        env=env,
+    )
 
 
 class TestIsolateCreateCommand:
@@ -40,7 +63,17 @@ class TestIsolateCreateCommand:
 
         assert result.exit_code == 0
 
-        second_isolate_id = UUID(result.output.strip("\n"))
+        otu_after = precached_repo.get_otu_by_taxid(taxid)
+
+        sequence_after = otu_after.get_sequence_by_accession(
+            second_isolate_accessions[0]
+        )
+
+        second_isolate_id = list(
+            otu_after.get_isolate_ids_containing_sequence_id(sequence_after.id)
+        )[0]
+
+        assert UUID(result.stdout.strip("\n")) == second_isolate_id
 
         second_isolate = precached_repo.get_isolate(second_isolate_id)
 
@@ -73,7 +106,15 @@ class TestIsolateCreateCommand:
 
         assert result.exit_code == 0
 
-        second_isolate_id = UUID(result.output.strip("\n"))
+        otu_after = precached_repo.get_otu_by_taxid(taxid)
+
+        sequence_after = otu_after.get_sequence_by_accession("DQ178613")
+
+        second_isolate_id = list(
+            otu_after.get_isolate_ids_containing_sequence_id(sequence_after.id)
+        )[0]
+
+        assert UUID(result.stdout.strip("\n")) == second_isolate_id
 
         second_isolate = precached_repo.get_isolate(second_isolate_id)
 
@@ -106,7 +147,15 @@ class TestIsolateCreateCommand:
 
         assert result.exit_code == 0
 
-        second_isolate_id = UUID(result.output.strip("\n"))
+        otu_after = precached_repo.get_otu_by_taxid(taxid)
+
+        sequence_after = otu_after.get_sequence_by_accession("DQ178613")
+
+        second_isolate_id = list(
+            otu_after.get_isolate_ids_containing_sequence_id(sequence_after.id)
+        )[0]
+
+        assert UUID(result.stdout.strip("\n")) == second_isolate_id
 
         second_isolate = precached_repo.get_isolate(second_isolate_id)
 
@@ -190,7 +239,7 @@ class TestIsolateGetCommand:
 
         assert result.exit_code == 1
 
-        assert "Partial ID segment must be at least 8 characters long" in result.output
+        assert "Partial ID segment must be at least 8 characters long" in result.stderr
 
 
 class TestIsolateDeleteCommand:
@@ -206,14 +255,14 @@ class TestIsolateDeleteCommand:
 
         assert isolate_id in otu.isolate_ids
 
-        result = runner.invoke(
-            isolate_command_group,
+        result = run_isolate_with_debug_logs(
+            scratch_repo,
             ["--path", str(scratch_repo.path), "delete", str(isolate_id)],
         )
 
         assert result.exit_code == 0
 
-        assert f"Isolate {isolate_id} deleted" in result.output
+        assert f"Isolate {isolate_id} deleted" in result.stderr
 
         assert isolate_id not in scratch_repo.get_otu_by_taxid(1169032).isolate_ids
 
@@ -234,7 +283,7 @@ class TestIsolateDeleteCommand:
 
         assert result.exit_code == 0
 
-        assert f"Isolate {isolate_id} deleted" in result.output
+        assert f"Isolate {isolate_id} deleted" in result.stderr
 
         assert isolate_id not in scratch_repo.get_otu_by_taxid(1169032).isolate_ids
 
@@ -264,5 +313,5 @@ class TestIsolateDeleteCommand:
 
         assert (
             f"Isolate cannot be deleted, due to being the representative isolate of OTU {otu.id}"
-            in result.output
+            in result.stderr
         )
