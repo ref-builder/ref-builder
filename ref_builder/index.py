@@ -292,6 +292,21 @@ class Index:
 
         return None
 
+    def get_ids_by_partial_name(self, partial: str) -> list[UUID]:
+        """Return a list of OTU IDs where the name matches a given string."""
+        if not partial:
+            return []
+
+        cursor = self.con.execute(
+            'SELECT id AS "id [uuid]" FROM otus LIKE name = ?',
+            (f"%{partial}%",),
+        )
+
+        if result := cursor.fetchall():
+            return result
+
+        return []
+
     def get_id_by_taxid(self, taxid: int) -> UUID | None:
         """Get an OTU ID by its taxonomy ID."""
         cursor = self.con.execute(
