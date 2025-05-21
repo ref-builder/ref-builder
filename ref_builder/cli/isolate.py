@@ -183,3 +183,23 @@ def isolate_get(repo: Repo, identifier: str, json_: bool) -> None:
         print_isolate_as_json(isolate_)
     else:
         print_isolate(isolate_, otu_.plan)
+
+
+@isolate.command(name="get-otu-id")
+@click.argument("IDENTIFIER", type=str)
+@pass_repo
+def isolate_get_otu_id(repo: Repo, identifier: str) -> None:
+    """Get the OTU id of a containing isolate corresponding to IDENTIFIER.
+
+    IDENTIFIER is an unique isolate ID (>8 characters)
+    """
+    otu_id, isolate_id = get_otu_isolate_ids_from_identifier(repo, identifier)
+
+    otu_ = repo.get_otu(otu_id)
+
+    if otu_ is None:
+        sys.exit(1)
+
+    else:
+        click.echo(otu_.id)
+
