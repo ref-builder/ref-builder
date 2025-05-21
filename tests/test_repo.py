@@ -838,14 +838,31 @@ class TestGetIsolate:
         assert isolate_unnamed_after.name is None
         assert isolate_unnamed_after.accessions == {"NP000001"}
 
+    def test_get_isolate_id_from_partial(self, initialized_repo: Repo):
+        """Test that an isolate id can be retrieved from a truncated ``partial`` string."""
+        otu = next(initialized_repo.iter_otus())
 
-def test_get_isolate_id_from_partial(initialized_repo: Repo):
-    """Test that an isolate id can be retrieved from a truncated ``partial`` string."""
-    otu = next(initialized_repo.iter_otus())
+        isolate = otu.isolates[0]
 
-    isolate = otu.isolates[0]
+        assert (
+            initialized_repo.get_isolate_id_by_partial(str(isolate.id)[:8])
+            == isolate.id
+        )
 
-    assert initialized_repo.get_isolate_id_by_partial(str(isolate.id)[:8]) == isolate.id
+
+class TestGetSequence:
+    """Test that a sequence ID can be retrieved from the repo using only a primary accession."""
+
+    def test_get_by_accession_ok(self, initialized_repo: Repo):
+        otu = next(initialized_repo.iter_otus())
+
+        sequence = otu.get_sequence_by_accession("TM000001")
+
+        indexed_sequence_id = initialized_repo.get_sequence_id_by_accession("TM000001")
+
+        assert isinstance(indexed_sequence_id, UUID)
+
+        assert indexed_sequence_id == sequence.id
 
 
 class TestCreateOTUWithValidation:
