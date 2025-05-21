@@ -1338,3 +1338,35 @@ class TestMalformedEvent:
                 match="Input should be a valid integer, unable to parse string",
             ):
                 initialized_repo.get_otu_by_taxid(12242)
+
+
+def test_prune_on_load(initialized_repo: Repo):
+    """Test that the Repo properly prunes the events and the index even before read-only actions,
+    such as .get_otu().
+    """
+    assert initialized_repo.get_otu_by_taxid(12242)
+
+    assert (
+        initialized_repo.path / "src" / f"0000000{initialized_repo.head_id}.json"
+    ).exists()
+
+    assert initialized_repo.last_id == initialized_repo.head_id
+
+    head_path = initialized_repo.path / "head"
+
+    # Set head file to before OTU addition and reload Repo.
+    head_path.unlink()
+    with open(head_path, "w") as f:
+        f.write("1")
+
+    reinitialized_repo = Repo(initialized_repo.path)
+
+    assert reinitialized_repo.head_id < initialized_repo.head_id
+
+    assert not (
+        reinitialized_repo.path / "src" / f"0000000{initialized_repo.head_id}.json"
+    ).exists()
+
+    assert reinitialized_repo.last_id == reinitialized_repo.head_id
+
+    assert reinitialized_repo.get_otu_by_taxid(12242) is None

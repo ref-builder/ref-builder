@@ -126,7 +126,7 @@ class Repo:
         except FileNotFoundError:
             self._head_id = self.last_id
 
-        self._prune()
+        self._prune_events()
 
         # Populate the index if it is empty.
         if not self._index.otu_ids:
@@ -982,7 +982,7 @@ class Repo:
 
         return otu
 
-    def _prune(self) -> None:
+    def _prune_events(self) -> None:
         """Prune events beyond the ID in the head file."""
         head_path = self.path / "head"
 
@@ -993,6 +993,7 @@ class Repo:
             head_id = int(f.read())
 
         self._event_store.prune(head_id)
+        self._index.prune(head_id)
 
     def _write_event(self, cls: type[Event], data: EventData, query: EventQuery):
         """Write an event to the repository."""
