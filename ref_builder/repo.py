@@ -899,6 +899,13 @@ class Repo:
 
         return self._index.get_isolate_id_by_partial(partial)
 
+    def get_sequence_by_id(self, sequence_id: uuid.UUID) -> SequenceBuilder | None:
+        """Return the sequence with the given UUID."""
+        if (otu_id := self._index.get_otu_id_by_sequence_id(sequence_id)) is None:
+            return None
+
+        return self.get_otu(otu_id).get_sequence_by_id(sequence_id)
+
     def get_otu_first_created(self, otu_id: uuid.UUID) -> datetime.datetime | None:
         """Get the timestamp of the first event associated with an OTU.
         If no events can be found for this OTU, return None.
