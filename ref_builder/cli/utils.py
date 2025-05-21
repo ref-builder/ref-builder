@@ -6,6 +6,7 @@ import click
 from ref_builder.errors import InvalidInputError, PartialIDConflictError
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.repo import Repo
+from ref_builder.utils import is_accession_key_valid
 
 pass_repo = click.make_pass_decorator(Repo)
 
@@ -104,4 +105,45 @@ def get_otu_isolate_ids_from_identifier(repo: Repo, identifier: str) -> (UUID, U
                 return otu_id, isolate_id
 
     click.echo("Isolate ID could not be found.", err=True)
+    sys.exit(1)
+
+
+def get_otu_sequence_ids_from_identifier(repo: Repo, identifier: str) -> (UUID, UUID):
+    """Return an sequence ID from the repo if identifier matches a single sequence.
+
+    Handles cases where the sequence cannot be found.
+    """
+    sequence_id = None
+
+    if len(identifier) == 32:
+        try:
+            sequence_id = UUID(identifier)
+        except ValueError:
+            sequence_id = None
+
+    elif is_accession_key_valid(identifier):
+        sequence_id = repo.get_sequence_id_by_accession(identifier)
+
+    else:
+        try:
+            sequence_id = repo.get_sequence_id_by_partial(identifier)
+
+        except PartialIDConflictError:
+            click.echo(
+                "Partial ID too short to narrow down results.",
+                err=True,
+            )
+
+        except InvalidInputError:
+            click.echo(
+                "Partial ID segment must be at least 8 characters long.", err=True
+            )
+            sys.exit(1)
+
+    if sequence_id is not None:
+        if (otu_id := repo.get_otu_id_by_sequence_id(sequence_id)) is not None:
+            if sequence_id in repo.get_otu(otu_id).sequence_ids:
+                return otu_id, sequence_id
+
+    click.echo("Sequence ID could not be found.", err=True)
     sys.exit(1)
