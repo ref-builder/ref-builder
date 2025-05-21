@@ -119,16 +119,23 @@ def otu_create(
     is_flag=True,
     help="Output in JSON form",
 )
+@click.option("--id-only", is_flag=True, help="Only output OTU ID.")
 @pass_repo
-def otu_get(repo: Repo, identifier: str, as_json: bool) -> None:
+def otu_get(repo: Repo, identifier: str, as_json: bool, id_only: bool) -> None:
     """Get an OTU by its unique ID or taxonomy ID.
 
     IDENTIFIER is a taxonomy ID or unique OTU ID (>8 characters)
     """
     otu_ = get_otu_from_identifier(repo, identifier)
 
+    if id_only:
+        click.echo(otu_.id)
+
+        sys.exit(0)
+
     if as_json:
         print_otu_as_json(otu_)
+
     else:
         print_otu(otu_)
 
