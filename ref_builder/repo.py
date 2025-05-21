@@ -910,6 +910,22 @@ class Repo:
 
         return self.get_otu(otu_id).get_sequence_by_id(sequence_id)
 
+    def get_sequence_id_by_partial(self, partial: str) -> uuid.UUID | None:
+        """Return the UUID of the sequence starting with the given ``partial`` string.
+        Raise a ValueErrror if more than one matching sequence id is found.
+        If no sequence is found, return None.
+
+        :param partial: a partial segment of the isolate id with a minimum length of 8
+        :return: the UUID of the isolate or ``None``
+
+        """
+        if len(partial) < 8:
+            raise InvalidInputError(
+                "Partial ID segment must be at least 8 characters long."
+            )
+
+        return self._index.get_sequence_id_by_partial(partial)
+
     def get_sequence_id_by_accession(self, accession: str) -> uuid.UUID | None:
         """Return the sequence ID associated with the given accession."""
         return self._index.get_sequence_id_from_accession(accession)
