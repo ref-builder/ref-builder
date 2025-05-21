@@ -366,6 +366,18 @@ class Index:
 
         return None
 
+    def get_otu_id_by_sequence_id(self, sequence_id: UUID) -> UUID | None:
+        """Get an OTU ID from a Sequence ID that belongs to it."""
+        cursor = self.con.execute(
+            'SELECT otu_id AS "otu_id [uuid]" FROM sequences WHERE id = ?',
+            (sequence_id,),
+        )
+
+        if result := cursor.fetchone():
+            return result[0]
+
+        return None
+
     def delete_otu(self, otu_id: UUID) -> None:
         """Remove an OTU from the index.
 
