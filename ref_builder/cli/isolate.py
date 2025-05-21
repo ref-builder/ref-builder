@@ -65,12 +65,14 @@ def isolate_create(
         sys.exit(1)
 
     if unnamed:
-        add_unnamed_isolate(
+        isolate_ = add_unnamed_isolate(
             repo,
             otu_,
             accessions_,
             ignore_cache=ignore_cache,
         )
+
+        click.echo(str(isolate_.id))
 
         sys.exit(0)
 
@@ -79,34 +81,46 @@ def isolate_create(
         isolate_name_ = IsolateName(type=isolate_name_type, value=isolate_name_value)
 
         try:
-            add_and_name_isolate(
+            isolate_ = add_and_name_isolate(
                 repo,
                 otu_,
                 accessions_,
                 ignore_cache=ignore_cache,
                 isolate_name=isolate_name_,
             )
-            sys.exit(0)
 
         except RefSeqConflictError as e:
             click.echo(
-                f"{e.isolate_name} already exists, but RefSeq items may be "
-                "promotable.",
+                f"{e.isolate_name} already exists, "
+                "but RefSeq items may be promotable.",
+                err=True,
             )
             sys.exit(1)
 
+        else:
+            click.echo(str(isolate_.id))
+
+            sys.exit(0)
+
     try:
-        add_genbank_isolate(
+        isolate_ = add_genbank_isolate(
             repo,
             otu_,
             accessions_,
             ignore_cache=ignore_cache,
         )
+
     except RefSeqConflictError as e:
         click.echo(
             f"{e.isolate_name} already exists, but RefSeq items may be promotable,",
+            err=True,
         )
         sys.exit(1)
+
+    else:
+        click.echo(str(isolate_.id))
+
+        sys.exit(0)
 
 
 @isolate.command(name="delete")  # type: ignore
@@ -125,12 +139,19 @@ def isolate_delete(repo: Repo, identifier: str) -> None:
 
     if (otu_ := repo.get_otu(otu_id)) is None:
         click.echo("OTU not found.", err=True)
+
         sys.exit(1)
 
     if delete_isolate_from_otu(repo, otu_, isolate_id):
-        click.echo("Isolate deleted.")
+        click.echo(f"Isolate {isolate_id} deleted.", err=True)
 
     else:
+        click.echo(
+            f"Isolate cannot be deleted, "
+            f"due to being the representative isolate of OTU {otu_id}.",
+            err=True,
+        )
+
         sys.exit(1)
 
 
