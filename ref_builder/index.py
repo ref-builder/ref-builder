@@ -408,14 +408,27 @@ class Index:
                 timestamp=row[2],
             )
 
-    def iter_minimal_otus(self) -> Iterator[OTUMinimal]:
+    def iter_minimal_otus(self, name_limiter: str | None = None) -> Iterator[OTUMinimal]:
         """Iterate over minimal representations of all OTUs in the index."""
-        rows = self.con.execute(
-            """
-            SELECT acronym, id AS "id [uuid]", legacy_id, name, taxid
-            FROM otus ORDER BY name
-            """,
-        ).fetchall()
+        if name_limiter is None:
+            rows = self.con.execute(
+                """
+                SELECT acronym, id AS "id [uuid]", legacy_id, name, taxid
+                FROM otus
+                ORDER BY name
+                """,
+            ).fetchall()
+
+        else:
+            rows = self.con.execute(
+                """
+                SELECT acronym, id AS "id [uuid]", legacy_id, name, taxid
+                FROM otus
+                LIKE name = ?
+                ORDER BY name
+                """,
+                (f"%{name_limiter}%",)
+            ).fetchall()
 
         for row in rows:
             yield OTUMinimal(
