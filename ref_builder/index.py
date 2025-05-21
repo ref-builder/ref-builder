@@ -375,7 +375,7 @@ class Index:
             raise ValueError("Empty partial given.")
 
         cursor = self.con.execute(
-            'SELECT id AS "id [uuid]" FROM sequence WHERE id LIKE ?',
+            'SELECT id AS "id [uuid]" FROM sequences WHERE id LIKE ?',
             (f"{partial}%",),
         )
 
