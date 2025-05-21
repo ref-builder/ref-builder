@@ -53,6 +53,11 @@ class OTUBuilder(OTUModel):
         return self.accessions | self.excluded_accessions
 
     @property
+    def sequence_ids(self) -> set[UUID4]:
+        """A set of UUIDs for sequences in the OTU."""
+        return set(self._sequences_by_id.keys())
+
+    @property
     def isolate_ids(self) -> set[UUID4]:
         """A set of UUIDs for isolates in the OTU."""
         return set(self._isolates_by_id.keys())
