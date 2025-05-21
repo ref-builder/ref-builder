@@ -394,8 +394,11 @@ class Index:
             raise ValueError("Empty accession given.")
 
         cursor = self.con.execute(
-            'SELECT id AS "id [uuid]" FROM sequences WHERE accession_key = ?',
-            ("accession",),
+            """
+            SELECT id AS "id [uuid]"
+            FROM sequences WHERE accession_key = ?
+            """,
+            (f"{accession}",),
         )
 
         if result := cursor.fetchone():
