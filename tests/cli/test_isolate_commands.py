@@ -241,6 +241,24 @@ class TestIsolateGetCommand:
 
         assert "Partial ID segment must be at least 8 characters long" in result.stderr
 
+    def test_nonexistent_isolate_id_fail(self, scratch_repo):
+        """Test that a nonexistent isolate ID returns nothing in stdout."""
+        result = runner.invoke(
+            isolate_command_group,
+            [
+                "--path",
+                str(scratch_repo.path),
+                "get",
+                str(uuid4()),
+            ],
+        )
+
+        assert result.exit_code == 1
+
+        assert "Isolate ID could not be found" in result.stderr
+
+        assert not result.stdout
+
 
 class TestIsolateDeleteCommand:
     """Test `ref-builder isolate delete ISOLATE_ID`` works as expected."""
