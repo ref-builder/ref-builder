@@ -41,6 +41,49 @@ def print_sequence_as_json(sequence: SequenceBuilder) -> None:
     console.print(sequence.model_dump_json())
 
 
+def print_sequence(sequence: SequenceBuilder) -> None:
+    console.print(
+        Text(
+            str(sequence.definition),
+            style="bold underline",
+        )
+    )
+    console.line()
+
+    table = Table(
+        box=None,
+        show_header=False,
+    )
+
+    table.add_row(
+        "[bold]ACCESSION[/bold]",
+        _render_nucleotide_link(str(sequence.accession)),
+    )
+    table.add_row("[bold]ID[/bold]", str(sequence.id))
+    if sequence.legacy_id:
+        table.add_row("[bold]LEGACY ID[/bold]", sequence.legacy_id)
+    table.add_row("[bold]SEGMENT ID[/bold]", str(sequence.segment))
+    table.add_row("LENGTH", str(len(sequence.sequence)))
+
+    console.print(table)
+
+    console.line()
+
+    sequence_table = Table(
+        box=None,
+    )
+
+    console.line()
+
+    console.print("[bold]SEQUENCE[/bold]")
+
+    console.line()
+
+    console.print(str(sequence.sequence))
+
+    console.print(sequence_table)
+
+
 def print_otu_as_json(otu: OTUBuilder) -> None:
     """Print the OTU data to the console as JSON."""
     console.print(otu.model_dump_json())
