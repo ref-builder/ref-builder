@@ -388,6 +388,21 @@ class Index:
 
         return None
 
+    def get_sequence_id_from_accession(self, accession: str) -> UUID | None:
+        """Return the sequence ID corresponding to an accession number."""
+        if accession == "":
+            raise ValueError("Empty partial given.")
+
+        cursor = self.con.execute(
+            'SELECT id AS "id [uuid]" FROM sequence WHERE accession_key = ?',
+            ("accession",),
+        )
+
+        if result := cursor.fetchone():
+            return result[0]
+
+        return None
+
     def get_otu_id_by_sequence_id(self, sequence_id: UUID) -> UUID | None:
         """Get an OTU ID from a Sequence ID that belongs to it."""
         cursor = self.con.execute(
