@@ -910,6 +910,10 @@ class Repo:
 
         return self.get_otu(otu_id).get_sequence_by_id(sequence_id)
 
+    def get_sequence_id_by_accession(self, accession: str) -> uuid.UUID | None:
+        """Return the sequence ID associated with the given accession."""
+        return self._index.get_sequence_id_from_accession(accession)
+
     def get_otu_first_created(self, otu_id: uuid.UUID) -> datetime.datetime | None:
         """Get the timestamp of the first event associated with an OTU.
         If no events can be found for this OTU, return None.

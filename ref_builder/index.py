@@ -391,10 +391,10 @@ class Index:
     def get_sequence_id_from_accession(self, accession: str) -> UUID | None:
         """Return the sequence ID corresponding to an accession number."""
         if accession == "":
-            raise ValueError("Empty partial given.")
+            raise ValueError("Empty accession given.")
 
         cursor = self.con.execute(
-            'SELECT id AS "id [uuid]" FROM sequence WHERE accession_key = ?',
+            'SELECT id AS "id [uuid]" FROM sequences WHERE accession_key = ?',
             ("accession",),
         )
 
