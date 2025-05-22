@@ -46,6 +46,46 @@ class TestSequenceGetCommand:
 
             assert result.exit_code == 0
 
+    def test_accession_ok(self, scratch_repo):
+        """Test that an accession number can be used as an accurate identifier."""
+        otu = scratch_repo.get_otu_by_taxid(1169032)
+
+        for accession in otu.accessions:
+            result = runner.invoke(
+                sequence_command_group,
+                [
+                    "--path",
+                    str(scratch_repo.path),
+                    "get",
+                    "--id-only",
+                    accession,
+                ],
+            )
+
+            assert result.exit_code == 0
+
+            assert UUID(result.stdout.strip("\n")) == otu.get_sequence_by_accession(accession).id
+
+    def test_versioned_accession_ok(self, scratch_repo):
+        """Test that a versioned accession number can be used as an accurate identifier."""
+        otu = scratch_repo.get_otu_by_taxid(1169032)
+
+        for accession in otu.versioned_accessions:
+            result = runner.invoke(
+                sequence_command_group,
+                [
+                    "--path",
+                    str(scratch_repo.path),
+                    "get",
+                    "--id-only",
+                    str(accession),
+                ],
+            )
+
+            assert result.exit_code == 0
+
+            assert UUID(result.stdout.strip("\n")) == otu.get_sequence_by_accession(accession.key).id
+
     def test_json_ok(self, scratch_repo):
         otu_id = scratch_repo.get_otu_id_by_taxid(1169032)
 
@@ -147,5 +187,43 @@ class TestSequenceGetOTUCommand:
         assert result.exit_code == 1
 
         assert "Sequence ID could not be found" in result.stderr
+
+        assert not result.stdout
+
+
+class TestSequenceGetIsolatesCommand:
+    """Test that ``ref-builder sequence get-isolate-ids SEQUENCE_ID`` works as expected."""
+
+    def test_ok(self, scratch_repo):
+        otu = scratch_repo.get_otu_by_taxid(1169032)
+
+        for isolate in otu.isolates:
+            for sequence_id in isolate.sequence_ids:
+                result = runner.invoke(
+                    sequence_command_group,
+                    [
+                        "--path",
+                        str(scratch_repo.path),
+                        "get-isolate-ids",
+                        str(sequence_id),
+                    ],
+                )
+
+                assert result.exit_code == 0
+
+                assert UUID(result.stdout.strip("\n")) == isolate.id
+
+    def test_nonexistent_id_fail(self, scratch_repo):
+        result = runner.invoke(
+            sequence_command_group,
+            [
+                "--path",
+                str(scratch_repo.path),
+                "get-isolate-ids",
+                str(uuid4()),
+            ],
+        )
+
+        assert result.exit_code == 1
 
         assert not result.stdout
