@@ -51,3 +51,22 @@ def sequence_get(repo: Repo, identifier: str, id_only: bool, json_: bool) -> Non
 
     else:
         print_sequence(sequence_)
+
+
+@sequence.command(name="get-otu-id")
+@click.argument("IDENTIFIER", type=str)
+@pass_repo
+def sequence_get_otu_id(repo: Repo, identifier: str) -> None:
+    """Get the OTU id containing a sequence associated with the given IDENTIFIER.
+
+    IDENTIFIER is an unique isolate ID (>8 characters)
+    """
+    otu_id, sequence_id = get_otu_sequence_ids_from_identifier(repo, identifier)
+
+    otu_ = repo.get_otu(otu_id)
+
+    if otu_ is None:
+        sys.exit(1)
+
+    else:
+        click.echo(otu_.id)
