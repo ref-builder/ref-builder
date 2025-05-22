@@ -1,4 +1,4 @@
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import click.testing
 
@@ -81,6 +81,65 @@ class TestSequenceGetCommand:
                 "--path",
                 str(scratch_repo.path),
                 "get",
+                str(uuid4()),
+            ],
+        )
+
+        assert result.exit_code == 1
+
+        assert "Sequence ID could not be found" in result.stderr
+
+        assert not result.stdout
+
+
+class TestSequenceGetOTUCommand:
+    """Test that ``ref-builder sequence get-otu-id SEQUENCE_ID`` works as expected."""
+
+    def test_ok(self, scratch_repo):
+        otu = scratch_repo.get_otu_by_taxid(1169032)
+
+        for sequence_id in otu.sequence_ids:
+            result = runner.invoke(
+                sequence_command_group,
+                [
+                    "--path",
+                    str(scratch_repo.path),
+                    "get-otu-id",
+                    str(sequence_id),
+                ],
+            )
+
+            assert result.exit_code == 0
+
+            assert UUID(result.stdout.strip("\n")) == otu.id
+
+    def test_partial_id_ok(self, scratch_repo):
+        """Test with a truncated sequence id as identifier."""
+        otu = scratch_repo.get_otu_by_taxid(1169032)
+
+        for sequence_id in otu.sequence_ids:
+            result = runner.invoke(
+                sequence_command_group,
+                [
+                    "--path",
+                    str(scratch_repo.path),
+                    "get-otu-id",
+                    str(sequence_id)[0:8],
+                ],
+            )
+
+            assert result.exit_code == 0
+
+            assert UUID(result.stdout.strip("\n")) == otu.id
+
+    def test_nonexistent_id_fail(self, scratch_repo):
+        """Test that a nonexistent sequence ID returns nothing in stdout."""
+        result = runner.invoke(
+            sequence_command_group,
+            [
+                "--path",
+                str(scratch_repo.path),
+                "get-otu-id",
                 str(uuid4()),
             ],
         )
