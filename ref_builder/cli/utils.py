@@ -6,7 +6,7 @@ import click
 from ref_builder.errors import InvalidInputError, PartialIDConflictError
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.repo import Repo
-from ref_builder.utils import is_accession_key_valid
+from ref_builder.utils import Accession, is_accession_key_valid
 
 pass_repo = click.make_pass_decorator(Repo)
 
@@ -123,6 +123,14 @@ def get_otu_sequence_ids_from_identifier(repo: Repo, identifier: str) -> (UUID, 
 
     elif is_accession_key_valid(identifier):
         sequence_id = repo.get_sequence_id_by_accession(identifier)
+
+    elif "." in identifier:
+        try:
+            versioned_accession = Accession.from_string(identifier)
+        except ValueError:
+            pass
+        else:
+            sequence_id = repo.get_sequence_id_by_accession(versioned_accession.key)
 
     else:
         try:
