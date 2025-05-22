@@ -70,3 +70,26 @@ def sequence_get_otu_id(repo: Repo, identifier: str) -> None:
 
     else:
         click.echo(otu_.id)
+
+@sequence.command(name="get-isolate-ids")
+@click.argument("IDENTIFIER", type=str)
+@pass_repo
+def sequence_get_isolate_ids(repo: Repo, identifier: str) -> None:
+    """Get the isolate id/s containing a sequence associated with the given IDENTIFIER.
+
+    IDENTIFIER can be an accession number or a unique isolate ID (>8 characters)
+    """
+    otu_id, sequence_id = get_otu_sequence_ids_from_identifier(repo, identifier)
+
+    otu_ = repo.get_otu(otu_id)
+
+    if otu_ is None:
+        sys.exit(1)
+
+    isolate_ids = otu_.get_isolate_ids_containing_sequence_id(sequence_id)
+
+    if not isolate_ids:
+        sys.exit(1)
+
+    else:
+        click.echo(", ".join([str(isolate_id) for isolate_id in isolate_ids]))
