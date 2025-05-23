@@ -62,13 +62,14 @@ class SegmentName:
 
         Return None if the string does not match the expected format.
         """
-        segment_name_parse = COMPLEX_NAME_PATTERN.fullmatch(string)
+        for pattern in (COMPLEX_NAME_PATTERN, UNDELIMITED_NAME_PATTERN):
+            segment_name_parse = pattern.fullmatch(string)
 
-        if segment_name_parse:
-            return SegmentName(
-                prefix=segment_name_parse.group(1),
-                key=segment_name_parse.group(2),
-            )
+            if segment_name_parse:
+                return SegmentName(
+                    prefix=segment_name_parse.group(1),
+                    key=segment_name_parse.group(2),
+                )
 
         return None
 
@@ -236,13 +237,13 @@ def extract_segment_name_from_record(record: NCBIGenbank) -> SegmentName | None:
     if (name := SegmentName.from_string(record.source.segment)) is not None:
         return name
 
-    # Handles common cases without delimiters
-    for moltype_prefix in ["DNA", "RNA"]:
-        if record.source.segment.startswith(moltype_prefix):
-            return SegmentName(
-                prefix=record.moltype,
-                key=record.source.segment[3:].strip(),
-            )
+    # # Handles common cases without delimiters
+    # for moltype_prefix in ["DNA", "RNA"]:
+    #     if record.source.segment.startswith(moltype_prefix):
+    #         return SegmentName(
+    #             prefix=record.moltype,
+    #             key=record.source.segment[3:].strip(),
+    #         )
 
     if SIMPLE_NAME_PATTERN.fullmatch(record.source.segment):
         return SegmentName(
