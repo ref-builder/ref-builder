@@ -277,13 +277,6 @@ def extract_segment_name_from_record_with_plan(
         except AttributeError:
             raise ValueError("Multipartite plan contains unnamed segments")
 
-        # Handle no delimiter.
-        for prefix in plan_keys_and_prefixes.values():
-            if record.source.segment.casefold().startswith(prefix.casefold()):
-                return SegmentName(
-                    prefix=prefix, key=record.source.segment[len(prefix) :].strip()
-                )
-
         # Handle no prefix.
         with suppress(KeyError):
             return SegmentName(
