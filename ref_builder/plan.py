@@ -12,8 +12,13 @@ from ref_builder.ncbi.models import NCBIGenbank
 SIMPLE_NAME_PATTERN = re.compile(r"([A-Za-z0-9])+")
 """Regex pattern for parsing segment name strings with no prefix."""
 
-COMPLEX_NAME_PATTERN = re.compile(r"([A-Za-z]+)[-_ ]+(.*)")
+COMPLEX_NAME_PATTERN = re.compile(r"([A-Za-z]+)[-_ ]+(\S+)")
 """Regex pattern for parsing segment name strings consisting of a prefix and a key."""
+
+UNDELIMITED_NAME_PATTERN = re.compile(r"([DR]NA)(\S+)")
+"""Regex pattern for parsing segment name strings consisting of a prefix and key with 
+no delimiter character. Only "DNA" and "RNA" are supported prefixes.
+"""
 
 
 class PlanWarning(UserWarning):
