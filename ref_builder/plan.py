@@ -12,16 +12,23 @@ from ref_builder.ncbi.models import NCBIGenbank
 SIMPLE_NAME_PATTERN = re.compile(r"([A-Za-z0-9])+")
 """Regex pattern for parsing segment name strings with no prefix."""
 
-COMPLEX_NAME_PATTERN = re.compile(r"([A-Za-z]+)[-_ ]+(.*)")
+COMPLEX_NAME_PATTERN = re.compile(r"([A-Za-z]+)[-_ ]+(\S+)")
 """Regex pattern for parsing segment name strings consisting of a prefix and a key."""
+
+UNDELIMITED_NAME_PATTERN = re.compile(r"([DR]NA)(\S+)")
+"""Regex pattern for parsing segment name strings consisting of a prefix and key with 
+no delimiter character. Only "DNA" and "RNA" are supported prefixes.
+"""
 
 
 class PlanWarning(UserWarning):
-    pass
+    """Warns when the plan does not follow best practices."""
 
 
 class PlanConformationError(ValueError):
-    """Raised when potential new sequences do not pass validation against the OTU plan."""
+    """Raised when potential new sequences do not pass validation against
+    the OTU plan.
+    """
 
 
 class SegmentRule(StrEnum):
@@ -57,13 +64,14 @@ class SegmentName:
 
         Return None if the string does not match the expected format.
         """
-        segment_name_parse = COMPLEX_NAME_PATTERN.fullmatch(string)
+        for pattern in (COMPLEX_NAME_PATTERN, UNDELIMITED_NAME_PATTERN):
+            segment_name_parse = pattern.fullmatch(string)
 
-        if segment_name_parse:
-            return SegmentName(
-                prefix=segment_name_parse.group(1),
-                key=segment_name_parse.group(2),
-            )
+            if segment_name_parse:
+                return SegmentName(
+                    prefix=segment_name_parse.group(1),
+                    key=segment_name_parse.group(2),
+                )
 
         return None
 
@@ -231,14 +239,6 @@ def extract_segment_name_from_record(record: NCBIGenbank) -> SegmentName | None:
     if (name := SegmentName.from_string(record.source.segment)) is not None:
         return name
 
-    # Handles common cases without delimiters
-    for moltype_prefix in ["DNA", "RNA"]:
-        if record.source.segment.startswith(moltype_prefix):
-            return SegmentName(
-                prefix=record.moltype,
-                key=record.source.segment[3:].strip(),
-            )
-
     if SIMPLE_NAME_PATTERN.fullmatch(record.source.segment):
         return SegmentName(
             prefix=record.moltype,
@@ -276,13 +276,6 @@ def extract_segment_name_from_record_with_plan(
             }
         except AttributeError:
             raise ValueError("Multipartite plan contains unnamed segments")
-
-        # Handle no delimiter.
-        for prefix in plan_keys_and_prefixes.values():
-            if record.source.segment.casefold().startswith(prefix.casefold()):
-                return SegmentName(
-                    prefix=prefix, key=record.source.segment[len(prefix) :].strip()
-                )
 
         # Handle no prefix.
         with suppress(KeyError):
