@@ -128,6 +128,8 @@ class Index:
                 id TEXT PRIMARY KEY,
                 crc TEXT,
                 otu_id TEXT,
+                accession_key TEXT,
+                accession_version INTEGER,
                 sequence TEXT
             );
             """,
@@ -151,6 +153,7 @@ class Index:
             ("otus", "name"),
             ("otus", "taxid"),
             ("sequences", "otu_id"),
+            ("sequences", "accession_key"),
             ("sequences", "crc"),
             ("otu_updates", "otu_id"),
         ]:
@@ -292,6 +295,21 @@ class Index:
 
         return None
 
+    def get_ids_by_partial_name(self, partial: str) -> list[UUID]:
+        """Return a list of OTU IDs where the name matches a given string."""
+        if not partial:
+            return []
+
+        cursor = self.con.execute(
+            'SELECT id AS "id [uuid]" FROM otus LIKE name = ?',
+            (f"%{partial}%",),
+        )
+
+        if result := cursor.fetchall():
+            return result
+
+        return []
+
     def get_id_by_taxid(self, taxid: int) -> UUID | None:
         """Get an OTU ID by its taxonomy ID."""
         cursor = self.con.execute(
@@ -351,6 +369,55 @@ class Index:
 
         return None
 
+    def get_sequence_id_by_partial(self, partial: str) -> UUID | None:
+        """Get a sequence ID beginning with a truncated ``partial`` string."""
+        if partial == "":
+            raise ValueError("Empty partial given.")
+
+        cursor = self.con.execute(
+            'SELECT id AS "id [uuid]" FROM sequences WHERE id LIKE ?',
+            (f"{partial}%",),
+        )
+
+        if result := cursor.fetchmany(size=2):
+            if len(result) > 1:
+                raise PartialIDConflictError
+
+            if result:
+                return result[0][0]
+
+        return None
+
+    def get_sequence_id_from_accession(self, accession: str) -> UUID | None:
+        """Return the sequence ID corresponding to an accession number."""
+        if accession == "":
+            raise ValueError("Empty accession given.")
+
+        cursor = self.con.execute(
+            """
+            SELECT id AS "id [uuid]"
+            FROM sequences WHERE accession_key = ?
+            """,
+            (f"{accession}",),
+        )
+
+        if result := cursor.fetchone():
+            return result[0]
+
+        return None
+
+    def get_otu_id_by_sequence_id(self, sequence_id: UUID) -> UUID | None:
+        """Get an OTU ID from a Sequence ID that belongs to it."""
+        cursor = self.con.execute(
+            'SELECT otu_id AS "otu_id [uuid]" FROM sequences WHERE id = ?',
+            (sequence_id,),
+        )
+
+        if result := cursor.fetchone():
+            return result[0]
+
+        return None
+
     def delete_otu(self, otu_id: UUID) -> None:
         """Remove an OTU from the index.
 
@@ -393,14 +460,29 @@ class Index:
                 timestamp=row[2],
             )
 
-    def iter_minimal_otus(self) -> Iterator[OTUMinimal]:
+    def iter_minimal_otus(
+        self, name_limiter: str | None = None
+    ) -> Iterator[OTUMinimal]:
         """Iterate over minimal representations of all OTUs in the index."""
-        rows = self.con.execute(
-            """
-            SELECT acronym, id AS "id [uuid]", legacy_id, name, taxid
-            FROM otus ORDER BY name
-            """,
-        ).fetchall()
+        if name_limiter is None:
+            rows = self.con.execute(
+                """
+                SELECT acronym, id AS "id [uuid]", legacy_id, name, taxid
+                FROM otus
+                ORDER BY name
+                """,
+            ).fetchall()
+
+        else:
+            rows = self.con.execute(
+                """
+                SELECT acronym, id AS "id [uuid]", legacy_id, name, taxid
+                FROM otus
+                WHERE name LIKE ?
+                ORDER BY name
+                """,
+                (f"%{name_limiter}%",),
+            ).fetchall()
 
         for row in rows:
             yield OTUMinimal(
@@ -543,6 +625,8 @@ class Index:
                         sequence.id,
                         crc,
                         otu.id,
+                        sequence.accession.key,
+                        sequence.accession.version,
                         sequence.sequence,
                     ),
                 )
@@ -550,8 +634,9 @@ class Index:
         # Perform batch insert
         self.con.executemany(
             """
-            INSERT OR REPLACE INTO sequences (id, crc, otu_id, sequence)
-            VALUES (?, ?, ?, ?)
+            INSERT OR REPLACE 
+            INTO sequences (id, crc, otu_id, accession_key, accession_version, sequence)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             batch,
         )
@@ -560,10 +645,14 @@ class Index:
         self.con.executemany(
             """
             UPDATE sequences
-            SET crc = ?, otu_id = ?, sequence = ?
+            SET 
+            crc = ?, otu_id = ?, accession_key = ?, accession_version = ?, sequence = ?
             WHERE id = ? AND crc != ?
             """,
-            [(crc, otu_id, seq, seq_id, crc) for seq_id, crc, otu_id, seq in batch],
+            [
+                (crc, otu_id, accession_key, accession_version, seq, seq_id, crc)
+                for seq_id, crc, otu_id, accession_key, accession_version, seq in batch
+            ],
         )
 
         self.con.execute(

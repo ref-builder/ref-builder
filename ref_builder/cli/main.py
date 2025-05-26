@@ -15,6 +15,7 @@ from ref_builder.cli.options import (
     path_option,
 )
 from ref_builder.cli.otu import otu
+from ref_builder.cli.sequence import sequence
 from ref_builder.console import console
 from ref_builder.legacy.convert import convert_legacy_repo
 from ref_builder.legacy.utils import iter_legacy_otus
@@ -118,6 +119,7 @@ def init(data_type: DataType, name: str, organism: str, path: Path) -> None:
 
 entry.add_command(otu)
 entry.add_command(isolate)
+entry.add_command(sequence)
 entry.add_command(event)
 
 

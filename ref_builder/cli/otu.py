@@ -37,6 +37,7 @@ from ref_builder.otu.update import (
 )
 from ref_builder.plan import SegmentName, SegmentRule
 from ref_builder.repo import Repo, locked_repo
+from ref_builder.utils import IsolateName, IsolateNameType
 
 logger = structlog.get_logger()
 
@@ -119,25 +120,33 @@ def otu_create(
     is_flag=True,
     help="Output in JSON form",
 )
+@click.option("--id-only", is_flag=True, help="Only output OTU ID.")
 @pass_repo
-def otu_get(repo: Repo, identifier: str, as_json: bool) -> None:
+def otu_get(repo: Repo, identifier: str, as_json: bool, id_only: bool) -> None:
     """Get an OTU by its unique ID or taxonomy ID.
 
     IDENTIFIER is a taxonomy ID or unique OTU ID (>8 characters)
     """
     otu_ = get_otu_from_identifier(repo, identifier)
 
+    if id_only:
+        click.echo(otu_.id)
+
+        sys.exit(0)
+
     if as_json:
         print_otu_as_json(otu_)
+
     else:
         print_otu(otu_)
 
 
 @otu.command(name="list")
+@click.option("--name", type=str, help="A search limiting string, e.g. ``Apple``.")
 @pass_repo
-def otu_list(repo: Repo) -> None:
+def otu_list(repo: Repo, name: str | None) -> None:
     """List all OTUs in the repository."""
-    print_otu_list(repo.iter_minimal_otus())
+    print_otu_list(repo.iter_minimal_otus(name))
 
 
 @otu.command(name="list-events")
@@ -151,6 +160,45 @@ def otu_event_logs(repo: Repo, identifier: str) -> None:
     otu_ = get_otu_from_identifier(repo, identifier)
 
     print_otu_event_log(list(repo.iter_otu_events(otu_.id)))
+
+
+@otu.command(name="get-isolate-id")
+@click.argument("IDENTIFIER", type=str, required=True)
+@click.option(
+    "--name",
+    type=(IsolateNameType, str),
+    help='the name of an isolate, e.g. "isolate ARWV1"',
+)
+@pass_repo
+def otu_get_isolate_id_from_name(
+    repo: Repo,
+    identifier: str,
+    name: tuple[IsolateNameType, str] | None,
+) -> None:
+    """Get the ID of an isolate (representative isolate by default).
+
+    IDENTIFIER is a taxonomy ID or unique OTU ID (>8 characters)
+    """
+    otu_ = get_otu_from_identifier(repo, identifier)
+
+    if name is None:
+        click.echo(otu_.representative_isolate)
+    else:
+        isolate_name_type, isolate_name_value = name
+        try:
+            isolate_name_ = IsolateName(
+                type=isolate_name_type, value=isolate_name_value
+            )
+        except ValueError:
+            click.echo("Invalid isolate name", err=True)
+            sys.exit(1)
+
+        if (isolate_id := otu_.get_isolate_id_by_name(isolate_name_)) is not None:
+            click.echo(isolate_id)
+
+        else:
+            click.echo("No matching isolate id found", err=True)
+            sys.exit(1)
 
 
 @otu.command(name="batch-update")

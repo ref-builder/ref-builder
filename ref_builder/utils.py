@@ -2,6 +2,7 @@ import re
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from uuid import UUID
 
 import orjson
 
@@ -198,6 +199,16 @@ def generate_natural_sort_key(string: str) -> list[int | str]:
 def is_refseq(accession_key: str) -> bool:
     """Return True if accession is RefSeq."""
     return re.match(REFSEQ_ACCESSION_PATTERN, accession_key) is not None
+
+
+def convert_uuid_from_string(string: str) -> UUID | None:
+    """Convert a string as UUID if possible, else return None."""
+    try:
+        return UUID(string)
+    except ValueError:
+        pass
+
+    return None
 
 
 def pad_zeroes(number: int) -> str:

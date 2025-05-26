@@ -241,3 +241,13 @@ def test_get_isolate_id_by_partial(index: Index, indexable_otus: list[OTUBuilder
             index.get_isolate_id_by_partial(str(first_isolate_id)[:8])
             == first_isolate_id
         )
+
+
+def test_get_sequence_id_by_accession(index: Index, indexable_otus: list[OTUBuilder]):
+    for otu in indexable_otus:
+        for accession in otu.accessions:
+            sequence_id = index.get_sequence_id_from_accession(accession)
+
+            assert sequence_id is not None
+
+            assert otu.get_sequence_by_id(sequence_id) is not None

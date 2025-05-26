@@ -323,12 +323,14 @@ class Repo:
 
             self._index.add_event_id(event.id, otu_id, event.timestamp)
 
-    def iter_minimal_otus(self) -> Iterator[OTUMinimal]:
+    def iter_minimal_otus(
+        self, name_limiter: str | None = None
+    ) -> Iterator[OTUMinimal]:
         """Iterate over minimal representations of the OTUs in the repository.
 
         This is more performant than iterating over full OTUs.
         """
-        return self._index.iter_minimal_otus()
+        return self._index.iter_minimal_otus(name_limiter)
 
     def iter_otus(self) -> Iterator[OTUBuilder]:
         """Iterate over the OTUs in the repository."""
@@ -768,6 +770,10 @@ class Repo:
         """Get an OTU ID from an isolate ID that belongs to it."""
         return self._index.get_id_by_isolate_id(isolate_id)
 
+    def get_otu_id_by_sequence_id(self, sequence_id: uuid.UUID) -> uuid.UUID | None:
+        """Get an OTU ID from a sequence ID that belongs to it."""
+        return self._index.get_otu_id_by_sequence_id(sequence_id)
+
     def get_otu(self, otu_id: uuid.UUID) -> OTUBuilder | None:
         """Get the OTU with the given ``otu_id``.
 
@@ -898,6 +904,33 @@ class Repo:
             )
 
         return self._index.get_isolate_id_by_partial(partial)
+
+    def get_sequence_by_id(self, sequence_id: uuid.UUID) -> SequenceBuilder | None:
+        """Return the sequence with the given UUID."""
+        if (otu_id := self._index.get_otu_id_by_sequence_id(sequence_id)) is None:
+            return None
+
+        return self.get_otu(otu_id).get_sequence_by_id(sequence_id)
+
+    def get_sequence_id_by_partial(self, partial: str) -> uuid.UUID | None:
+        """Return the UUID of the sequence starting with the given ``partial`` string.
+        Raise a ValueErrror if more than one matching sequence id is found.
+        If no sequence is found, return None.
+
+        :param partial: a partial segment of the isolate id with a minimum length of 8
+        :return: the UUID of the isolate or ``None``
+
+        """
+        if len(partial) < 8:
+            raise InvalidInputError(
+                "Partial ID segment must be at least 8 characters long."
+            )
+
+        return self._index.get_sequence_id_by_partial(partial)
+
+    def get_sequence_id_by_accession(self, accession: str) -> uuid.UUID | None:
+        """Return the sequence ID associated with the given accession."""
+        return self._index.get_sequence_id_from_accession(accession)
 
     def get_otu_first_created(self, otu_id: uuid.UUID) -> datetime.datetime | None:
         """Get the timestamp of the first event associated with an OTU.
