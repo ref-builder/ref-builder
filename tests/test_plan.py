@@ -196,7 +196,7 @@ class TestPlan:
 class TestSegmentName:
     """Test segment name normalization."""
 
-    @pytest.mark.parametrize("delimiter", [" ", "_", "-"])
+    @pytest.mark.parametrize("delimiter", ["", " ", "_", "-"])
     @pytest.mark.parametrize("key", ["A", "BN", "U3"])
     @pytest.mark.parametrize("prefix", ["DNA", "RNA"])
     def test_from_string(self, delimiter: str, key: str, prefix: str):
