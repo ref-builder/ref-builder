@@ -460,7 +460,9 @@ class Index:
                 timestamp=row[2],
             )
 
-    def iter_minimal_otus(self, name_limiter: str | None = None) -> Iterator[OTUMinimal]:
+    def iter_minimal_otus(
+        self, name_limiter: str | None = None
+    ) -> Iterator[OTUMinimal]:
         """Iterate over minimal representations of all OTUs in the index."""
         if name_limiter is None:
             rows = self.con.execute(

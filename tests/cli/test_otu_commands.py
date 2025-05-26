@@ -552,7 +552,6 @@ class TestExtendPlanCommand:
 
 
 
-
 class TestGetIsolateIdCommand:
     """Test ``ref-builder otu get-isolate-id`` command works as expected."""
 
@@ -589,6 +588,7 @@ class TestGetIsolateIdCommand:
         assert result.exit_code == 0
 
         assert str(isolate_id) in result.stdout
+
 
 @pytest.mark.parametrize(
     ("taxid", "accessions"),

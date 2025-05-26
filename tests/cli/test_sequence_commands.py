@@ -64,7 +64,10 @@ class TestSequenceGetCommand:
 
             assert result.exit_code == 0
 
-            assert UUID(result.stdout.strip("\n")) == otu.get_sequence_by_accession(accession).id
+            assert (
+                UUID(result.stdout.strip("\n"))
+                == otu.get_sequence_by_accession(accession).id
+            )
 
     def test_versioned_accession_ok(self, scratch_repo):
         """Test that a versioned accession number can be used as an accurate identifier."""
@@ -84,7 +87,10 @@ class TestSequenceGetCommand:
 
             assert result.exit_code == 0
 
-            assert UUID(result.stdout.strip("\n")) == otu.get_sequence_by_accession(accession.key).id
+            assert (
+                UUID(result.stdout.strip("\n"))
+                == otu.get_sequence_by_accession(accession.key).id
+            )
 
     def test_json_ok(self, scratch_repo):
         otu_id = scratch_repo.get_otu_id_by_taxid(1169032)

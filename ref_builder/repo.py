@@ -323,7 +323,9 @@ class Repo:
 
             self._index.add_event_id(event.id, otu_id, event.timestamp)
 
-    def iter_minimal_otus(self, name_limiter: str | None = None) -> Iterator[OTUMinimal]:
+    def iter_minimal_otus(
+        self, name_limiter: str | None = None
+    ) -> Iterator[OTUMinimal]:
         """Iterate over minimal representations of the OTUs in the repository.
 
         This is more performant than iterating over full OTUs.

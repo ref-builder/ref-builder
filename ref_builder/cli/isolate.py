@@ -202,4 +202,3 @@ def isolate_get_otu_id(repo: Repo, identifier: str) -> None:
 
     else:
         click.echo(otu_.id)
-

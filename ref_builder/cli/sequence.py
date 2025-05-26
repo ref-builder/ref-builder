@@ -16,6 +16,7 @@ def sequence(ctx: click.Context, path: Path) -> None:
     """Manage sequences."""
     ctx.obj = ctx.with_resource(locked_repo(path))
 
+
 @sequence.command(name="get")
 @click.argument("IDENTIFIER", type=str)
 @click.option("--id-only", is_flag=True, help="Only output sequence ID.")
@@ -70,6 +71,7 @@ def sequence_get_otu_id(repo: Repo, identifier: str) -> None:
 
     else:
         click.echo(otu_.id)
+
 
 @sequence.command(name="get-isolate-ids")
 @click.argument("IDENTIFIER", type=str)
