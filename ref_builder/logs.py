@@ -1,9 +1,7 @@
 import logging
-import os
+import sys
 
 import structlog
-
-NO_COLOR = os.environ.get("NO_COLOR") is not None
 
 
 def configure_logger(verbosity: int, no_color: bool = False) -> None:
@@ -14,6 +12,12 @@ def configure_logger(verbosity: int, no_color: bool = False) -> None:
     """
     # Disable faker logging.
     logging.getLogger("faker").setLevel(logging.ERROR)
+
+    logging.basicConfig(
+        format="%(message)s",
+        stream=sys.stderr,
+        level=logging.INFO,
+    )
 
     processors = [
         structlog.processors.add_log_level,
@@ -35,14 +39,15 @@ def configure_logger(verbosity: int, no_color: bool = False) -> None:
                 ]
             )
         )
-    if no_color or NO_COLOR:
+
+    if no_color:
         processors.append(structlog.processors.JSONRenderer())
 
     else:
         processors.append(structlog.dev.ConsoleRenderer())
 
     structlog.configure(
-        logger_factory=structlog.PrintLoggerFactory(),
+        logger_factory=structlog.PrintLoggerFactory(sys.stderr),
         processors=processors,
         wrapper_class=structlog.make_filtering_bound_logger(level),
     )
