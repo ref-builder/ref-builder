@@ -35,6 +35,7 @@ from ref_builder.otu.update import (
     auto_update_otu,
     batch_update_repo,
 )
+from ref_builder.otu.validate import get_validated_otu
 from ref_builder.plan import SegmentName, SegmentRule
 from ref_builder.repo import Repo, locked_repo
 
@@ -151,6 +152,27 @@ def otu_event_logs(repo: Repo, identifier: str) -> None:
     otu_ = get_otu_from_identifier(repo, identifier)
 
     print_otu_event_log(list(repo.iter_otu_events(otu_.id)))
+
+
+@otu.command(name="batch-export")
+@click.argument(
+    "OUTPUT_PATH",
+    required=True,
+    type=click.Path(
+        dir_okay=True, file_okay=False, path_type=Path, writable=True
+    ),
+)
+@pass_repo
+def otu_batch_export(repo: Repo, output_path: Path) -> None:
+    """Export all OTUs into OUTPUT_PATH."""
+    if not output_path.exists():
+        output_path.mkdir(exist_ok=True)
+
+    for otu_ in repo.iter_otus():
+        with open(output_path / f"{otu_.id}.json", "w") as f:
+            validated_otu = get_validated_otu(otu_)
+
+            f.write(validated_otu.model_dump_json())
 
 
 @otu.command(name="batch-update")
