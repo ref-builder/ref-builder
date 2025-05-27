@@ -6,6 +6,20 @@ on:
     branches: [main]
 
 jobs:
+  # Build the Docker image so we know it is successful before we create a release and try
+  # to push a production image to the registry.
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+
   ruff-format:
     runs-on: ubuntu-22.04
     steps:
