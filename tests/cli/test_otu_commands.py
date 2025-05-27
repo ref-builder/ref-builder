@@ -1,3 +1,5 @@
+import shutil
+
 import pytest
 from click.testing import CliRunner
 from syrupy import SnapshotAssertion
@@ -5,6 +7,8 @@ from syrupy.filters import props
 
 from ref_builder.cli.otu import otu as otu_command_group
 from ref_builder.console import console, print_otu
+from ref_builder.otu.validate import get_validated_otu
+from ref_builder.otu.validators.otu import OTU
 from ref_builder.repo import Repo
 
 runner = CliRunner()
@@ -552,3 +556,32 @@ class TestExtendPlanCommand:
         assert result.exit_code == 1
 
         print(result.output)
+
+
+class TestBatchExportCommand:
+    """Test that ``ref-builder otu batch-export OUTPUT_PATH`` behaves as expected."""
+
+    @pytest.fixture(autouse=True)
+    def build_path(self, scratch_repo: Repo, tmp_path):
+        yield tmp_path / "batch_export_build"
+
+        shutil.rmtree(tmp_path / "batch_export_build")
+
+    def test_ok(self, scratch_repo: Repo, build_path):
+        result = runner.invoke(
+            otu_command_group,
+            [
+                "--path",
+                str(scratch_repo.path),
+                "batch-export",
+                str(build_path)
+            ]
+        )
+
+        assert result.exit_code == 0
+
+        for otu_ in scratch_repo.iter_otus():
+            with open(build_path / f"{otu_.id}.json") as f:
+                serialized_otu = f.read()
+
+            assert serialized_otu == OTU.model_dump_json(get_validated_otu(otu_))
