@@ -84,6 +84,7 @@ jobs:
     needs:
       - ruff-format
       - test
+      - build
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -100,3 +101,36 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
+
+  ghcr:
+    runs-on: ubuntu-22.04
+    if: github.repository_owner == 'ref-builder' && github.event_name == 'push' && needs.release.outputs.git-tag != ''
+    needs: [ release ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.git-tag }}
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          context: git
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
+      - name: Build and Push
+        id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - name: Trigger Cloudflare Hook
+        if: steps.semantic.outputs.git-tag != ''
+        run: curl -X POST ${{ secrets.CLOUDFLARE_HOOK }}
