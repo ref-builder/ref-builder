@@ -32,5 +32,6 @@ COPY --from=build /app/.venv /app/.venv
 COPY --from=version /VERSION .
 COPY assets ./assets
 COPY ref_builder ./ref_builder
+WORKDIR /repo
 EXPOSE 9950
 ENTRYPOINT ["ref-builder"]
