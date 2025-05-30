@@ -78,6 +78,7 @@ def allow_accessions_into_otu(
             excluded_accessions=sorted(excluded_accessions),
         )
 
+
 def update_otu_identifiers(
     repo: Repo,
     otu: OTUBuilder,
