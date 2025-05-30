@@ -1,3 +1,6 @@
+from uuid import UUID
+
+
 class LockConflictError(Exception):
     """Raised when a lock is attempted on a locked repository."""
 
@@ -40,3 +43,10 @@ class InvalidInputError(Exception):
         self.message = message
 
         super().__init__(message)
+
+
+class OTUDeletedError(Exception):
+    """Raised when an OTU is deleted."""
+
+    def __init__(self, otu_id: UUID):
+        super().__init__(f"OTU {otu_id} has been marked for deletion.")

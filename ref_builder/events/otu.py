@@ -59,6 +59,20 @@ class CreatePlan(ApplicableEvent):
         return otu
 
 
+class DeleteOTUData(EventData):
+    """The data for a :class:`DeleteOTU` event."""
+
+    rationale: str
+    replacement_otu_id: UUID4 | None
+
+
+class DeleteOTU(Event):
+    """An event that deletes an OTU from Repo indexes."""
+
+    data: DeleteOTUData
+    query: OTUQuery
+
+
 class SetRepresentativeIsolateData(EventData):
     """The data for a :class:`SetReprIsolate` event."""
 
