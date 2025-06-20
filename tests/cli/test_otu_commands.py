@@ -51,9 +51,9 @@ class TestCreateOTUCommands:
 
     @pytest.mark.parametrize(
         ("taxid", "accessions"),
-        [(1278205, ["NC_020160"]), (345184, ["DQ178610", "DQ178611"])],
+        [(3429802, ["NC_020160"]), (3426695, ["DQ178610", "DQ178611"])],
     )
-    def test_without_taxid_ok(
+    def test_without_taxid(
         self,
         taxid: int,
         accessions: list[str],
@@ -62,7 +62,7 @@ class TestCreateOTUCommands:
         """Test that an OTU can be created without the --taxid option."""
         result = runner.invoke(
             otu_command_group,
-            ["--path", str(precached_repo.path)] + ["create"] + accessions,
+            ["--path", str(precached_repo.path), "create", *accessions],
         )
 
         assert result.exit_code == 0

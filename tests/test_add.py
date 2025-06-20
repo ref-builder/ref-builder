@@ -52,11 +52,11 @@ class TestCreateOTU:
     @pytest.mark.parametrize(
         ("accessions", "expected_taxid"),
         [
-            (["DQ178610", "DQ178611"], 345184),
+            (["DQ178610", "DQ178611"], 3426695),
             (["NC_043170"], 3240630),
         ],
     )
-    def test_create_without_taxid_ok(self, accessions, expected_taxid, precached_repo):
+    def test_create_without_taxid(self, accessions, expected_taxid, precached_repo):
         with precached_repo.lock():
             made_otu = create_otu_without_taxid(
                 precached_repo, accessions=accessions, acronym=""

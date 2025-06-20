@@ -445,7 +445,7 @@ class Repo:
             OTUQuery(otu_id=otu_id),
         )
 
-        self._index.delete_otu(otu_id, delete_from_event_index=False)
+        self._index.delete_otu(otu_id)
 
         with warnings.catch_warnings(category=OTUDeletedWarning):
             warnings.simplefilter("ignore", OTUDeletedWarning)

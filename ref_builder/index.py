@@ -351,19 +351,13 @@ class Index:
 
         return None
 
-    def delete_otu(self, otu_id: UUID, delete_from_event_index: bool = True) -> None:
+    def delete_otu(self, otu_id: UUID) -> None:
         """Remove an OTU from the index.
 
         This happens rarely, so we just rewrite the whole index.
 
         :param otu_id: the ID of the OTU to remove.
         """
-        if delete_from_event_index:
-            self.con.execute(
-                "DELETE FROM events WHERE otu_id = ?",
-                (otu_id,),
-            )
-
         self.con.execute(
             "DELETE FROM isolates WHERE otu_id = ?",
             (otu_id,),

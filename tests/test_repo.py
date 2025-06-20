@@ -812,7 +812,7 @@ class TestDeleteOTU:
 
         assert list(initialized_repo.iter_otus()) == []
 
-    def test_nonexistent_fail(self, initialized_repo: Repo):
+    def test_not_found(self, initialized_repo: Repo):
         """Test that .delete_otu() returns False if OTU didn't exist to begin with."""
         dummy_otu_id = uuid4()
 
@@ -828,7 +828,7 @@ class TestDeleteOTU:
 
         assert not warning_list
 
-    def test_delete_already_deleted_fail(self, initialized_repo: Repo):
+    def test_already_deleted(self, initialized_repo: Repo):
         """Test that .delete_otu() returns False and warns if an already-deleted OTU
         is marked for deletion a second time.
         """
@@ -846,18 +846,24 @@ class TestDeleteOTU:
         assert list(initialized_repo.iter_otus()) == []
 
         with initialized_repo.lock(), initialized_repo.use_transaction():
-            assert not initialized_repo.delete_otu(
+            result = initialized_repo.delete_otu(
                 otu_before.id,
                 rationale="Testing OTU deletion of already-deleted OTU",
                 replacement_otu_id=None,
             )
 
+            assert result is False
+
         with warnings.catch_warnings(
             category=OTUDeletedWarning, record=True
-        ) as warning_list:
+        ) as warning_messages:
             assert initialized_repo.get_otu(otu_before.id) is None
 
-        assert warning_list
+        assert len(warning_messages) == 1
+        warning_message = warning_messages[0]
+
+        assert str(warning_message.message) == f"OTU {otu_before.id} has already been deleted."
+        assert warning_message.category == OTUDeletedWarning
 
 
 class TestGetIsolate:
