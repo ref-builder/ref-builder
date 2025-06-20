@@ -1,4 +1,4 @@
-name: ci
+name: CI
 on:
   pull_request:
     branches: [main]
@@ -7,7 +7,8 @@ on:
 
 jobs:
   ruff-format:
-    runs-on: ubuntu-22.04
+    name: "Ruff / Format"
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,7 +24,8 @@ jobs:
         run: poetry run ruff format --check
 
   test:
-    runs-on: ubuntu-22.04
+    name: "Test"
+    runs-on: ubuntu-24.04
     steps:
       - name: Check NCBI secrets
         env:
@@ -66,6 +68,7 @@ jobs:
           key: ${{ steps.cache-pytest-restore.outputs.cache-primary-key}}
 
   release:
+    name: "Publish / Release"
     if: github.event_name == 'push'
     needs:
       - ruff-format
