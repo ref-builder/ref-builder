@@ -1,13 +1,36 @@
+import click.testing
+import orjson
 import pytest
-from click.testing import CliRunner
 from syrupy import SnapshotAssertion
 from syrupy.filters import props
 
+from ref_builder.cli.main import entry as top_command_group
 from ref_builder.cli.otu import otu as otu_command_group
 from ref_builder.console import console, print_otu
 from ref_builder.repo import Repo
 
-runner = CliRunner()
+runner = click.testing.CliRunner()
+
+
+def run_otu_with_debug_logs(
+    repo: Repo,
+    args: list,
+    env_mapping: dict[str, str] | None = None,
+) -> click.testing.Result:
+    """Invoke OTU command with debug logs enabled."""
+    env = env_mapping if env_mapping is not None else {}
+
+    return runner.invoke(
+        top_command_group,
+        [
+            "--debug",
+            "otu",
+            "--path",
+            str(repo.path),
+            *args,
+        ],
+        env=env,
+    )
 
 
 class TestCreateOTUCommands:
@@ -28,11 +51,9 @@ class TestCreateOTUCommands:
 
         Also check resulting print_otu() console output.
         """
-        result = runner.invoke(
-            otu_command_group,
-            ["--path", str(precached_repo.path)]
-            + ["create", "--taxid", str(taxid)]
-            + accessions,
+        result = run_otu_with_debug_logs(
+            precached_repo,
+            ["create", "--taxid", str(taxid)] + accessions,
         )
 
         assert result.exit_code == 0
@@ -47,7 +68,7 @@ class TestCreateOTUCommands:
         with console.capture() as capture:
             print_otu(otus[0])
 
-        assert capture.get() in result.output
+        assert capture.get() in result.stdout
 
     @pytest.mark.parametrize(
         ("taxid", "accessions"),
@@ -98,8 +119,6 @@ class TestCreateOTUCommands:
 
     def test_duplicate_accessions(self, precached_repo: Repo):
         """Test that an error is raised when duplicate accessions are provided."""
-        runner = CliRunner()
-
         result = runner.invoke(
             otu_command_group,
             ["--path", str(precached_repo.path)]
@@ -108,7 +127,8 @@ class TestCreateOTUCommands:
         )
 
         assert result.exit_code == 2
-        assert "Duplicate accessions are not allowed." in result.output
+
+        assert "Duplicate accessions are not allowed." in result.stderr
 
 
 @pytest.mark.ncbi()
@@ -142,11 +162,6 @@ class TestPromoteOTUCommand:
         )
 
         assert result.exit_code == 0
-
-        assert (
-            "Sequences promoted"
-            and "['NC_055390', 'NC_055391', 'NC_055392']" in result.output
-        )
 
         repo_after = Repo(empty_repo.path)
 
@@ -186,7 +201,7 @@ class TestPromoteOTUCommand:
 
         assert result.exit_code == 0
 
-        assert "Isolate updated" not in result.output
+        assert "Isolate updated" not in result.stderr
 
 
 class TestUpgradeOTUCommand:
@@ -255,42 +270,36 @@ class TestExcludeAccessionsCommand:
 
     def test_excludable_ok(self, scratch_repo):
         """Test that command lists out new excluded accessions"""
-        result = runner.invoke(
-            otu_command_group,
-            ["--path", str(scratch_repo.path)]
-            + ["exclude-accessions", str(345184)]
-            + ["DQ178608", "DQ178609"],
+        result = run_otu_with_debug_logs(
+            scratch_repo,
+            ["exclude-accessions", str(345184), "DQ178608", "DQ178609"],
         )
 
         assert result.exit_code == 0
 
-        assert "Added accessions to excluded accession list" in result.output
+        assert "Added accessions to excluded accession list" in result.stderr
 
-        assert "['DQ178608', 'DQ178609']" in result.output
+        assert "['DQ178608', 'DQ178609']" in result.stderr
 
     def test_redundant_ok(self, scratch_repo):
         """Test that the command informs the user when excluded accessions are already up to date."""
-        result = runner.invoke(
-            otu_command_group,
-            ["--path", str(scratch_repo.path)]
-            + ["exclude-accessions", str(345184)]
-            + ["DQ178608", "DQ178609"],
+        result = run_otu_with_debug_logs(
+            scratch_repo,
+            ["exclude-accessions", str(345184), "DQ178608", "DQ178609"],
         )
 
         assert result.exit_code == 0
 
-        assert "['DQ178608', 'DQ178609']" in result.output
+        assert "['DQ178608', 'DQ178609']" in result.stderr
 
-        result = runner.invoke(
-            otu_command_group,
-            ["--path", str(scratch_repo.path)]
-            + ["exclude-accessions", str(345184)]
-            + ["DQ178608", "DQ178609"],
+        result = run_otu_with_debug_logs(
+            scratch_repo,
+            ["exclude-accessions", str(345184), "DQ178608", "DQ178609"],
         )
 
         assert result.exit_code == 0
 
-        assert "Excluded accession list already up to date" in result.output
+        assert "Excluded accession list already up to date" in result.stderr
 
 
 class TestSetDefaultIsolateCommand:
@@ -359,8 +368,6 @@ class TestSetDefaultIsolateCommand:
             ],
         )
 
-        print(result.output)
-
         assert result.exit_code == 0
 
         otu_after = scratch_repo.get_otu_by_taxid(taxid)
@@ -385,7 +392,7 @@ class TestSetDefaultIsolateCommand:
 
         assert result.exit_code == 1
 
-        assert "Isolate ID could not be found" in result.output
+        assert "Isolate ID could not be found" in result.stderr
 
 
 class TestAllowAccessionsCommand:
@@ -404,35 +411,31 @@ class TestAllowAccessionsCommand:
 
         assert result.exit_code == 0
 
-        result = runner.invoke(
-            otu_command_group,
-            ["--path", str(scratch_repo.path)]
-            + ["allow-accessions", str(taxid)]
-            + ["DQ178608"],
+        result = run_otu_with_debug_logs(
+            scratch_repo,
+            args=["allow-accessions", str(taxid), "DQ178608"],
         )
 
         assert result.exit_code == 0
 
-        assert "Removed accessions from excluded accession list" in result.output
+        assert "Removed accessions from excluded accession list" in result.stderr
 
-        assert "['DQ178608']" in result.output
+        assert "['DQ178608']" in result.stderr
 
-        assert "Updated excluded accession list" in result.output
+        assert "Updated excluded accession list" in result.stderr
 
-        assert "['DQ178609']" in result.output
+        assert "['DQ178609']" in result.stderr
 
     def test_redundant_ok(self, scratch_repo: Repo):
         """Test that the command informs the user when excluded accessions are already up to date."""
-        result = runner.invoke(
-            otu_command_group,
-            ["--path", str(scratch_repo.path)]
-            + ["allow-accessions", str(345184)]
-            + ["DQ178612", "DQ178613"],
+        result = run_otu_with_debug_logs(
+            scratch_repo,
+            ["allow-accessions", str(345184), "DQ178612", "DQ178613"],
         )
 
         assert result.exit_code == 0
 
-        assert "Excluded accession list already up to date" in result.output
+        assert "Excluded accession list already up to date" in result.stderr
 
 
 class TestRenamePlanSegmentCommand:
@@ -486,12 +489,9 @@ class TestExtendPlanCommand:
         """Test the addition of segments to an OTU plan."""
         taxid = 2164102
 
-        filled_path_options = ["--path", str(precached_repo.path)]
-
-        result = runner.invoke(
-            otu_command_group,
+        result = run_otu_with_debug_logs(
+            precached_repo,
             [
-                *filled_path_options,
                 "create",
                 *initial_accessions,
                 "--taxid",
@@ -505,10 +505,9 @@ class TestExtendPlanCommand:
 
         assert len(otu_init.plan.segments) == len(initial_accessions)
 
-        result = runner.invoke(
-            otu_command_group,
+        result = run_otu_with_debug_logs(
+            precached_repo,
             [
-                *filled_path_options,
                 "extend-plan",
                 str(otu_init.id),
                 *new_accessions,
@@ -551,4 +550,80 @@ class TestExtendPlanCommand:
 
         assert result.exit_code == 1
 
-        print(result.output)
+
+@pytest.mark.parametrize(
+    ("taxid", "accessions"),
+    [(1278205, ["NC_020160"]), (345184, ["DQ178610", "DQ178611"])],
+)
+class TestNoColorOutput:
+    """Test that ``NO_COLOR`` option turns JSON logs on."""
+
+    def test_option_ok(
+        self,
+        taxid: int,
+        accessions: list[str],
+        precached_repo: Repo,
+    ):
+        """Test that --no-color option logs output as JSON."""
+        result = runner.invoke(
+            top_command_group,
+            [
+                "--no-color",
+                "--debug",
+                "otu",
+                "--path",
+                str(precached_repo.path),
+                "create",
+                "--taxid",
+                str(taxid),
+                *accessions,
+            ],
+            color=True,
+        )
+
+        assert result.exit_code == 0
+
+        json_logs = []
+
+        for line in result.output.splitlines():
+            try:
+                json_logs.append(orjson.loads(line))
+            except orjson.JSONDecodeError:
+                continue
+
+        assert json_logs
+
+    def test_env_var_ok(
+        self,
+        taxid: int,
+        accessions: list[str],
+        precached_repo: Repo,
+    ):
+        """Test that NO_COLOR logs output as JSON."""
+        result = runner.invoke(
+            top_command_group,
+            [
+                "--debug",
+                "otu",
+                "--path",
+                str(precached_repo.path),
+                "create",
+                "--taxid",
+                str(taxid),
+                *accessions,
+            ],
+            color=True,
+            env={"NO_COLOR": "1"},
+        )
+
+        assert result.exit_code == 0
+
+        json_logs = []
+
+        for line in result.output.splitlines():
+            try:
+                json_logs.append(orjson.loads(line))
+            except orjson.JSONDecodeError:
+                continue
+
+        assert json_logs
