@@ -112,3 +112,31 @@ class UpdateExcludedAccessions(ApplicableEvent):
                 otu.excluded_accessions.add(accession)
 
         return otu
+
+
+class UpdateIdentifiersData(EventData):
+    """The data for an UpdateIdentifiers event."""
+
+    taxid: int | None
+    name: str | None
+
+
+class UpdateIdentifiers(ApplicableEvent):
+    """An event that changes an OTU's Taxonomy ID or name.
+
+    This event is emitted when an OTU's taxonomical data undergoes minor changes,
+    such as assignment to a new species name.
+    """
+
+    data: UpdateIdentifiersData
+    query: OTUQuery
+
+    def apply(self, otu: OTUBuilder) -> OTUBuilder:
+        """Update the OTU's Taxonomy ID and/or name and return."""
+        if self.data.taxid is not None:
+            otu.taxid = self.data.taxid
+
+        if self.data.name is not None:
+            otu.name = self.data.name
+
+        return otu
