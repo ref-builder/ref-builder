@@ -359,11 +359,6 @@ class Index:
         :param otu_id: the ID of the OTU to remove.
         """
         self.con.execute(
-            "DELETE FROM events WHERE otu_id = ?",
-            (otu_id,),
-        )
-
-        self.con.execute(
             "DELETE FROM isolates WHERE otu_id = ?",
             (otu_id,),
         )

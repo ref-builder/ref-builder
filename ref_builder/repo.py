@@ -28,6 +28,7 @@ from structlog import get_logger
 from ref_builder.errors import (
     InvalidInputError,
     LockRequiredError,
+    OTUDeletedError,
     TransactionExistsError,
     TransactionRequiredError,
 )
@@ -57,6 +58,8 @@ from ref_builder.events.otu import (
     CreateOTUData,
     CreatePlan,
     CreatePlanData,
+    DeleteOTU,
+    DeleteOTUData,
     SetRepresentativeIsolate,
     SetRepresentativeIsolateData,
     UpdateExcludedAccessions,
@@ -88,6 +91,7 @@ from ref_builder.utils import (
     DataType,
     ExcludedAccessionAction,
     IsolateName,
+    OTUDeletedWarning,
     get_accession_key,
 )
 
@@ -254,7 +258,18 @@ class Repo:
             yield self._transaction
 
             for otu_id in self._transaction.affected_otu_ids:
-                if not check_otu_is_valid(self.get_otu(otu_id)):
+                with warnings.catch_warnings(
+                    category=OTUDeletedWarning, record=True
+                ) as warning_list:
+                    otu = self.get_otu(otu_id)
+
+                if otu is None:
+                    if warning_list:
+                        continue
+                    else:
+                        self._transaction.abort()
+
+                if not check_otu_is_valid(otu):
                     self._transaction.abort()
 
         except AbortTransactionError:
@@ -333,7 +348,8 @@ class Repo:
     def iter_otus(self) -> Iterator[OTUBuilder]:
         """Iterate over the OTUs in the repository."""
         for otu_id in self._index.otu_ids:
-            yield self.get_otu(otu_id)
+            if (otu := self.get_otu(otu_id)) is not None:
+                yield otu
 
     def iter_otus_from_events(self) -> Iterator[OTUBuilder]:
         """Iterate over the OTUs, bypassing the index."""
@@ -341,13 +357,20 @@ class Repo:
 
         for event in self._event_store.iter_events():
             if hasattr(event.query, "otu_id"):
-                event_ids_by_otu[event.query.otu_id].append(event.id)
+                if isinstance(event, DeleteOTU):
+                    event_ids_by_otu.pop(event.query.otu_id)
+
+                else:
+                    event_ids_by_otu[event.query.otu_id].append(event.id)
 
         for otu_id in event_ids_by_otu:
-            yield self._rehydrate_otu(
-                self._event_store.read_event(event_id)
-                for event_id in event_ids_by_otu[otu_id]
-            )
+            try:
+                yield self._rehydrate_otu(
+                    self._event_store.read_event(event_id)
+                    for event_id in event_ids_by_otu[otu_id]
+                )
+            except OTUDeletedError:
+                continue
 
     def create_otu(
         self,
@@ -388,6 +411,46 @@ class Repo:
         )
 
         return self.get_otu(otu_id)
+
+    def delete_otu(
+        self,
+        otu_id: uuid.UUID,
+        rationale: str,
+        replacement_otu_id: uuid.UUID | None,
+    ) -> bool:
+        """Delete an OTU from the repository. Return True if successful."""
+        with warnings.catch_warnings(category=OTUDeletedWarning):
+            warnings.simplefilter("ignore", OTUDeletedWarning)
+
+            otu_ = self.get_otu(otu_id)
+
+        if otu_ is None:
+            logger.error("Requested OTU id does not exist.", otu_id=str(otu_id))
+
+            return False
+
+        logger.info(
+            "Deleting OTU...",
+            otu_id=str(otu_id),
+            rationale=rationale,
+            replacement_otu_id=str(replacement_otu_id),
+        )
+
+        self._write_event(
+            DeleteOTU,
+            DeleteOTUData(
+                rationale=rationale,
+                replacement_otu_id=replacement_otu_id,
+            ),
+            OTUQuery(otu_id=otu_id),
+        )
+
+        self._index.delete_otu(otu_id)
+
+        with warnings.catch_warnings(category=OTUDeletedWarning):
+            warnings.simplefilter("ignore", OTUDeletedWarning)
+
+            return self.get_otu(otu_id) is None
 
     def create_isolate(
         self,
@@ -790,6 +853,15 @@ class Repo:
 
             otu = self._rehydrate_otu(events)
 
+        except OTUDeletedError:
+            warnings.warn(
+                f"OTU {otu_id} has already been deleted.",
+                category=OTUDeletedWarning,
+                stacklevel=1,
+            )
+
+            return None
+
         except FileNotFoundError:
             logger.error("Event exists in index, but not in source. Deleting index...")
 
@@ -957,6 +1029,9 @@ class Repo:
                 )
 
             for event in events:
+                if isinstance(event, DeleteOTU):
+                    raise OTUDeletedError(otu_id=event.query.otu_id)
+
                 if not isinstance(event, ApplicableEvent):
                     raise TypeError(
                         f"Event {event.id} {event.type} is not an applicable event."

@@ -64,6 +64,11 @@
         'name': 'Begomovirus',
         'rank': 'genus',
       }),
+      dict({
+        'id': 3426821,
+        'name': 'Begomovirus jacquemontiayucatanense',
+        'rank': 'species',
+      }),
     ]),
     'name': 'Jacquemontia mosaic Yucatan virus',
     'other_names': dict({
@@ -78,10 +83,10 @@
       'synonym': list([
       ]),
     }),
-    'rank': <NCBIRank.SPECIES: 'species'>,
+    'rank': <NCBIRank.NO_RANK: 'no rank'>,
     'species': dict({
-      'id': 1198450,
-      'name': 'Jacquemontia mosaic Yucatan virus',
+      'id': 3426821,
+      'name': 'Begomovirus jacquemontiayucatanense',
       'rank': 'species',
     }),
   })
