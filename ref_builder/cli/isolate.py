@@ -90,8 +90,7 @@ def isolate_create(
 
         except RefSeqConflictError as e:
             click.echo(
-                f"{e.isolate_name} already exists, but RefSeq items may be "
-                "promotable.",
+                f"{e.isolate_name} already exists, but RefSeq items may be promotable.",
             )
             sys.exit(1)
 

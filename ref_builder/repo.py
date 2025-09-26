@@ -1025,7 +1025,7 @@ class Repo:
 
             else:
                 raise TypeError(
-                    f"The first event ({event}) for an OTU is not a CreateOTU " "event",
+                    f"The first event ({event}) for an OTU is not a CreateOTU event",
                 )
 
             for event in events:

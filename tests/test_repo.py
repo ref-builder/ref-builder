@@ -862,7 +862,10 @@ class TestDeleteOTU:
         assert len(warning_messages) == 1
         warning_message = warning_messages[0]
 
-        assert str(warning_message.message) == f"OTU {otu_before.id} has already been deleted."
+        assert (
+            str(warning_message.message)
+            == f"OTU {otu_before.id} has already been deleted."
+        )
         assert warning_message.category == OTUDeletedWarning
 
 

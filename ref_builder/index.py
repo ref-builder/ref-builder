@@ -513,7 +513,7 @@ class Index:
         # Delete any sequences that are no longer in the OTU.
         self.con.execute(
             f"""
-            DELETE FROM sequences WHERE otu_id = ? AND NOT id IN ({ placeholders });
+            DELETE FROM sequences WHERE otu_id = ? AND NOT id IN ({placeholders});
             """,
             (otu.id, *sequence_ids),
         )
