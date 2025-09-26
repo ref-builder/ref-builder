@@ -44,23 +44,21 @@ def get_otu_from_identifier(repo: Repo, identifier: str) -> OTUBuilder:
             otu_id = repo.get_otu_id_by_taxid(taxid)
 
     else:
-        if (otu_id := repo.get_otu_id_by_acronym(identifier)) is not None:
-            return repo.get_otu(otu_id)
+        if (otu_id := repo.get_otu_id_by_acronym(identifier)) is None:
+            try:
+                otu_id = repo.get_otu_id_by_partial(identifier)
 
-        try:
-            otu_id = repo.get_otu_id_by_partial(identifier)
+            except PartialIDConflictError:
+                click.echo(
+                    "Partial ID too short to narrow down results.",
+                    err=True,
+                )
 
-        except PartialIDConflictError:
-            click.echo(
-                "Partial ID too short to narrow down results.",
-                err=True,
-            )
-
-        except InvalidInputError as e:
-            click.echo(
-                e,
-                err=True,
-            )
+            except InvalidInputError as e:
+                click.echo(
+                    e,
+                    err=True,
+                )
 
     if otu_id is None:
         click.echo("OTU not found.", err=True)
@@ -83,7 +81,7 @@ def get_otu_from_identifier(repo: Repo, identifier: str) -> OTUBuilder:
     return otu_
 
 
-def get_otu_isolate_ids_from_identifier(repo: Repo, identifier: str) -> (UUID, UUID):
+def get_otu_isolate_ids_from_identifier(repo: Repo, identifier: str) -> tuple[UUID, UUID]:
     """Return an isolate ID from the repo if identifier matches a single isolate.
 
     Handles cases where the isolate cannot be found.

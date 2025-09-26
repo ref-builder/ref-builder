@@ -260,7 +260,7 @@ def otu_upgrade_accessions(
     otu_ = get_otu_from_identifier(repo, identifier)
 
     upgrade_outdated_sequences_in_otu(
-        repo, otu_, modification_date_start=start_date, ignore_cache=ignore_cache
+        repo, otu_, modification_date_start=datetime.datetime.combine(start_date, datetime.time.min) if start_date else None, ignore_cache=ignore_cache
     )
 
 
