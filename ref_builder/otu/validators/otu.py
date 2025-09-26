@@ -158,7 +158,7 @@ class OTU(OTUBase):
                     raise PydanticCustomError(
                         "segment_not_found",
                         "Sequence segment {sequence_segment} was not found in "
-                        + "the list of segments: {plan_segments}.",
+                        "the list of segments: {plan_segments}.",
                         {
                             "isolate_id": isolate.id,
                             "sequence_segment": sequence.segment,
@@ -177,8 +177,8 @@ class OTU(OTUBase):
                     raise PydanticCustomError(
                         "sequence_too_short",
                         "Sequence based on {sequence_accession} does not pass validation "
-                        + "against segment {segment_id} "
-                        + "({sequence_length} < {min_sequence_length})",
+                        "against segment {segment_id} "
+                        "({sequence_length} < {min_sequence_length})",
                         {
                             "isolate_id": isolate.id,
                             "sequence_id": sequence.id,
@@ -194,8 +194,8 @@ class OTU(OTUBase):
                     raise PydanticCustomError(
                         "sequence_too_long",
                         "Sequence based on {sequence_accession} does not pass validation "
-                        + "against segment {segment_id}"
-                        + "({sequence_length} > {max_sequence_length})",
+                        "against segment {segment_id}"
+                        "({sequence_length} > {max_sequence_length})",
                         {
                             "isolate_id": isolate.id,
                             "sequence_id": sequence.id,

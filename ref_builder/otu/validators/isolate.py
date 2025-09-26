@@ -116,7 +116,7 @@ class Isolate(IsolateBase):
         if len({s.refseq for s in v}) > 1:
             warnings.warn(
                 "Combination of RefSeq and non-RefSeq sequences found in multipartite isolate: "
-                + f"{[sequence.accession.key for sequence in v]}",
+                f"{[sequence.accession.key for sequence in v]}",
                 IsolateInconsistencyWarning,
                 stacklevel=1,
             )

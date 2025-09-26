@@ -12,7 +12,7 @@ from ref_builder.legacy.repo import (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def _console(mocker: MockerFixture) -> Console:
     """The console object in the legacy console module.
 

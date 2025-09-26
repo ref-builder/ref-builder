@@ -6,17 +6,17 @@ from syrupy import SnapshotAssertion
 
 from ref_builder.otu.create import create_otu_with_taxid
 from ref_builder.otu.isolate import add_genbank_isolate
+from ref_builder.otu.promote import promote_otu_accessions
 from ref_builder.otu.update import (
     BatchFetchIndex,
     auto_update_otu,
     batch_update_repo,
     iter_fetch_list,
 )
-from ref_builder.otu.promote import promote_otu_accessions
 from ref_builder.repo import Repo
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_repo(precached_repo: Repo) -> Repo:
     with precached_repo.lock():
         create_otu_with_taxid(
@@ -26,10 +26,10 @@ def mock_repo(precached_repo: Repo) -> Repo:
             "",
         )
 
-    yield precached_repo
+    return precached_repo
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_fetch_index() -> dict[int, set[str]]:
     """A mock fetch index for NCBI Taxonomy ID 2164102."""
     return {
@@ -50,7 +50,7 @@ def mock_fetch_index() -> dict[int, set[str]]:
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_fetch_index_path(
     mock_fetch_index: dict[int, set[str]], tmp_path: Path
 ) -> Path:
@@ -67,7 +67,7 @@ def mock_fetch_index_path(
     file_path.unlink()
 
 
-@pytest.mark.ncbi()
+@pytest.mark.ncbi
 class TestPromoteOTU:
     """Test OTU accession promotion from Genbank to RefSeq."""
 
@@ -126,7 +126,7 @@ class TestPromoteOTU:
         assert otu_after.excluded_accessions == {"MF062125", "MF062126", "MF062127"}
 
 
-@pytest.mark.ncbi()
+@pytest.mark.ncbi
 class TestUpdateOTU:
     """Test automatic OTU update functionality."""
 

@@ -1,10 +1,10 @@
 """Validation utilities for Click commands."""
 
 from collections.abc import Sequence
+from typing import TypeVar
 
 import click
 from click import Context, Parameter
-from typing_extensions import TypeVar
 
 T = TypeVar("T")
 

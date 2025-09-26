@@ -10,7 +10,7 @@ from ref_builder.build import build_json
 from ref_builder.repo import Repo
 
 
-@pytest.fixture()
+@pytest.fixture
 def comparison_reference(pytestconfig, scratch_repo: Repo, tmp_path: Path) -> dict:
     """A prebuilt reference file. Cached in .pytest_cache."""
     comparison_reference = pytestconfig.cache.get("comparison_reference", None)

@@ -51,7 +51,9 @@ def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
         if len(otu_init.plan.segments):
             matching_segment = otu_init.plan.segments[0].id
         else:
-            segment_by_name = otu_init.plan.get_segment_by_name_key(str(sequence.segment))
+            segment_by_name = otu_init.plan.get_segment_by_name_key(
+                str(sequence.segment)
+            )
             assert segment_by_name is not None
             matching_segment = segment_by_name.id
 
@@ -74,7 +76,7 @@ def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
     return result
 
 
-@pytest.fixture()
+@pytest.fixture
 def initialized_repo(tmp_path: Path):
     """Return a pre-initialized mock Repo."""
     repo = Repo.new(
@@ -1439,12 +1441,14 @@ class TestMalformedEvent:
         with open(path, "wb") as f:
             f.write(orjson.dumps(event))
 
-        with initialized_repo.lock():
-            with pytest.raises(
+        with (
+            initialized_repo.lock(),
+            pytest.raises(
                 ValueError,
                 match="Input should be a valid integer, unable to parse string",
-            ):
-                initialized_repo.get_otu_by_taxid(12242)
+            ),
+        ):
+            initialized_repo.get_otu_by_taxid(12242)
 
 
 def test_prune_on_load(initialized_repo: Repo):

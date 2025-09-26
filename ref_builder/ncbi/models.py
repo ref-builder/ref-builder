@@ -227,7 +227,6 @@ class NCBITaxonomy(BaseModel):
     @computed_field
     def species(self) -> NCBILineage:
         """Return the species level taxon in the lineage."""
-
         if self.rank is NCBIRank.SPECIES:
             return NCBILineage(id=self.id, name=self.name, rank=self.rank)
 
@@ -238,6 +237,6 @@ class NCBITaxonomy(BaseModel):
         raise PydanticCustomError(
             "irrelevant_taxon_lineage",
             "No species level taxon found in lineage."
-            + "Taxonomy Id {taxid} level ({rank}) is too high.",
+            "Taxonomy Id {taxid} level ({rank}) is too high.",
             {"taxid": self.id, "rank": self.rank},
         )

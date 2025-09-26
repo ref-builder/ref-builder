@@ -247,7 +247,7 @@ def extract_isolate_source(
     )
 
 
-def iter_legacy_otus(src_path: Path) -> Generator[dict, None, None]:
+def iter_legacy_otus(src_path: Path) -> Generator[dict]:
     """Iterate over all OTUs in a legacy repository.
 
     :param src_path: The path to the legacy repository.

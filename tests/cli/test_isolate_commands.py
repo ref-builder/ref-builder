@@ -1,8 +1,8 @@
 from click.testing import CliRunner
 
-from ref_builder.utils import IsolateName, IsolateNameType
-from ref_builder.cli.otu import otu as otu_command_group
 from ref_builder.cli.isolate import isolate as isolate_command_group
+from ref_builder.cli.otu import otu as otu_command_group
+from ref_builder.utils import IsolateName, IsolateNameType
 
 runner = CliRunner()
 
@@ -96,7 +96,6 @@ class TestIsolateCreateCommand:
 
     def test_duplicate_accessions_error(self, scratch_repo):
         """Test that an error is raised when duplicate accessions are provided."""
-
         result = runner.invoke(
             isolate_command_group,
             ["--path", str(scratch_repo.path)]
@@ -200,7 +199,6 @@ class TestIsolateDeleteCommand:
 
     def test_with_partial_id_ok(self, scratch_repo):
         """Test that a partial isolate ID can also be a valid identifier."""
-
         otu = scratch_repo.get_otu_by_taxid(1169032)
 
         isolate_id = otu.get_isolate_id_by_name(

@@ -68,7 +68,7 @@ class EventStore:
     def iter_events(
         self,
         start: int = 1,
-    ) -> Generator[Event, None, None]:
+    ) -> Generator[Event]:
         """Yield all events in the event store.
 
         Events are yielded by ascending event ID, which corresponds to the order in

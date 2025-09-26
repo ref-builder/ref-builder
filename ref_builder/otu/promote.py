@@ -307,16 +307,15 @@ def upgrade_outdated_sequences_in_otu(
 
             return replacement_sequence_ids
 
-        else:
-            logger.debug(
-                "Replaced sequence",
-                new_accession=str(new_sequence.accession),
-                new_sequence_id=str(new_sequence.id),
-                outmoded_accession=str(outmoded_sequence.accession),
-                outmoded_sequence_id=str(outmoded_sequence.id),
-            )
+        logger.debug(
+            "Replaced sequence",
+            new_accession=str(new_sequence.accession),
+            new_sequence_id=str(new_sequence.id),
+            outmoded_accession=str(outmoded_sequence.accession),
+            outmoded_sequence_id=str(outmoded_sequence.id),
+        )
 
-            replacement_sequence_ids.add(new_sequence.id)
+        replacement_sequence_ids.add(new_sequence.id)
 
         if replacement_sequence_ids:
             logger.info(

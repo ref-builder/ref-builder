@@ -1,5 +1,5 @@
-from ref_builder.repo import Repo
 from ref_builder.otu.validate import check_otu_is_valid
+from ref_builder.repo import Repo
 
 
 class TestValidateOTU:
