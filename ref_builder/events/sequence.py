@@ -21,11 +21,8 @@ class CreateSequenceData(EventData):
     sequence: str
 
 
-class CreateSequence(ApplicableEvent):
+class CreateSequence(ApplicableEvent[CreateSequenceData, SequenceQuery]):
     """An event that creates a sequence for a specific isolate and OTU."""
-
-    data: CreateSequenceData
-    query: SequenceQuery
 
     def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Create sequence in OTU and return."""
@@ -51,14 +48,11 @@ class DeleteSequenceData(EventData):
     rationale: str
 
 
-class DeleteSequence(ApplicableEvent):
+class DeleteSequence(ApplicableEvent[DeleteSequenceData, SequenceQuery]):
     """An event that deletes a sequence.
 
     The second part of a sequence replacement.
     """
-
-    data: DeleteSequenceData
-    query: SequenceQuery
 
     def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Delete sequence from OTU and return."""

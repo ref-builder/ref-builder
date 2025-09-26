@@ -18,11 +18,8 @@ class CreateIsolateData(EventData):
     name: IsolateName | None
 
 
-class CreateIsolate(ApplicableEvent):
+class CreateIsolate(ApplicableEvent[CreateIsolateData, IsolateQuery]):
     """An event that creates an isolate for a specific OTU."""
-
-    data: CreateIsolateData
-    query: IsolateQuery
 
     def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Add isolate to OTU and return."""
@@ -44,11 +41,8 @@ class LinkSequenceData(EventData):
     sequence_id: UUID4
 
 
-class LinkSequence(ApplicableEvent):
+class LinkSequence(ApplicableEvent[LinkSequenceData, IsolateQuery]):
     """An event that links an existing sequence to an isolate."""
-
-    data: LinkSequenceData
-    query: IsolateQuery
 
     def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Add specified sequence to specified isolate and return."""
@@ -66,11 +60,8 @@ class UnlinkSequenceData(EventData):
     sequence_id: UUID4
 
 
-class UnlinkSequence(ApplicableEvent):
+class UnlinkSequence(ApplicableEvent[UnlinkSequenceData, IsolateQuery]):
     """An event that unlinks an existing sequence from an isolate."""
-
-    data: UnlinkSequenceData
-    query: IsolateQuery
 
     def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Unlink specified sequence from specified isolate and return OTU."""
@@ -88,11 +79,8 @@ class DeleteIsolateData(EventData):
     rationale: str
 
 
-class DeleteIsolate(ApplicableEvent):
+class DeleteIsolate(ApplicableEvent[DeleteIsolateData, IsolateQuery]):
     """An isolate deletion event."""
-
-    data: DeleteIsolateData
-    query: IsolateQuery
 
     def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Delete the specified isolate and return."""
