@@ -200,7 +200,7 @@ class ProductionOTU(ProductionResource):
     taxid: int
 
     @classmethod
-    def build_from_validated_otu(cls, validated_otu: OTU):
+    def build_from_validated_otu(cls, validated_otu: OTU) -> "ProductionOTU":
         return ProductionOTU(
             id=str(validated_otu.id),
             abbreviation=validated_otu.acronym,

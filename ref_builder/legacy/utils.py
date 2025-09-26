@@ -41,7 +41,7 @@ class HandleErrorContext:
         self.repaired_otu = repaired_otu
         """A copy of the OTU that repairs should be applied to."""
 
-    def update_otu(self, update: dict):
+    def update_otu(self, update: dict) -> None:
         """Update OTU associated with the error.
 
         Example:
