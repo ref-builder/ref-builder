@@ -253,30 +253,36 @@ def isolate_factory() -> IsolateFactory:
     """Fixture for a factory that generates IsolateBase instances."""
     return IsolateFactory
 
+
 @pytest.fixture()
 def ncbi_genbank_factory() -> NCBIGenbankFactory:
     """Fixture for a factory that generates NCBIGenbank instances."""
     return NCBIGenbankFactory
+
 
 @pytest.fixture()
 def ncbi_source_factory() -> NCBISourceFactory:
     """Fixture for a factory that generates NCBISource instances."""
     return NCBISourceFactory
 
+
 @pytest.fixture()
 def otu_factory() -> OTUFactory:
     """Fixture for a factory that generates OTUBase instances."""
     return OTUFactory
+
 
 @pytest.fixture()
 def otu_minimal_factory() -> OTUMinimalFactory:
     """Fixture for a factory that generates OTUMinimal instances."""
     return OTUMinimalFactory
 
+
 @pytest.fixture()
 def plan_factory() -> PlanFactory:
     """Fixture for generating Plan instances."""
     return PlanFactory
+
 
 @pytest.fixture()
 def sequence_factory() -> SequenceFactory:
