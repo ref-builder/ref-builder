@@ -68,12 +68,14 @@ def convert_legacy_repo(name: str, path: Path, target_path: Path) -> None:
                 sequences = sequences_by_segment[segment["name"]]
 
                 if segment["name"] in ("Genome", "Partial"):
-                    name = None
+                    segment_name = None
                 else:
                     try:
-                        name = SegmentName.from_string(segment["name"])
+                        segment_name = SegmentName.from_string(segment["name"])
                     except ValueError:
-                        name = SegmentName(key=segment["name"], prefix=molecule.type)
+                        segment_name = SegmentName(
+                            key=segment["name"], prefix=molecule.type
+                        )
 
                 lengths = [len(sequence["sequence"]) for sequence in sequences]
 
@@ -99,7 +101,7 @@ def convert_legacy_repo(name: str, path: Path, target_path: Path) -> None:
                 new_segment = Segment.new(
                     length=int(mean_length),
                     length_tolerance=length_tolerance,
-                    name=name,
+                    name=segment_name,
                     rule=SegmentRule.REQUIRED
                     if segment["required"]
                     else SegmentRule.OPTIONAL,
@@ -131,9 +133,9 @@ def convert_legacy_repo(name: str, path: Path, target_path: Path) -> None:
                         "refseq",
                         "unknown",
                     ):
-                        name = None
+                        isolate_name = None
                     else:
-                        name = IsolateName(
+                        isolate_name = IsolateName(
                             IsolateNameType(isolate["source_type"]),
                             isolate["source_name"],
                         )
@@ -141,7 +143,7 @@ def convert_legacy_repo(name: str, path: Path, target_path: Path) -> None:
                     repo_isolate = repo.create_isolate(
                         repo_otu.id,
                         isolate["id"],
-                        name,
+                        isolate_name,
                     )
 
                     if isolate["default"]:

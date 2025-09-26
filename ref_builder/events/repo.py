@@ -14,11 +14,8 @@ class CreateRepoData(EventData):
     settings: RepoSettings
 
 
-class CreateRepo(Event):
+class CreateRepo(Event[CreateRepoData, RepoQuery]):
     """An event that creates a new repository.
 
     This event is always the first event in a repository's event log.
     """
-
-    data: CreateRepoData
-    query: RepoQuery

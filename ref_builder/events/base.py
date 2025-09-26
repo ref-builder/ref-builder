@@ -1,8 +1,12 @@
 import datetime
+from typing import Generic, TypeVar
 
 from pydantic import UUID4, BaseModel, computed_field
 
 from ref_builder.otu.builders.otu import OTUBuilder
+
+TEventData = TypeVar("TEventData", bound="EventData")
+TEventQuery = TypeVar("TEventQuery", bound="EventQuery")
 
 
 class EventQuery(BaseModel):
@@ -13,7 +17,7 @@ class EventData(BaseModel):
     """Represents the data for an event."""
 
 
-class Event(BaseModel):
+class Event(BaseModel, Generic[TEventData, TEventQuery]):
     """The base event."""
 
     id: int
@@ -22,10 +26,10 @@ class Event(BaseModel):
     Event IDs are serially incremented integers.
     """
 
-    data: EventData
+    data: TEventData
     """The data associated with the event."""
 
-    query: EventQuery
+    query: TEventQuery
     """The query targeting the event at a specific resource."""
 
     timestamp: datetime.datetime
@@ -38,7 +42,7 @@ class Event(BaseModel):
         return self.__class__.__name__
 
 
-class ApplicableEvent(Event):
+class ApplicableEvent(Event[TEventData, TEventQuery]):
     def apply(self, otu: OTUBuilder) -> OTUBuilder:
         return otu
 

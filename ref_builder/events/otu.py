@@ -19,11 +19,8 @@ class CreateOTUData(EventData):
     plan: Plan
 
 
-class CreateOTU(Event):
+class CreateOTU(Event[CreateOTUData, OTUQuery]):
     """An event that creates a new OTU."""
-
-    data: CreateOTUData
-    query: OTUQuery
 
     def apply(self) -> OTUBuilder:
         return OTUBuilder(
@@ -46,11 +43,8 @@ class CreatePlanData(EventData):
     plan: Plan
 
 
-class CreatePlan(ApplicableEvent):
+class CreatePlan(ApplicableEvent[CreatePlanData, OTUQuery]):
     """An event that sets the isolate plan for an OTU."""
-
-    data: CreatePlanData
-    query: OTUQuery
 
     def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Apply changed plan to OTU and return."""
@@ -66,11 +60,8 @@ class DeleteOTUData(EventData):
     replacement_otu_id: UUID4 | None
 
 
-class DeleteOTU(Event):
+class DeleteOTU(Event[DeleteOTUData, OTUQuery]):
     """An event that deletes an OTU from Repo indexes."""
-
-    data: DeleteOTUData
-    query: OTUQuery
 
 
 class SetRepresentativeIsolateData(EventData):
@@ -79,11 +70,8 @@ class SetRepresentativeIsolateData(EventData):
     isolate_id: UUID4
 
 
-class SetRepresentativeIsolate(ApplicableEvent):
+class SetRepresentativeIsolate(ApplicableEvent[SetRepresentativeIsolateData, OTUQuery]):
     """An event that sets the representative isolate for an OTU."""
-
-    data: SetRepresentativeIsolateData
-    query: OTUQuery
 
     def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Update the OTU's representative isolate and return."""
@@ -105,15 +93,12 @@ class UpdateExcludedAccessionsData(EventData):
         return sorted(accessions)
 
 
-class UpdateExcludedAccessions(ApplicableEvent):
+class UpdateExcludedAccessions(ApplicableEvent[UpdateExcludedAccessionsData, OTUQuery]):
     """An event that changes the OTU excluded accessions collection.
 
     This event is emitted when Genbank accessions are either
     allowed or disallowed from inclusion in the reference.
     """
-
-    data: UpdateExcludedAccessionsData
-    query: OTUQuery
 
     def apply(self, otu: OTUBuilder) -> OTUBuilder:
         """Add accession allowance changes to OTU and return."""
