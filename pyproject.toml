@@ -1,60 +1,66 @@
-[tool.poetry]
+[build-system]
+requires = ["uv_build>=0.8.22,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+
+[project]
 name = "ref-builder"
-version = "0.0.0"
-description = ""
-authors = ["Ian Boyes <igboyes@gmail.com>", "Shelley Gao"]
-license = "MIT"
-maintainers = ["Ian Boyes <igboyes@gmail.com>"]
-readme = "readme.md"
-
-[tool.poetry.dependencies]
-python = "^3.12"
-arrow = "^1.3.0"
-biopython = "^1.84"
-click = "^8.1.7"
-orjson = "^3.10.6"
-pydantic = "^2.11.4"
-requests = "^2.32.3"
-rich = "^13.7.1"
-structlog = "^24.2.0"
-platformdirs = "^4.2.2"
-
-
-[tool.poetry.group.dev.dependencies]
-faker = "^32.1.0"
-polyfactory = "~2.19.0"
-pytest = "^8.2.2"
-pytest-mock = "^3.14.0"
-pytest-socket = "^0.7.0"
-pytest-structlog = "^1.0"
-pytest-xdist = "^3.6.1"
-ruff = "^0.5.2"
-syrupy = "^4.6.1"
-
-[tool.poetry.scripts]
-ref-builder = "ref_builder.cli.main:entry"
-
-[tool.pytest.ini_options]
-markers = [
-    "ncbi: test requires request to NCBI"
+version = "0.1.0"
+description = "Add your description here"
+authors = [{ name = "Ian Boyes" }, { name = "Shelley Gao" }]
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.13"
+dependencies = [
+  "arrow>=1.3.0",
+  "biopython>=1.85",
+  "click>=8.3.0",
+  "orjson>=3.11.3",
+  "platformdirs>=4.4.0",
+  "pydantic>=2.11.9",
+  "requests>=2.32.5",
+  "rich>=14.1.0",
+  "structlog>=25.4.0",
 ]
 
-[tool.ruff]
-target-version = "py312"
+[project.scripts]
+ref-builder = "ref_builder.cli.main:entry"
+
+[dependency-groups]
+dev = [
+  "polyfactory>=2.22.2",
+  "pytest>=8.4.2",
+  "pytest-mock>=3.15.1",
+  "pytest-structlog>=1.2",
+  "pytest-xdist>=3.8.0",
+  "ruff>=0.13.2",
+  "syrupy>=4.9.1",
+]
+
+[tool.pytest.ini_options]
+markers = ["ncbi: test requires request to NCBI"]
 
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "ANN101", "COM812", "D107", "D203", "D205", "D213", "EM101", "EM102", "FBT001", "FBT003",
-    "G004", "ISC001", "PTH123", "PLR0913", "TRY003", "TRY400"
+  "COM812",
+  "D107",
+  "D203",
+  "D205",
+  "D213",
+  "EM101",
+  "EM102",
+  "FBT001",
+  "FBT003",
+  "G004",
+  "ISC001",
+  "PTH123",
+  "PLR0913",
+  "TRY003",
+  "TRY400",
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ANN201", "ANN202", "D205", "PLR2004", "S101", "S106"]
-
-# Don't require imperative mood for test fixtures.
-"tests/conftest.py"= ["D401"]
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
