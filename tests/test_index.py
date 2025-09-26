@@ -23,7 +23,7 @@ SNAPSHOT_AT_EVENT = (
 """Hardcoded at_event values for the snapshotter_otus fixture."""
 
 
-@pytest.fixture()
+@pytest.fixture
 def index(indexable_otus: list[OTUBuilder], tmp_path: Path) -> Index:
     """An index with eight OTUs already cached."""
     _index = Index(tmp_path / "index.db")

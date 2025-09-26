@@ -8,7 +8,7 @@ from ref_builder.legacy.models import (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def _example_sequence():
     return {
         "_id": "abcd1234",
@@ -20,7 +20,7 @@ def _example_sequence():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def _example_isolate(_example_sequence: dict):
     return {
         "id": "bnmh9021",
@@ -31,7 +31,7 @@ def _example_isolate(_example_sequence: dict):
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def _example_otu(_example_isolate: dict):
     return {
         "_id": "abcd1234",

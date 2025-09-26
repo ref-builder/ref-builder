@@ -59,7 +59,7 @@ def test_replace_sequence(empty_repo):
     }
 
 
-@pytest.mark.filterwarnings()
+@pytest.mark.filterwarnings
 def test_multi_linked_promotion(empty_repo: Repo):
     """Test the promotion of a sequence that is linked to more than one isolate."""
     with empty_repo.lock():
@@ -159,7 +159,7 @@ def test_multi_linked_promotion(empty_repo: Repo):
     )
 
 
-@pytest.mark.ncbi()
+@pytest.mark.ncbi
 class TestUpgradeSequencesInOTU:
     """Test OTU-wide outdated sequence version upgrade."""
 

@@ -8,7 +8,7 @@ from ref_builder.utils import Accession
 
 
 class TestFetchGenbank:
-    @pytest.mark.ncbi()
+    @pytest.mark.ncbi
     def test_fetch_genbank_records_from_ncbi(
         self,
         snapshot: SnapshotAssertion,
@@ -40,7 +40,7 @@ class TestFetchGenbank:
             == snapshot
         )
 
-    @pytest.mark.ncbi()
+    @pytest.mark.ncbi
     def test_fetch_partially_cached_genbank_records(
         self,
         snapshot: SnapshotAssertion,
@@ -62,7 +62,7 @@ class TestFetchGenbank:
             == snapshot
         )
 
-    @pytest.mark.ncbi()
+    @pytest.mark.ncbi
     def test_fetch_non_existent_accession(self, scratch_ncbi_client: NCBIClient):
         """Test that the client returns an empty list when the fetched accession does
         not exist.
@@ -71,7 +71,7 @@ class TestFetchGenbank:
 
 
 class TestClientFetchRawGenbank:
-    @pytest.mark.ncbi()
+    @pytest.mark.ncbi
     @pytest.mark.parametrize(
         "accessions",
         [
@@ -86,7 +86,7 @@ class TestClientFetchRawGenbank:
             assert record.get("GBSeq_locus")
             assert record.get("GBSeq_sequence")
 
-    @pytest.mark.ncbi()
+    @pytest.mark.ncbi
     @pytest.mark.parametrize(
         "accessions",
         [
@@ -103,7 +103,7 @@ class TestClientFetchRawGenbank:
             assert record.get("GBSeq_locus", None)
             assert record.get("GBSeq_sequence", None)
 
-    @pytest.mark.ncbi()
+    @pytest.mark.ncbi
     def test_fetch_raw_via_accessions_fail(self):
         records = NCBIClient.fetch_unvalidated_genbank_records(
             ["friday", "paella", "111"],
@@ -112,7 +112,7 @@ class TestClientFetchRawGenbank:
         assert not records
 
 
-@pytest.mark.ncbi()
+@pytest.mark.ncbi
 class TestFetchAccessionsByTaxid:
     """Test NCBI ESearch interface functionality."""
 
@@ -137,7 +137,6 @@ class TestFetchAccessionsByTaxid:
 
     def test_refseq_limit(self, uncached_ncbi_client: NCBIClient):
         """Test that RefSeq-only searches return only RefSeq accessions."""
-
         for raw_accession in NCBIClient.fetch_accessions_by_taxid(
             438782, refseq_only=True
         ):
@@ -220,7 +219,7 @@ class TestFetchAccessionsByTaxid:
         assert after_2025_accessions.issubset(after_2024_accessions)
 
 
-@pytest.mark.ncbi()
+@pytest.mark.ncbi
 class TestFetchTaxonomy:
     def test_ok(
         self,
@@ -261,7 +260,7 @@ class TestFetchTaxonomy:
             uncached_ncbi_client.fetch_taxonomy_record(190729)
 
 
-@pytest.mark.ncbi()
+@pytest.mark.ncbi
 def test_fetch_spelling():
     """Test that the client can fetch the correct spelling of a virus name."""
     assert (

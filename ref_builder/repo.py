@@ -230,7 +230,7 @@ class Repo:
             self._lock.unlock()
 
     @contextmanager
-    def use_transaction(self) -> Generator[Transaction, None, None]:
+    def use_transaction(self) -> Generator[Transaction]:
         """Lock the repository during modification.
 
         This prevents writes from  other ``ref-builder`` processes.
@@ -873,9 +873,7 @@ class Repo:
 
         return otu
 
-    def iter_otu_events(
-        self, otu_id: uuid.UUID
-    ) -> Generator[ApplicableEvent, None, None]:
+    def iter_otu_events(self, otu_id: uuid.UUID) -> Generator[ApplicableEvent]:
         """Iterate through event log."""
         event_index_item = self._index.get_event_ids_by_otu_id(otu_id)
 
@@ -883,7 +881,7 @@ class Repo:
             for event_id in event_index_item.event_ids:
                 yield self._event_store.read_event(event_id)
 
-    def iter_event_metadata(self) -> Generator[EventMetadata, None, None]:
+    def iter_event_metadata(self) -> Generator[EventMetadata]:
         """Iterate through the event metadata of all events."""
         yield from self._index.iter_event_metadata()
 
@@ -1097,7 +1095,7 @@ class Repo:
 
 
 @contextmanager
-def locked_repo(path: Path) -> Generator[Repo, None, None]:
+def locked_repo(path: Path) -> Generator[Repo]:
     """Yield a locked Repo."""
     repo = Repo(path)
 

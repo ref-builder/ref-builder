@@ -95,7 +95,7 @@ class LegacyOTU(BaseModel):
 
     @field_validator("isolates")
     @classmethod
-    def check_default_isolate(cls, v):
+    def check_default_isolate(cls, v) -> list:
         """Check if there is only one default isolate."""
         default_isolates = [isolate for isolate in v if isolate.default]
 
@@ -109,7 +109,9 @@ class LegacyOTU(BaseModel):
 
     @field_validator("otu_schema")
     @classmethod
-    def check_schema_molecule(cls, otu_schema: list[LegacySchemaSegment]):
+    def check_schema_molecule(
+        cls, otu_schema: list[LegacySchemaSegment]
+    ) -> list[LegacySchemaSegment]:
         """Check if all segments in the schema have the same molecule."""
         molecules = {segment.molecule for segment in otu_schema}
 
@@ -120,7 +122,9 @@ class LegacyOTU(BaseModel):
 
     @field_validator("otu_schema")
     @classmethod
-    def check_schema_names(cls, otu_schema: list[LegacySchemaSegment]):
+    def check_schema_names(
+        cls, otu_schema: list[LegacySchemaSegment]
+    ) -> list[LegacySchemaSegment]:
         """Check if there are duplicate schema segment names."""
         names = {segment.name for segment in otu_schema}
 

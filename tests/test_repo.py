@@ -26,7 +26,9 @@ SEGMENT_LENGTH = 15
 
 def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
     """Add an unvalidated OTU to a given repo."""
+    assert otu.representative_isolate is not None
     isolate_to_copy = otu.get_isolate(otu.representative_isolate)
+    assert isolate_to_copy is not None
 
     otu_init = repo.create_otu(
         acronym=otu.acronym,
@@ -36,19 +38,24 @@ def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
         plan=otu.plan,
         taxid=otu.taxid,
     )
+    assert otu_init is not None
 
     isolate_init = repo.create_isolate(
         otu_init.id,
         legacy_id=otu_init.legacy_id,
         name=isolate_to_copy.name,
     )
+    assert isolate_init is not None
 
     for sequence in isolate_to_copy.sequences:
-        matching_segment = (
-            otu_init.plan.segments[0].id
-            if len(otu_init.plan.segments)
-            else otu_init.plan.get_segment_by_name_key(sequence.segment).id
-        )
+        if len(otu_init.plan.segments):
+            matching_segment = otu_init.plan.segments[0].id
+        else:
+            segment_by_name = otu_init.plan.get_segment_by_name_key(
+                str(sequence.segment)
+            )
+            assert segment_by_name is not None
+            matching_segment = segment_by_name.id
 
         sequence_init = repo.create_sequence(
             otu_init.id,
@@ -58,15 +65,18 @@ def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
             segment=matching_segment,
             sequence=sequence.sequence,
         )
+        assert sequence_init is not None
 
         repo.link_sequence(otu_init.id, isolate_init.id, sequence_init.id)
 
     repo.set_representative_isolate(otu_init.id, isolate_init.id)
 
-    return repo.get_otu(otu_init.id)
+    result = repo.get_otu(otu_init.id)
+    assert result is not None
+    return result
 
 
-@pytest.fixture()
+@pytest.fixture
 def initialized_repo(tmp_path: Path):
     """Return a pre-initialized mock Repo."""
     repo = Repo.new(
@@ -97,6 +107,7 @@ def initialized_repo(tmp_path: Path):
             ),
             taxid=12242,
         )
+        assert otu is not None
 
         sequence_1 = repo.create_sequence(
             otu.id,
@@ -106,12 +117,14 @@ def initialized_repo(tmp_path: Path):
             otu.plan.segments[0].id,
             "ACGTACGTACGTACG",
         )
+        assert sequence_1 is not None
 
         isolate_a = repo.create_isolate(
             otu.id,
             None,
             IsolateName(IsolateNameType.ISOLATE, "A"),
         )
+        assert isolate_a is not None
 
         repo.link_sequence(otu.id, isolate_a.id, sequence_1.id)
 
@@ -122,7 +135,7 @@ def initialized_repo(tmp_path: Path):
 
 def init_otu(repo: Repo) -> OTUBuilder:
     """Create an empty OTU."""
-    return repo.create_otu(
+    result = repo.create_otu(
         acronym="TMV",
         legacy_id="abcd1234",
         molecule=Molecule(
@@ -142,6 +155,8 @@ def init_otu(repo: Repo) -> OTUBuilder:
         ),
         taxid=12242,
     )
+    assert result is not None
+    return result
 
 
 class TestNew:
@@ -204,6 +219,7 @@ class TestCreateOTU:
                 plan=plan,
                 taxid=12242,
             )
+            assert otu is not None
 
             assert otu == OTUBuilder(
                 id=otu.id,
@@ -403,6 +419,7 @@ class TestCreateOTU:
                     plan=plan,
                     taxid=12242,
                 )
+                assert otu is not None
 
                 sequence_1 = empty_repo.create_sequence(
                     otu.id,
@@ -412,12 +429,14 @@ class TestCreateOTU:
                     otu.plan.segments[0].id,
                     "ACGTACGTACGTACG",
                 )
+                assert sequence_1 is not None
 
                 isolate_a = empty_repo.create_isolate(
                     otu.id,
                     None,
                     IsolateName(IsolateNameType.ISOLATE, "A"),
                 )
+                assert isolate_a is not None
 
                 empty_repo.link_sequence(otu.id, isolate_a.id, sequence_1.id)
 
@@ -1422,12 +1441,14 @@ class TestMalformedEvent:
         with open(path, "wb") as f:
             f.write(orjson.dumps(event))
 
-        with initialized_repo.lock():
-            with pytest.raises(
+        with (
+            initialized_repo.lock(),
+            pytest.raises(
                 ValueError,
                 match="Input should be a valid integer, unable to parse string",
-            ):
-                initialized_repo.get_otu_by_taxid(12242)
+            ),
+        ):
+            initialized_repo.get_otu_by_taxid(12242)
 
 
 def test_prune_on_load(initialized_repo: Repo):

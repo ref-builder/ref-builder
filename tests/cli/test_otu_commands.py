@@ -1,6 +1,6 @@
 import pytest
 from click.testing import CliRunner
-from syrupy import SnapshotAssertion
+from syrupy.assertion import SnapshotAssertion
 from syrupy.filters import props
 
 from ref_builder.cli.otu import otu as otu_command_group
@@ -111,7 +111,7 @@ class TestCreateOTUCommands:
         assert "Duplicate accessions are not allowed." in result.output
 
 
-@pytest.mark.ncbi()
+@pytest.mark.ncbi
 class TestPromoteOTUCommand:
     """Test that the ``ref-builder otu promote`` command works as planned."""
 
@@ -133,6 +133,7 @@ class TestPromoteOTUCommand:
         assert result.exit_code == 0
 
         otu_before = empty_repo.get_otu_by_taxid(taxid)
+        assert otu_before is not None
 
         assert otu_before.accessions == original_rep_isolate_accessions
 
@@ -151,6 +152,7 @@ class TestPromoteOTUCommand:
         repo_after = Repo(empty_repo.path)
 
         otu_after = repo_after.get_otu(otu_before.id)
+        assert otu_after is not None
 
         assert otu_after.representative_isolate == otu_before.representative_isolate
 
@@ -176,6 +178,7 @@ class TestPromoteOTUCommand:
         assert result.exit_code == 0
 
         otu = empty_repo.get_otu_by_taxid(taxid)
+        assert otu is not None
 
         assert otu.excluded_accessions == {"MF062125", "MF062126", "MF062127"}
 
@@ -203,8 +206,10 @@ class TestUpgradeOTUCommand:
         )
 
         otu_init = precached_repo.get_otu_by_taxid(taxid)
+        assert otu_init is not None
 
         sequence_init = otu_init.get_sequence_by_accession("NC_004452")
+        assert sequence_init is not None
 
         assert sequence_init.accession.version == 1
 
@@ -215,8 +220,10 @@ class TestUpgradeOTUCommand:
         assert result.exit_code == 0
 
         otu_after = precached_repo.get_otu(otu_init.id)
+        assert otu_after is not None
 
         sequence_after = otu_after.get_sequence_by_accession("NC_004452")
+        assert sequence_after is not None
 
         assert sequence_after.accession.version > sequence_init.accession.version
 
@@ -231,8 +238,10 @@ class TestUpgradeOTUCommand:
         )
 
         otu_init = precached_repo.get_otu_by_taxid(taxid)
+        assert otu_init is not None
 
         sequence_init = otu_init.get_sequence_by_accession("NC_004452")
+        assert sequence_init is not None
 
         assert sequence_init.accession.version == 1
 
@@ -244,8 +253,10 @@ class TestUpgradeOTUCommand:
         assert result.exit_code == 0
 
         otu_after = precached_repo.get_otu(otu_init.id)
+        assert otu_after is not None
 
         sequence_after = otu_after.get_sequence_by_accession("NC_004452")
+        assert sequence_after is not None
 
         assert sequence_after.accession.version == sequence_init.accession.version == 1
 
@@ -300,6 +311,7 @@ class TestSetDefaultIsolateCommand:
         taxid = 345184
 
         otu_before = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_before is not None
 
         representative_isolate_after = None
 
@@ -308,6 +320,7 @@ class TestSetDefaultIsolateCommand:
                 representative_isolate_after = isolate_id
                 break
 
+        assert representative_isolate_after is not None
         assert otu_before.get_isolate(representative_isolate_after)
 
         result = runner.invoke(
@@ -327,6 +340,7 @@ class TestSetDefaultIsolateCommand:
         assert result.exit_code == 0
 
         otu_after = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_after is not None
 
         assert otu_after.representative_isolate != otu_before.representative_isolate
 
@@ -337,6 +351,7 @@ class TestSetDefaultIsolateCommand:
         taxid = 345184
 
         otu_before = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_before is not None
 
         representative_isolate_after = None
 
@@ -345,6 +360,7 @@ class TestSetDefaultIsolateCommand:
                 representative_isolate_after = isolate_id
                 break
 
+        assert representative_isolate_after is not None
         assert otu_before.get_isolate(representative_isolate_after)
 
         result = runner.invoke(
@@ -364,6 +380,7 @@ class TestSetDefaultIsolateCommand:
         assert result.exit_code == 0
 
         otu_after = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_after is not None
 
         assert otu_after.representative_isolate != otu_before.representative_isolate
 
@@ -441,6 +458,7 @@ class TestRenamePlanSegmentCommand:
     def test_ok(self, scratch_repo: Repo):
         """Test that a given plan segment can be renamed."""
         otu_before = scratch_repo.get_otu_by_taxid(223262)
+        assert otu_before is not None
 
         first_segment_id = otu_before.plan.segments[0].id
 
@@ -462,11 +480,11 @@ class TestRenamePlanSegmentCommand:
         assert result.exit_code == 0
 
         otu_after = scratch_repo.get_otu_by_taxid(223262)
+        assert otu_after is not None
 
-        assert (
-            str(otu_after.plan.get_segment_by_id(first_segment_id).name)
-            == "RNA TestName"
-        )
+        segment = otu_after.plan.get_segment_by_id(first_segment_id)
+        assert segment is not None
+        assert str(segment.name) == "RNA TestName"
 
 
 class TestExtendPlanCommand:
@@ -502,6 +520,7 @@ class TestExtendPlanCommand:
         assert result.exit_code == 0
 
         otu_init = precached_repo.get_otu_by_taxid(taxid)
+        assert otu_init is not None
 
         assert len(otu_init.plan.segments) == len(initial_accessions)
 
@@ -521,6 +540,7 @@ class TestExtendPlanCommand:
         assert "Added new segments" in result.output
 
         otu_after = precached_repo.get_otu(otu_init.id)
+        assert otu_after is not None
 
         assert len(otu_after.plan.segments) == len(otu_init.plan.segments) + len(
             new_accessions
@@ -534,6 +554,7 @@ class TestExtendPlanCommand:
         a preexisting unnamed segment.
         """
         otu_before = scratch_repo.get_otu_by_taxid(96892)
+        assert otu_before is not None
 
         assert otu_before.plan.monopartite
 

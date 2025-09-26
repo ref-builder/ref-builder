@@ -35,19 +35,19 @@ def _seed_factories() -> None:
     ModelFactory.seed_random(1)
 
 
-@pytest.fixture()
+@pytest.fixture
 def uncached_ncbi_client(scratch_ncbi_cache: NCBICache) -> NCBIClient:
     """An NCBI client that ignores the cache."""
     scratch_ncbi_cache.clear()
     return NCBIClient(ignore_cache=True)
 
 
-@pytest.fixture()
+@pytest.fixture
 def files_path():
     return Path(__file__).parent / "files"
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_repo(tmp_path: Path) -> Repo:
     """An empty reference repository."""
     return Repo.new(
@@ -58,7 +58,7 @@ def empty_repo(tmp_path: Path) -> Repo:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def legacy_otu(legacy_repo_path: Path) -> dict:
     """A legacy OTU."""
     return build_legacy_otu(
@@ -66,7 +66,7 @@ def legacy_otu(legacy_repo_path: Path) -> dict:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def legacy_repo_path(
     files_path: Path,
     tmp_path: Path,
@@ -79,7 +79,7 @@ def legacy_repo_path(
     return path
 
 
-@pytest.fixture()
+@pytest.fixture
 def precached_repo(
     mocker: MockerFixture,
     scratch_user_cache_path: Path,
@@ -94,7 +94,7 @@ def precached_repo(
     return Repo.new(DataType.GENOME, "Empty", tmp_path / "precached_repo", "virus")
 
 
-@pytest.fixture()
+@pytest.fixture
 def scratch_ncbi_cache(mocker: MockerFixture, scratch_user_cache_path: Path):
     """A scratch NCBI cache with preloaded data."""
     mocker.patch(
@@ -105,7 +105,7 @@ def scratch_ncbi_cache(mocker: MockerFixture, scratch_user_cache_path: Path):
     return NCBICache()
 
 
-@pytest.fixture()
+@pytest.fixture
 def scratch_ncbi_client(
     mocker: MockerFixture,
     scratch_user_cache_path: Path,
@@ -119,13 +119,13 @@ def scratch_ncbi_client(
     return NCBIClient(ignore_cache=False)
 
 
-@pytest.fixture()
+@pytest.fixture
 def scratch_path(scratch_repo: Repo) -> Path:
     """The path to a scratch reference repository."""
     return scratch_repo.path
 
 
-@pytest.fixture()
+@pytest.fixture
 def scratch_repo(tmp_path: Path, scratch_event_store_data: dict[str, dict]) -> Repo:
     """A prepared scratch repository."""
     path = tmp_path / "scratch_repo"
@@ -142,13 +142,13 @@ def scratch_repo(tmp_path: Path, scratch_event_store_data: dict[str, dict]) -> R
     return Repo(path)
 
 
-@pytest.fixture()
+@pytest.fixture
 def scratch_repo_contents_path(files_path):
     """The path to the scratch repository's table of contents file."""
     return files_path / "src_test_contents.json"
 
 
-@pytest.fixture()
+@pytest.fixture
 def scratch_user_cache_path(files_path: Path, tmp_path: Path) -> Path:
     """A path to a user cache that contains preloaded data.
 
@@ -163,7 +163,7 @@ def scratch_user_cache_path(files_path: Path, tmp_path: Path) -> Path:
     return path
 
 
-@pytest.fixture()
+@pytest.fixture
 def scratch_event_store_data(
     pytestconfig,
     scratch_repo_contents_path: Path,
@@ -230,7 +230,7 @@ otu_contents_list_adapter = TypeAdapter(list[OTUContents])
 """Aids the serialization of a scratch repo's table of contents."""
 
 
-@pytest.fixture()
+@pytest.fixture
 def indexable_otus() -> list[OTUBuilder]:
     """A list of eight OTUs for use in Snapshotter testing."""
     otus = [
@@ -248,43 +248,43 @@ def indexable_otus() -> list[OTUBuilder]:
     return otus
 
 
-@pytest.fixture()
+@pytest.fixture
 def isolate_factory() -> IsolateFactory:
     """Fixture for a factory that generates IsolateBase instances."""
     return IsolateFactory
 
 
-@pytest.fixture()
+@pytest.fixture
 def ncbi_genbank_factory() -> NCBIGenbankFactory:
     """Fixture for a factory that generates NCBIGenbank instances."""
     return NCBIGenbankFactory
 
 
-@pytest.fixture()
+@pytest.fixture
 def ncbi_source_factory() -> NCBISourceFactory:
     """Fixture for a factory that generates NCBISource instances."""
     return NCBISourceFactory
 
 
-@pytest.fixture()
+@pytest.fixture
 def otu_factory() -> OTUFactory:
     """Fixture for a factory that generates OTUBase instances."""
     return OTUFactory
 
 
-@pytest.fixture()
+@pytest.fixture
 def otu_minimal_factory() -> OTUMinimalFactory:
     """Fixture for a factory that generates OTUMinimal instances."""
     return OTUMinimalFactory
 
 
-@pytest.fixture()
+@pytest.fixture
 def plan_factory() -> PlanFactory:
     """Fixture for generating Plan instances."""
     return PlanFactory
 
 
-@pytest.fixture()
+@pytest.fixture
 def sequence_factory() -> SequenceFactory:
     """Fixture for a factory that generates SequenceBase instances."""
     return SequenceFactory

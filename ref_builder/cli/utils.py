@@ -43,22 +43,21 @@ def get_otu_from_identifier(repo: Repo, identifier: str) -> OTUBuilder:
         else:
             otu_id = repo.get_otu_id_by_taxid(taxid)
 
-    else:
-        if (otu_id := repo.get_otu_id_by_acronym(identifier)) is None:
-            try:
-                otu_id = repo.get_otu_id_by_partial(identifier)
+    elif (otu_id := repo.get_otu_id_by_acronym(identifier)) is None:
+        try:
+            otu_id = repo.get_otu_id_by_partial(identifier)
 
-            except PartialIDConflictError:
-                click.echo(
-                    "Partial ID too short to narrow down results.",
-                    err=True,
-                )
+        except PartialIDConflictError:
+            click.echo(
+                "Partial ID too short to narrow down results.",
+                err=True,
+            )
 
-            except InvalidInputError as e:
-                click.echo(
-                    e,
-                    err=True,
-                )
+        except InvalidInputError as e:
+            click.echo(
+                e,
+                err=True,
+            )
 
     if otu_id is None:
         click.echo("OTU not found.", err=True)

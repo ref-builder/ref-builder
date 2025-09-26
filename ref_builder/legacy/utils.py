@@ -41,7 +41,7 @@ class HandleErrorContext:
         self.repaired_otu = repaired_otu
         """A copy of the OTU that repairs should be applied to."""
 
-    def update_otu(self, update: dict):
+    def update_otu(self, update: dict) -> None:
         """Update OTU associated with the error.
 
         Example:
@@ -247,7 +247,7 @@ def extract_isolate_source(
     )
 
 
-def iter_legacy_otus(src_path: Path) -> Generator[dict, None, None]:
+def iter_legacy_otus(src_path: Path) -> Generator[dict]:
     """Iterate over all OTUs in a legacy repository.
 
     :param src_path: The path to the legacy repository.
