@@ -81,7 +81,9 @@ def get_otu_from_identifier(repo: Repo, identifier: str) -> OTUBuilder:
     return otu_
 
 
-def get_otu_isolate_ids_from_identifier(repo: Repo, identifier: str) -> tuple[UUID, UUID]:
+def get_otu_isolate_ids_from_identifier(
+    repo: Repo, identifier: str
+) -> tuple[UUID, UUID]:
     """Return an isolate ID from the repo if identifier matches a single isolate.
 
     Handles cases where the isolate cannot be found.

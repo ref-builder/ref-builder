@@ -73,7 +73,9 @@ def convert_legacy_repo(name: str, path: Path, target_path: Path) -> None:
                     try:
                         segment_name = SegmentName.from_string(segment["name"])
                     except ValueError:
-                        segment_name = SegmentName(key=segment["name"], prefix=molecule.type)
+                        segment_name = SegmentName(
+                            key=segment["name"], prefix=molecule.type
+                        )
 
                 lengths = [len(sequence["sequence"]) for sequence in sequences]
 

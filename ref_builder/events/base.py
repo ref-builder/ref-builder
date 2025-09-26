@@ -5,8 +5,8 @@ from pydantic import UUID4, BaseModel, computed_field
 
 from ref_builder.otu.builders.otu import OTUBuilder
 
-TEventData = TypeVar('TEventData', bound='EventData')
-TEventQuery = TypeVar('TEventQuery', bound='EventQuery')
+TEventData = TypeVar("TEventData", bound="EventData")
+TEventQuery = TypeVar("TEventQuery", bound="EventQuery")
 
 
 class EventQuery(BaseModel):
