@@ -32,7 +32,7 @@ def handle_enum(ctx: HandleErrorContext) -> ErrorHandledResult:
     )
 
     if field == "source_type" and ctx.fix:
-        isolate_index = ctx.error["loc"][1]
+        isolate_index = int(ctx.error["loc"][1])
         isolate = ctx.otu["isolates"][isolate_index]
 
         genbank_records = ctx.ncbi_client.fetch_genbank_records(
@@ -203,8 +203,8 @@ def handle_string_pattern_mismatch(ctx: HandleErrorContext) -> ErrorHandledResul
 
         genbank_record = genbank_records[0]
 
-        isolate_index = ctx.error["loc"][1]
-        sequence_index = ctx.error["loc"][3]
+        isolate_index = int(ctx.error["loc"][1])
+        sequence_index = int(ctx.error["loc"][3])
 
         ctx.update_sequence(
             isolate_index,
@@ -247,7 +247,7 @@ def handle_string_too_short(ctx: HandleErrorContext) -> ErrorHandledResult:
     )
 
     if field == "source_name" and ctx.fix:
-        isolate_index = ctx.error["loc"][1]
+        isolate_index = int(ctx.error["loc"][1])
         isolate = ctx.otu["isolates"][isolate_index]
 
         genbank_records = ctx.ncbi_client.fetch_genbank_records(
@@ -307,7 +307,7 @@ def handle_value_error(ctx: HandleErrorContext) -> ErrorHandledResult:
         if not ctx.fix:
             return ErrorHandledResult(basis)
 
-        isolate_index = ctx.error["loc"][1]
+        isolate_index = int(ctx.error["loc"][1])
         isolate = ctx.otu["isolates"][isolate_index]
 
         genbank_records = ctx.ncbi_client.fetch_genbank_records(
