@@ -2,7 +2,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from pydantic import ValidationError
-from syrupy import SnapshotAssertion
+from syrupy.assertion import SnapshotAssertion
 from syrupy.filters import props
 
 from ref_builder.otu.builders.sequence import SequenceBuilder
@@ -34,6 +34,7 @@ def test_exclude_accessions(scratch_repo: Repo):
     taxid = 345184
 
     otu_before = scratch_repo.get_otu_by_taxid(taxid)
+    assert otu_before is not None
 
     assert not otu_before.excluded_accessions
 
@@ -43,6 +44,7 @@ def test_exclude_accessions(scratch_repo: Repo):
         )
 
     otu_after = scratch_repo.get_otu_by_taxid(taxid)
+    assert otu_after is not None
 
     assert otu_after.excluded_accessions == {"DQ178608", "DQ178609"}
 
@@ -50,14 +52,18 @@ def test_exclude_accessions(scratch_repo: Repo):
 def test_allow_accessions(scratch_repo: Repo):
     taxid = 345184
 
+    otu_initial = scratch_repo.get_otu_by_taxid(taxid)
+    assert otu_initial is not None
+
     with scratch_repo.lock():
         exclude_accessions_from_otu(
             scratch_repo,
-            otu=scratch_repo.get_otu_by_taxid(taxid),
+            otu=otu_initial,
             accessions={"DQ178608", "DQ178609"},
         )
 
     otu_before = scratch_repo.get_otu_by_taxid(taxid)
+    assert otu_before is not None
 
     assert otu_before.excluded_accessions == {"DQ178608", "DQ178609"}
 
@@ -69,6 +75,7 @@ def test_allow_accessions(scratch_repo: Repo):
         )
 
     otu_after = scratch_repo.get_otu_by_taxid(taxid)
+    assert otu_after is not None
 
     assert otu_after.excluded_accessions == {"DQ178609"}
 
@@ -80,6 +87,7 @@ class TestSetRepresentativeIsolate:
         taxid = 345184
 
         otu_before = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_before is not None
 
         representative_isolate_after = None
 
@@ -88,12 +96,15 @@ class TestSetRepresentativeIsolate:
                 representative_isolate_after = isolate_id
                 break
 
+        assert representative_isolate_after is not None
+
         with scratch_repo.lock():
             set_representative_isolate(
                 scratch_repo, otu_before, representative_isolate_after
             )
 
         otu_after = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_after is not None
 
         assert otu_after.representative_isolate != otu_before.representative_isolate
 
@@ -104,9 +115,11 @@ class TestSetRepresentativeIsolate:
         taxid = 345184
 
         otu_before = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_before is not None
 
         event_id_before = scratch_repo.last_id
 
+        assert otu_before.representative_isolate is not None
         with scratch_repo.lock():
             set_representative_isolate(
                 scratch_repo,
@@ -123,6 +136,7 @@ class TestSetPlan:
     def test_ok(self, scratch_repo: Repo):
         """Test that an OTU's plan can be replaced."""
         otu_before = scratch_repo.get_otu_by_taxid(223262)
+        assert otu_before is not None
 
         original_plan = otu_before.plan
 
@@ -153,6 +167,7 @@ class TestSetPlan:
         assert type(new_plan) is Plan
 
         otu_after = scratch_repo.get_otu(otu_before.id)
+        assert otu_after is not None
 
         assert len(otu_after.plan.segments) == len(otu_before.plan.segments) + 2
 
@@ -161,12 +176,15 @@ class TestSetPlan:
     def test_rename_segment_ok(self, scratch_repo: Repo):
         """Test that a given plan segment can be renamed."""
         otu_before = scratch_repo.get_otu_by_taxid(223262)
+        assert otu_before is not None
 
         first_segment_id = otu_before.plan.segments[0].id
 
         new_name = SegmentName(prefix="RNA", key="TestName")
 
-        assert otu_before.plan.get_segment_by_id(first_segment_id).name != new_name
+        segment_before = otu_before.plan.get_segment_by_id(first_segment_id)
+        assert segment_before is not None
+        assert segment_before.name != new_name
 
         with scratch_repo.lock():
             rename_plan_segment(
@@ -177,18 +195,24 @@ class TestSetPlan:
             )
 
         otu_after = scratch_repo.get_otu_by_taxid(223262)
+        assert otu_after is not None
 
-        assert otu_after.plan.get_segment_by_id(first_segment_id).name == new_name
+        segment_after = otu_after.plan.get_segment_by_id(first_segment_id)
+        assert segment_after is not None
+        assert segment_after.name == new_name
 
     def test_rename_segment_fail(self, scratch_repo: Repo):
         """Test that an attempt to rename a nonexistent segment does not change the OTU."""
         otu_before = scratch_repo.get_otu_by_taxid(223262)
+        assert otu_before is not None
 
         first_segment = otu_before.plan.segments[0]
 
         new_name = SegmentName(prefix="RNA", key="TestName")
 
-        assert otu_before.plan.get_segment_by_id(first_segment.id).name != new_name
+        segment_before = otu_before.plan.get_segment_by_id(first_segment.id)
+        assert segment_before is not None
+        assert segment_before.name != new_name
 
         assert (
             rename_plan_segment(
@@ -201,13 +225,13 @@ class TestSetPlan:
         )
 
         otu_after = scratch_repo.get_otu_by_taxid(223262)
+        assert otu_after is not None
 
         assert otu_after.plan.model_dump_json() == otu_before.plan.model_dump_json()
 
-        assert (
-            otu_after.plan.get_segment_by_id(first_segment.id).name
-            == first_segment.name
-        )
+        segment_after = otu_after.plan.get_segment_by_id(first_segment.id)
+        assert segment_after is not None
+        assert segment_after.name == first_segment.name
 
     @pytest.mark.parametrize(
         ("initial_accessions", "new_accessions"),
@@ -232,6 +256,7 @@ class TestSetPlan:
                 acronym="",
             )
 
+        assert otu_before is not None
         original_plan = otu_before.plan
 
         assert isinstance(original_plan, Plan)
@@ -247,6 +272,7 @@ class TestSetPlan:
         assert len(new_segment_ids) == len(new_accessions)
 
         otu_after = precached_repo.get_otu(otu_before.id)
+        assert otu_after is not None
 
         assert new_segment_ids.issubset(otu_before.plan.segment_ids)
 
@@ -262,6 +288,7 @@ class TestSetPlan:
         a preexisting unnamed segment.
         """
         otu_before = scratch_repo.get_otu_by_taxid(96892)
+        assert otu_before is not None
 
         assert otu_before.plan.monopartite
 
@@ -277,6 +304,7 @@ class TestSetPlan:
     def test_set_length_tolerances_ok(self, scratch_repo: Repo, tolerance: float):
         """Check that plan length tolerances can be modified by function."""
         otu_before = scratch_repo.get_otu_by_taxid(96892)
+        assert otu_before is not None
 
         assert (
             otu_before.plan.segments[0].length_tolerance
@@ -287,6 +315,7 @@ class TestSetPlan:
             set_plan_length_tolerances(scratch_repo, otu_before, tolerance)
 
         otu_after = scratch_repo.get_otu(otu_before.id)
+        assert otu_after is not None
 
         assert otu_after.plan.segments[0].length_tolerance == tolerance
 
@@ -294,6 +323,7 @@ class TestSetPlan:
     def test_set_length_tolerances_fail(self, scratch_repo: Repo, bad_tolerance: float):
         """Check that plan length tolerances cannot be set to an invalid float value."""
         otu_before = scratch_repo.get_otu_by_taxid(96892)
+        assert otu_before is not None
 
         assert (
             otu_before.plan.segments[0].length_tolerance
@@ -308,6 +338,7 @@ class TestSetPlan:
                     assert error["type"] in ("less_than_equal", "greater_than_equal")
 
         otu_after = scratch_repo.get_otu(otu_before.id)
+        assert otu_after is not None
 
         assert (
             otu_after.plan.segments[0].length_tolerance
@@ -323,6 +354,7 @@ class TestDeleteIsolate:
         taxid = 1169032
 
         otu_before = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_before is not None
 
         isolate_id = otu_before.get_isolate_id_by_name(
             IsolateName(type=IsolateNameType.ISOLATE, value="WMoV-6.3"),
@@ -334,12 +366,15 @@ class TestDeleteIsolate:
             assert delete_isolate_from_otu(scratch_repo, otu_before, isolate_id)
 
         otu_after = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_after is not None
 
         assert isolate_id not in otu_after.isolate_ids
 
         assert otu_after.get_isolate(isolate_id) is None
 
-        assert otu_before.get_isolate(isolate_id).accessions not in otu_after.accessions
+        isolate_before = otu_before.get_isolate(isolate_id)
+        assert isolate_before is not None
+        assert isolate_before.accessions not in otu_after.accessions
 
         assert len(otu_after.isolate_ids) == len(otu_before.isolate_ids) - 1
 
@@ -348,6 +383,8 @@ class TestDeleteIsolate:
         taxid = 1169032
 
         otu_before = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_before is not None
+        assert otu_before.representative_isolate is not None
 
         with scratch_repo.lock():
             assert not delete_isolate_from_otu(
@@ -356,7 +393,9 @@ class TestDeleteIsolate:
                 isolate_id=otu_before.representative_isolate,
             )
 
-        assert scratch_repo.get_otu(otu_before.id).isolate_ids == otu_before.isolate_ids
+        otu_result = scratch_repo.get_otu(otu_before.id)
+        assert otu_result is not None
+        assert otu_result.isolate_ids == otu_before.isolate_ids
 
 
 class TestReplaceSequence:
@@ -370,7 +409,9 @@ class TestReplaceSequence:
                 acronym="",
             )
 
+        assert otu_init is not None
         old_sequence = otu_init.get_sequence_by_accession("MK431779")
+        assert old_sequence is not None
 
         isolate_id = next(
             iter(otu_init.get_isolate_ids_containing_sequence_id(old_sequence.id))
@@ -389,12 +430,11 @@ class TestReplaceSequence:
         assert isinstance(new_sequence, SequenceBuilder)
 
         otu_after = precached_repo.get_otu_by_taxid(1169032)
+        assert otu_after is not None
 
-        assert (
-            otu_after.accessions
-            == otu_after.get_isolate(isolate_id).accessions
-            == {"NC_003355"}
-        )
+        isolate_after = otu_after.get_isolate(isolate_id)
+        assert isolate_after is not None
+        assert otu_after.accessions == isolate_after.accessions == {"NC_003355"}
 
     def test_multiple_link_ok(self, precached_repo):
         with precached_repo.lock():
@@ -405,13 +445,16 @@ class TestReplaceSequence:
                 acronym="",
             )
 
+        assert otu_init is not None
         otu_id = otu_init.id
 
         post_init_otu = precached_repo.get_otu(otu_init.id)
+        assert post_init_otu is not None
 
         assert post_init_otu.accessions == {"DQ178608", "DQ178609"}
 
         rep_isolate = post_init_otu.get_isolate(post_init_otu.representative_isolate)
+        assert rep_isolate is not None
 
         mock_isolate = IsolateFactory.build_on_plan(otu_init.plan)
         mock_sequence = mock_isolate.sequences[1]
@@ -445,6 +488,7 @@ class TestReplaceSequence:
             )
 
         otu_second_isolate = precached_repo.get_otu(otu_id)
+        assert otu_second_isolate is not None
 
         assert otu_second_isolate.accessions == {
             "DQ178608",

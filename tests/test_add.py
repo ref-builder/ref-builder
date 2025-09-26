@@ -1,6 +1,6 @@
 import pytest
 from structlog.testing import capture_logs
-from syrupy import SnapshotAssertion
+from syrupy.assertion import SnapshotAssertion
 from syrupy.filters import props
 
 from ref_builder.otu.create import (
@@ -43,6 +43,7 @@ class TestCreateOTU:
                 "",
             )
 
+        assert otu_ is not None
         assert list(precached_repo.iter_otus()) == [otu_]
         assert otu_.plan.monopartite == (len(accessions) == 1)
         assert len(otu_.plan.segments) == len(accessions)
@@ -62,6 +63,7 @@ class TestCreateOTU:
                 precached_repo, accessions=accessions, acronym=""
             )
 
+        assert made_otu is not None
         assert made_otu.taxid == expected_taxid
 
         otu = precached_repo.get_otu_by_taxid(expected_taxid)
@@ -82,6 +84,7 @@ class TestCreateOTU:
                 "",
             )
 
+        assert otu_ is not None
         assert otu_.model_dump() == snapshot(
             exclude=props("id", "isolates", "representative_isolate"),
         )
@@ -103,7 +106,10 @@ class TestCreateOTU:
             assert otu_ is None
 
             assert any(
-                ["OTU could not be created to spec" in log.get("event") for log in logs]
+                [
+                    "OTU could not be created to spec" in (log.get("event") or "")
+                    for log in logs
+                ]
             )
 
     def test_duplicate_taxid_fail(self, precached_repo: Repo):
@@ -152,6 +158,7 @@ class TestCreateOTU:
                 "",
             )
 
+        assert otu_ is not None
         assert otu_.excluded_accessions == {
             "EF546808",
             "EF546809",
@@ -171,6 +178,7 @@ class TestCreateOTU:
                 "",
             )
 
+        assert otu_ is not None
         assert otu_.acronym == "KLV"
 
     def test_acronym_manual(self, precached_repo: Repo) -> None:
@@ -183,6 +191,7 @@ class TestCreateOTU:
                 "FBNSV",
             )
 
+        assert otu_ is not None
         assert otu_.acronym == "FBNSV"
 
 
@@ -196,6 +205,7 @@ class TestAddIsolate:
                 acronym="",
             )
 
+        assert otu_before is not None
         assert otu_before.accessions == {"MF062136", "MF062137", "MF062138"}
         assert len(otu_before.isolate_ids) == 1
 
@@ -204,7 +214,9 @@ class TestAddIsolate:
                 precached_repo, otu_before, ["MF062125", "MF062126", "MF062127"]
             )
 
+        assert isolate is not None
         otu_after = precached_repo.get_otu(otu_before.id)
+        assert otu_after is not None
 
         assert otu_after.accessions == {
             "MF062125",
@@ -215,7 +227,9 @@ class TestAddIsolate:
             "MF062138",
         }
 
-        assert otu_after.get_isolate(isolate.id).accessions == {
+        isolate_after = otu_after.get_isolate(isolate.id)
+        assert isolate_after is not None
+        assert isolate_after.accessions == {
             "MF062125",
             "MF062126",
             "MF062127",
@@ -233,19 +247,23 @@ class TestAddIsolate:
                 precached_repo, 345184, isolate_1_accessions, acronym=""
             )
 
+            assert otu_before is not None
             assert otu_before.accessions == set(isolate_1_accessions)
 
             isolate = add_genbank_isolate(
                 precached_repo, otu_before, isolate_2_accessions
             )
 
+        assert isolate is not None
         otu_after = precached_repo.get_otu_by_taxid(345184)
+        assert otu_after is not None
 
         assert otu_after.accessions == set(isolate_1_accessions).union(
             set(isolate_2_accessions),
         )
 
         isolate_after = otu_after.get_isolate(isolate.id)
+        assert isolate_after is not None
 
         assert isolate_after.accessions == set(isolate_2_accessions)
         assert isolate_after.name == IsolateName(
@@ -263,16 +281,20 @@ class TestAddIsolate:
                 precached_repo, 345184, isolate_1_accessions, acronym=""
             )
 
+        assert otu is not None
         assert otu.accessions == set(isolate_1_accessions)
 
         with precached_repo.lock():
             isolate = add_unnamed_isolate(precached_repo, otu, isolate_2_accessions)
 
+        assert isolate is not None
         otu_after = precached_repo.get_otu_by_taxid(345184)
+        assert otu_after is not None
 
         assert otu_after.isolate_ids == {otu_after.representative_isolate, isolate.id}
 
         isolate_after = otu_after.get_isolate(isolate.id)
+        assert isolate_after is not None
 
         assert isolate_after.name is None
         assert isolate_after.accessions == {"DQ178613", "DQ178614"}
