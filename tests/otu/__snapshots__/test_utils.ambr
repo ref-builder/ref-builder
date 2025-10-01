@@ -1,48 +1,56 @@
 # serializer version: 1
 # name: TestAssignRecordsToSegments.test_names_not_in_plan[223262]
-  'Segment names not found in plan: DNA G, RNA N5.'
+  'Segment names not found in plan: DNA 1.'
 # ---
 # name: TestAssignRecordsToSegments.test_names_not_in_plan[438782]
-  'Segment names not found in plan: DNA G, RNA A, RNA N5, Segment I3, Segment W4, Segment X.'
+  'Segment names not found in plan: DNA 1.'
 # ---
 # name: TestAssignRecordsToSegments.test_ok[223262]
-  dict({
-    'DNA A': dict({
-      'accession_version': 'NC_907439',
-      'source_segment': 'DNA A',
-    }),
-    'DNA B': dict({
-      'accession_version': 'K93863',
-      'source_segment': 'DNA B',
-    }),
+  set({
+    tuple(
+      UUID('3bd4e678-7ea2-41fa-8a27-d852cad322bf'),
+      'NC_907439',
+      'DNA A',
+    ),
+    tuple(
+      UUID('fdce0f45-3f0d-46d4-945b-e1834c6f47eb'),
+      'K93863',
+      'DNA B',
+    ),
   })
 # ---
 # name: TestAssignRecordsToSegments.test_ok[438782]
-  dict({
-    'DNA C': dict({
-      'accession_version': 'NC_907439',
-      'source_segment': 'DNA C',
-    }),
-    'DNA M': dict({
-      'accession_version': 'K93863',
-      'source_segment': 'DNA M',
-    }),
-    'DNA N': dict({
-      'accession_version': 'GG223149',
-      'source_segment': 'DNA N',
-    }),
-    'DNA R': dict({
-      'accession_version': 'NC_934447',
-      'source_segment': 'DNA R',
-    }),
-    'DNA S': dict({
-      'accession_version': 'NC_404705',
-      'source_segment': 'DNA S',
-    }),
-    'DNA U3': dict({
-      'accession_version': 'NC_761067',
-      'source_segment': 'DNA U3',
-    }),
+  set({
+    tuple(
+      UUID('3bbc7891-74d7-4ce7-95f0-de1aa1bef55d'),
+      'SJ404705',
+      'DNA S',
+    ),
+    tuple(
+      UUID('6f8df50a-5241-47cc-8250-85f5c0c30cc1'),
+      'NC_907439',
+      'DNA C',
+    ),
+    tuple(
+      UUID('7e3f809c-4d8b-46fb-b486-068a17fdee62'),
+      'NC_934447',
+      'DNA R',
+    ),
+    tuple(
+      UUID('bf9d0eea-7ba9-4346-b6d6-009b98abbf74'),
+      'NC_314988',
+      'DNA N',
+    ),
+    tuple(
+      UUID('c5a43c99-927e-42f5-a4c1-dd80a25dd986'),
+      'OC344875',
+      'DNA U3',
+    ),
+    tuple(
+      UUID('db9041ef-f7d3-4dcf-bb5a-bc6dfedb47d7'),
+      'K93863',
+      'DNA M',
+    ),
   })
 # ---
 # name: TestCreatePlanFromRecords.test_monopartite
@@ -51,9 +59,12 @@
     'segments': list([
       dict({
         'id': UUID,
-        'length': 7424,
+        'length': 159,
         'length_tolerance': 0.03,
-        'name': None,
+        'name': dict({
+          'key': 'B',
+          'prefix': 'RNA',
+        }),
         'rule': 'required',
       }),
     ]),

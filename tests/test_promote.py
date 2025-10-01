@@ -17,93 +17,100 @@ from ref_builder.utils import Accession
 from tests.fixtures.factories import IsolateFactory
 
 
-def test_replace_sequence(empty_repo):
+def test_replace_sequence(empty_repo: Repo):
     """Test OTU sequence replacement."""
     with empty_repo.lock():
-        otu_init = create_otu_with_taxid(
+        otu_before = create_otu_with_taxid(
             empty_repo, 2164102, ["MF062125", "MF062126", "MF062127"], acronym=""
         )
 
-    assert otu_init.accessions == {"MF062125", "MF062126", "MF062127"}
+    assert otu_before
+    assert otu_before.accessions == {"MF062125", "MF062126", "MF062127"}
 
-    initial_rep_isolate = otu_init.get_isolate(otu_init.representative_isolate)
+    isolate = otu_before.isolates[0]
 
-    initial_rep_sequence_ids = [
-        sequence.id for sequence in initial_rep_isolate.sequences
-    ]
+    assert isolate
+
+    sequence_ids_before = [sequence.id for sequence in isolate.sequences]
 
     refseq_records = NCBIClient(ignore_cache=False).fetch_genbank_records(
         ["NC_055390", "NC_055391", "NC_055392"]
     )
 
-    record_by_replaceable_sequence_id = {
-        initial_rep_sequence_ids[0]: refseq_records[0],
-        initial_rep_sequence_ids[1]: refseq_records[1],
-        initial_rep_sequence_ids[2]: refseq_records[2],
+    record_by_sequence_id = {
+        sequence_ids_before[i]: refseq_records[i] for i in (0, 1, 2)
     }
 
     with empty_repo.lock():
-        for sequence_id in record_by_replaceable_sequence_id:
+        for sequence_id, record in record_by_sequence_id.items():
             assert replace_otu_sequence_from_record(
                 empty_repo,
-                otu_init,
+                otu_before,
                 sequence_id,
-                replacement_record=record_by_replaceable_sequence_id[sequence_id],
+                replacement_record=record,
                 exclude_accession=True,
             )
 
-    assert empty_repo.get_otu(otu_init.id).accessions == {
+    otu_after = empty_repo.get_otu(otu_before.id)
+
+    assert otu_after
+    assert otu_after.accessions == {
         "NC_055390",
         "NC_055391",
         "NC_055392",
     }
 
 
-@pytest.mark.filterwarnings
 def test_multi_linked_promotion(empty_repo: Repo):
     """Test the promotion of a sequence that is linked to more than one isolate."""
     with empty_repo.lock():
-        otu_init = create_otu_with_taxid(
+        otu_before = create_otu_with_taxid(
             empty_repo, 2164102, ["MF062125", "MF062126", "MF062127"], acronym=""
         )
 
-    assert otu_init.accessions == {"MF062125", "MF062126", "MF062127"}
+    assert otu_before
+    assert otu_before.accessions == {"MF062125", "MF062126", "MF062127"}
 
-    segment_l = otu_init.plan.get_segment_by_name_key("L")
+    segment_before = otu_before.plan.get_segment_by_name_key("L")
+    sequence_before = otu_before.get_sequence_by_accession("MF062125")
 
-    segment_l_rep_sequence = otu_init.get_sequence_by_accession("MF062125")
-
-    otu_id = otu_init.id
+    assert segment_before
+    assert sequence_before
 
     mock_isolate = IsolateBuilder.model_validate(
-        IsolateFactory.build_on_plan(otu_init.plan).model_dump()
+        IsolateFactory.build_on_plan(otu_before.plan).model_dump()
     )
 
-    for iterator in range(len(mock_isolate.sequences)):
-        mock_sequence = mock_isolate.sequences[iterator]
+    for i in range(len(mock_isolate.sequences)):
+        mock_sequence = mock_isolate.sequences[i]
 
-        if mock_sequence.segment == segment_l.id:
-            mock_isolate.sequences[iterator] = segment_l_rep_sequence.model_copy()
+        if mock_sequence.segment == segment_before.id:
+            mock_isolate.sequences[i] = sequence_before.model_copy()
 
     with empty_repo.lock(), empty_repo.use_transaction():
-        isolate_init = empty_repo.create_isolate(
-            otu_id, legacy_id=None, name=mock_isolate.name
+        isolate_before = empty_repo.create_isolate(
+            otu_before.id, legacy_id=None, name=mock_isolate.name
         )
 
+        assert isolate_before
+
         empty_repo.link_sequence(
-            otu_id,
-            isolate_init.id,
-            segment_l_rep_sequence.id,
+            otu_before.id,
+            isolate_before.id,
+            sequence_before.id,
         )
 
         accession_counter = 1
+
         for mock_sequence in mock_isolate.sequences:
-            # skip segment L
-            if mock_sequence.segment == segment_l.id:
+            # Skip segment L.
+            if mock_sequence.segment == segment_before.id:
                 continue
 
-            sequence_init = empty_repo.create_sequence(
-                otu_id,
+            assert mock_sequence.segment
+
+            sequence_before = empty_repo.create_sequence(
+                otu_before.id,
                 accession=f"FA00000{accession_counter}.1",
                 definition=mock_sequence.definition,
                 legacy_id=None,
@@ -111,25 +118,27 @@ def test_multi_linked_promotion(empty_repo: Repo):
                 sequence=mock_sequence.sequence,
             )
 
+            assert sequence_before
+
             empty_repo.link_sequence(
-                otu_id,
-                isolate_init.id,
-                sequence_init.id,
+                otu_before.id,
+                isolate_before.id,
+                sequence_before.id,
             )
 
             accession_counter += 1
 
-    otu_after_mock_isolate = empty_repo.get_otu(otu_id)
+    otu_after = empty_repo.get_otu(otu_before.id)
 
-    assert isolate_init.id in otu_after_mock_isolate.isolate_ids
-
-    assert otu_after_mock_isolate.accessions == {
+    assert otu_after
+    assert otu_after.accessions == {
         "MF062125",
         "MF062126",
         "MF062127",
         "FA000001",
         "FA000002",
     }
+    assert isolate_before.id in otu_after.isolate_ids
 
     refseq_records = NCBIClient(ignore_cache=False).fetch_genbank_records(
         ["NC_055390", "NC_055391", "NC_055392"],
@@ -137,11 +146,12 @@ def test_multi_linked_promotion(empty_repo: Repo):
 
     with empty_repo.lock():
         assert promote_otu_accessions_from_records(
-            empty_repo, otu_after_mock_isolate, refseq_records
+            empty_repo, otu_after, refseq_records
         ) == {"NC_055390", "NC_055391", "NC_055392"}
 
-    otu_after_promote = empty_repo.get_otu(otu_id)
+    otu_after_promote = empty_repo.get_otu(otu_before.id)
 
+    assert otu_after_promote
     assert otu_after_promote.accessions == {
         "NC_055390",
         "NC_055391",
@@ -150,11 +160,11 @@ def test_multi_linked_promotion(empty_repo: Repo):
         "FA000002",
     }
 
-    assert otu_after_promote.get_isolate(
-        otu_init.representative_isolate
-    ).accessions == {"NC_055390", "NC_055391", "NC_055392"}
+    first_isolate = otu_after_promote.isolates[0]
 
-    assert otu_after_promote.get_isolate(isolate_init.id).accessions == (
+    assert first_isolate.accessions == {"NC_055390", "NC_055391", "NC_055392"}
+
+    assert otu_after_promote.get_isolate(isolate_before.id).accessions == (
         {"NC_055390", "FA000001", "FA000002"}
     )
 
@@ -166,33 +176,34 @@ class TestUpgradeSequencesInOTU:
     def test_ok(self, precached_repo: Repo):
         """Test a simple fetch and replace upgrade."""
         with precached_repo.lock():
-            otu_init = create_otu_with_taxid(
+            otu_before = create_otu_with_taxid(
                 precached_repo,
                 196375,
                 ["NC_004452.1"],
                 acronym="",
             )
 
-        assert "NC_004452" in otu_init.accessions
+        assert otu_before
+        assert "NC_004452" in otu_before.accessions
 
-        outdated_sequence = otu_init.get_sequence_by_accession("NC_004452")
+        outdated_sequence = otu_before.get_sequence_by_accession("NC_004452")
 
         containing_isolate_id = list(
-            otu_init.get_isolate_ids_containing_sequence_id(outdated_sequence.id)
+            otu_before.get_isolate_ids_containing_sequence_id(outdated_sequence.id)
         )[0]
 
-        containing_isolate_init = otu_init.get_isolate(containing_isolate_id)
+        containing_isolate_init = otu_before.get_isolate(containing_isolate_id)
 
         assert outdated_sequence.accession.version == 1
 
         with precached_repo.lock():
             upgraded_sequence_ids = upgrade_outdated_sequences_in_otu(
-                precached_repo, otu_init
+                precached_repo, otu_before
             )
 
         updated_sequence_id = list(upgraded_sequence_ids)[0]
 
-        otu_after = precached_repo.get_otu(otu_init.id)
+        otu_after = precached_repo.get_otu(otu_before.id)
 
         assert containing_isolate_init.id in otu_after.isolate_ids
 

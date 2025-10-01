@@ -165,11 +165,11 @@ class ProductionIsolate(ProductionResource):
 
     @classmethod
     def build_from_validated_isolate(
-        cls, validated_isolate: Isolate, plan: Plan, is_representative: bool
+        cls, validated_isolate: Isolate, plan: Plan, is_default: bool = False
     ) -> "ProductionIsolate":
         return ProductionIsolate(
             id=str(validated_isolate.id),
-            default=is_representative,
+            default=is_default,
             sequences=[
                 ProductionSequence.build_from_validated_sequence_and_plan(
                     validated_sequence, plan
@@ -201,16 +201,23 @@ class ProductionOTU(ProductionResource):
 
     @classmethod
     def build_from_validated_otu(cls, validated_otu: OTU) -> "ProductionOTU":
+        longest_isolate_id = None
+        max_length = 0
+
+        for isolate in validated_otu.isolates:
+            total_length = sum(len(sequence.sequence) for sequence in isolate.sequences)
+            if total_length > max_length:
+                max_length = total_length
+                longest_isolate_id = isolate.id
+
         return ProductionOTU(
             id=str(validated_otu.id),
             abbreviation=validated_otu.acronym,
             isolates=[
                 ProductionIsolate.build_from_validated_isolate(
                     validated_isolate,
-                    is_representative=(
-                        validated_isolate.id == validated_otu.representative_isolate
-                    ),
                     plan=validated_otu.plan,
+                    is_default=(validated_isolate.id == longest_isolate_id),
                 )
                 for validated_isolate in validated_otu.isolates
             ],

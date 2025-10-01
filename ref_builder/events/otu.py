@@ -31,7 +31,6 @@ class CreateOTU(Event[CreateOTUData, OTUQuery]):
             legacy_id=self.data.legacy_id,
             molecule=self.data.molecule,
             name=self.data.name,
-            representative_isolate=None,
             plan=self.data.plan,
             taxid=self.data.taxid,
         )
@@ -62,22 +61,6 @@ class DeleteOTUData(EventData):
 
 class DeleteOTU(Event[DeleteOTUData, OTUQuery]):
     """An event that deletes an OTU from Repo indexes."""
-
-
-class SetRepresentativeIsolateData(EventData):
-    """The data for a :class:`SetReprIsolate` event."""
-
-    isolate_id: UUID4
-
-
-class SetRepresentativeIsolate(ApplicableEvent[SetRepresentativeIsolateData, OTUQuery]):
-    """An event that sets the representative isolate for an OTU."""
-
-    def apply(self, otu: OTUBuilder) -> OTUBuilder:
-        """Update the OTU's representative isolate and return."""
-        otu.representative_isolate = self.data.isolate_id
-
-        return otu
 
 
 class UpdateExcludedAccessionsData(EventData):

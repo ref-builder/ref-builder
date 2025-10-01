@@ -124,8 +124,6 @@ def convert_legacy_repo(name: str, path: Path, target_path: Path) -> None:
                     taxid=otu["taxid"],
                 )
 
-                default_isolate_ids = []
-
                 for isolate in otu["isolates"]:
                     if isolate["source_type"] in (
                         "genbank",
@@ -146,9 +144,6 @@ def convert_legacy_repo(name: str, path: Path, target_path: Path) -> None:
                         isolate_name,
                     )
 
-                    if isolate["default"]:
-                        default_isolate_ids.append(repo_isolate.id)
-
                     for legacy_sequence in isolate["sequences"]:
                         repo_sequence = repo.create_sequence(
                             repo_otu.id,
@@ -165,23 +160,7 @@ def convert_legacy_repo(name: str, path: Path, target_path: Path) -> None:
                             repo_sequence.id,
                         )
 
-                if len(default_isolate_ids) > 1:
-                    raise ValueError("More than one default isolate found.")
-
-                if default_isolate_ids:
-                    repo.set_representative_isolate(repo_otu.id, default_isolate_ids[0])
-                else:
-                    raise ValueError("No default isolate found.")
-
         repo_otu = repo.get_otu(repo_otu.id)
 
         if not repo_otu:
             raise ValueError("Could not retrieve OTU from repo.")
-
-        representative_isolate = repo_otu.representative_isolate
-
-        if not repo_otu.representative_isolate:
-            raise ValueError("Could not retrieve representative isolate from OTU.")
-
-        if not repo_otu.get_isolate(representative_isolate):
-            raise ValueError("Could not retrieve representative isolate from OTU.")

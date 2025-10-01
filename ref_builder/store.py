@@ -14,7 +14,6 @@ from ref_builder.events.otu import (
     CreateOTU,
     CreatePlan,
     DeleteOTU,
-    SetRepresentativeIsolate,
     UpdateExcludedAccessions,
 )
 from ref_builder.events.repo import CreateRepo
@@ -131,7 +130,6 @@ class EventStore:
                     "DeleteOTU": DeleteOTU,
                     "DeleteSequence": DeleteSequence,
                     "CreatePlan": CreatePlan,
-                    "SetRepresentativeIsolate": SetRepresentativeIsolate,
                     "UpdateExcludedAccessions": UpdateExcludedAccessions,
                 }[loaded["type"]]
 

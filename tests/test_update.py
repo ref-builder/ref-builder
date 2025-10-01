@@ -2,7 +2,7 @@ import datetime
 from pathlib import Path
 
 import pytest
-from syrupy import SnapshotAssertion
+from syrupy.assertion import SnapshotAssertion
 
 from ref_builder.otu.create import create_otu_with_taxid
 from ref_builder.otu.isolate import add_genbank_isolate
@@ -11,7 +11,6 @@ from ref_builder.otu.update import (
     BatchFetchIndex,
     auto_update_otu,
     batch_update_repo,
-    iter_fetch_list,
 )
 from ref_builder.repo import Repo
 
@@ -219,10 +218,11 @@ class TestUpdateOTU:
     def test_with_refseq_replacement_ok(
         self,
         precached_repo: Repo,
-        mock_fetch_index: dict[int, set[str]],
         snapshot: SnapshotAssertion,
     ):
-        """Test that automatic update replaces superceded accessions with RefSeq versions."""
+        """Test that automatic update replaces accessions superceded by RefSeq."""
+        otu_before = None
+
         with precached_repo.lock():
             otu_before = create_otu_with_taxid(
                 precached_repo,
@@ -231,53 +231,37 @@ class TestUpdateOTU:
                 "",
             )
 
+        assert otu_before
+
+        isolate_before = otu_before.isolates[0]
+
+        assert isolate_before
         assert (
             otu_before.accessions
-            == otu_before.get_isolate(otu_before.representative_isolate).accessions
+            == isolate_before.accessions
+            == otu_before.get_isolate(isolate_before.id).accessions
             == {"MF062125", "MF062126", "MF062127"}
         )
 
         with precached_repo.lock():
             otu_after = auto_update_otu(precached_repo, otu_before)
 
-        assert otu_after.get_isolate(otu_after.representative_isolate).accessions == {
+        isolate_after = otu_after.get_isolate(isolate_before.id)
+
+        assert isolate_after
+        assert isolate_after.accessions == {
             "NC_055390",
             "NC_055391",
             "NC_055392",
         }
         assert {"MF062125", "MF062126", "MF062127"}.isdisjoint(otu_after.accessions)
-        assert otu_after.representative_isolate == otu_before.representative_isolate
-        assert (
-            otu_after.get_isolate(otu_before.representative_isolate).accessions
-            != otu_before.get_isolate(otu_before.representative_isolate).accessions
-        )
+        assert isolate_before.accessions != isolate_after.accessions
         assert otu_after.id == otu_before.id
         assert otu_after.isolate_ids.issuperset(otu_before.isolate_ids)
         assert otu_after.excluded_accessions == {"MF062125", "MF062126", "MF062127"}
-
-        assert otu_after.accessions == mock_fetch_index[2164102]
-
         assert {
             str(isolate.name): isolate.accessions for isolate in otu_after.isolates
         } == snapshot()
-
-    def test_with_fetch_index_ok(
-        self,
-        mock_repo: Repo,
-        mock_fetch_index: dict[int, set[str]],
-        mock_fetch_index_path: Path,
-    ):
-        """Test with a path to a pre-made fetch index as input."""
-        otu_initial = next(mock_repo.iter_otus())
-
-        assert otu_initial
-
-        with mock_repo.lock():
-            otu_after = auto_update_otu(
-                mock_repo, otu_initial, fetch_index_path=mock_fetch_index_path
-            )
-
-        assert otu_after.accessions == mock_fetch_index[2164102]
 
 
 @pytest.mark.ncbi
@@ -290,14 +274,14 @@ class TestBatchUpdate:
         mock_fetch_index: dict[int, set[str]],
     ):
         """Test that batch update works as expected."""
-        otu_initial = next(mock_repo.iter_otus())
+        otu_before = next(mock_repo.iter_otus())
 
         with mock_repo.lock():
             assert len(batch_update_repo(mock_repo)) == 1
 
         otu_after = next(mock_repo.iter_otus())
 
-        assert otu_after.accessions == mock_fetch_index[otu_initial.taxid]
+        assert otu_after.accessions == mock_fetch_index[otu_before.taxid]
 
         with mock_repo.lock():
             assert len(batch_update_repo(mock_repo)) == 0
@@ -330,20 +314,3 @@ class TestBatchUpdate:
                 )
                 == 0
             )
-
-
-def test_iter_fetch_list(
-    mock_fetch_index: dict[int, set[str]],
-):
-    """Test fetch list iterator."""
-    fetch_list = list(mock_fetch_index[2164102])
-
-    for page_size in [1, 3, 5, 20]:
-        for fetch_list_segment in iter_fetch_list(fetch_list, page_size):
-            assert len(fetch_list_segment)
-
-        regenerated_fetch_list = []
-        for chunk in iter_fetch_list(fetch_list, page_size):
-            regenerated_fetch_list.extend(chunk)
-
-        assert fetch_list == regenerated_fetch_list

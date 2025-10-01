@@ -14,9 +14,6 @@ class OTUBuilder(OTUModel):
     isolates: list[IsolateBuilder]
     """Isolates contained in this OTU."""
 
-    representative_isolate: UUID4 | None
-    """The UUID of the representative isolate for the OTU."""
-
     _isolates_by_id: dict[UUID4:IsolateBuilder]
     """A dictionary of isolates indexed by isolate UUID"""
 

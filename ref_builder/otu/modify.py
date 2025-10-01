@@ -83,13 +83,6 @@ def delete_isolate_from_otu(repo: Repo, otu: OTUBuilder, isolate_id: UUID) -> bo
     """Remove an isolate from a specified OTU."""
     otu_logger = logger.bind(otu_id=str(otu.id), taxid=otu.taxid)
 
-    if isolate_id == otu.representative_isolate:
-        otu_logger.error(
-            "The representative isolate cannot be deleted from the OTU.",
-            isolate_id=str(isolate_id),
-        )
-        return False
-
     isolate = otu.get_isolate(isolate_id)
 
     if not isolate:
@@ -311,47 +304,3 @@ def replace_sequence_in_otu(
         return new_sequence
 
     logger.error(f"{replaced_accession} could not be replaced.")
-
-
-def set_representative_isolate(
-    repo: Repo,
-    otu: OTUBuilder,
-    isolate_id: UUID,
-) -> UUID | None:
-    """Set an OTU's representative isolate to a given existing isolate ID.
-
-    Returns the isolate ID if successful, else None.
-    """
-    otu_logger = logger.bind(name=otu.name, taxid=otu.taxid)
-
-    new_representative_isolate = otu.get_isolate(isolate_id)
-    if new_representative_isolate is None:
-        otu_logger.error(
-            "Isolate not found. Consider adding a new isolate.",
-            requested_isolate=str(isolate_id),
-        )
-        return None
-
-    if otu.representative_isolate is not None:
-        if otu.representative_isolate == new_representative_isolate.id:
-            otu_logger.warning(
-                "Redundant replacement attempt.",
-                isolate_id=str(otu.representative_isolate),
-            )
-            return otu.representative_isolate
-
-        otu_logger.warning(
-            "Replacing representative isolate.",
-            old_isolate_id=str(otu.representative_isolate),
-            new_isolate_id=str(new_representative_isolate.id),
-        )
-
-    with repo.use_transaction():
-        repo.set_representative_isolate(otu.id, new_representative_isolate.id)
-
-    otu_logger.info(
-        "New representative isolate set.",
-        representative_isolate_id=str(new_representative_isolate.id),
-    )
-
-    return new_representative_isolate.id

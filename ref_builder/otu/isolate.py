@@ -167,7 +167,6 @@ def create_isolate(
 
     try:
         assigned = assign_records_to_segments(records, otu.plan)
-
     except PlanConformationError as e:
         log.warning(
             str(e),
@@ -205,7 +204,7 @@ def create_isolate(
 
     log.info("Isolate created", id=str(isolate.id))
 
-    return isolate
+    return repo.get_isolate(isolate.id)
 
 
 def create_sequence_from_record(

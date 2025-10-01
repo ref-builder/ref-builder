@@ -178,15 +178,25 @@ def replace_otu(path: Path, otu: dict) -> None:
             ),
         )
 
+    longest_isolate_id = None
+    max_length = 0
+
+    for isolate in otu["isolates"]:
+        total_length = sum(len(seq["sequence"]) for seq in isolate["sequences"])
+        if total_length > max_length:
+            max_length = total_length
+            longest_isolate_id = isolate["id"]
+
     for isolate in sorted(otu["isolates"], key=lambda x: x["id"]):
         isolate_id = isolate["id"]
+        is_default = isolate_id == longest_isolate_id
 
         with open(path / isolate_id / "isolate.json", "wb") as f:
             f.write(
                 orjson.dumps(
                     {
                         "id": isolate["id"],
-                        "default": isolate["default"],
+                        "default": is_default,
                         "source_name": isolate["source_name"],
                         "source_type": isolate["source_type"],
                     },

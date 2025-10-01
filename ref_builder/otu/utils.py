@@ -170,20 +170,19 @@ def get_molecule_from_records(records: list[NCBIGenbank]) -> Molecule:
         raise ValueError("No records given")
 
     # Assign first record as benchmark to start
-    representative_record = records[0]
+    first_record = records[0]
 
-    if not representative_record.refseq:
+    if not first_record.refseq:
         for record in records:
             if record.refseq:
-                # Replace representative record with first RefSeq record found
-                representative_record = record
+                first_record = record
                 break
 
     return Molecule.model_validate(
         {
-            "strandedness": representative_record.strandedness.value,
-            "type": representative_record.moltype.value,
-            "topology": representative_record.topology.value,
+            "strandedness": first_record.strandedness.value,
+            "type": first_record.moltype.value,
+            "topology": first_record.topology.value,
         },
     )
 

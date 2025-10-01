@@ -18,15 +18,19 @@ class TestCreatePlanFromRecords:
 
     def test_monopartite(
         self,
+        ncbi_genbank_factory: NCBIGenbankFactory,
         scratch_ncbi_client: NCBIClient,
         snapshot: SnapshotAssertion,
     ):
         """Test that a monopartite plan is created from a single Genbank record."""
         records = scratch_ncbi_client.fetch_genbank_records(["NC_024301"])
 
-        plan = create_plan_from_records(records, length_tolerance=0.03)
+        record = ncbi_genbank_factory.build()
+
+        plan = create_plan_from_records([record], 0.03)
 
         assert isinstance(plan, Plan)
+        assert len(plan.segments) == 1
         assert plan.model_dump() == snapshot(matcher=uuid_matcher)
 
     def test_multipartite(
@@ -69,6 +73,7 @@ class TestCreatePlanFromRecords:
 
         plan = create_plan_from_records(records, length_tolerance=0.03)
 
+        assert plan
         assert [str(segment.name) for segment in plan.segments] == [
             "RNA 1",
             "RNA 3",
@@ -93,6 +98,8 @@ class TestAssignRecordsToSegments:
         """
         otu = scratch_repo.get_otu_by_taxid(taxid)
 
+        assert otu
+
         records = [
             ncbi_genbank_factory.build(
                 source=ncbi_source_factory.build(
@@ -108,12 +115,9 @@ class TestAssignRecordsToSegments:
         assigned_records = assign_records_to_segments(records, otu.plan)
 
         assert {
-            str(otu.plan.get_segment_by_id(segment_id).name): {
-                "accession_version": assigned_records[segment_id].accession,
-                "source_segment": assigned_records[segment_id].source.segment,
-            }
-            for segment_id in assigned_records
-        } == snapshot(exclude=props("id"))
+            (segment_id, record.accession, record.source.segment)
+            for segment_id, record in assigned_records.items()
+        } == snapshot()
 
     def test_names_not_in_plan(
         self,
@@ -122,12 +126,15 @@ class TestAssignRecordsToSegments:
         snapshot: SnapshotAssertion,
         taxid: int,
     ):
-        """Test that a randomly generated list of records raises an appropriate
-        ValueError.
-        """
+        """Test that a randomly generated list of records raises a ValueError."""
         otu = scratch_repo.get_otu_by_taxid(taxid)
 
-        records = ncbi_genbank_factory.batch(len(otu.plan.required_segments))
+        assert otu
+
+        records = ncbi_genbank_factory.build_from_plan(otu.plan)
+
+        # The example OTU uses a naming pattern like "RNA B".
+        records[1].source.segment = "DNA 1"
 
         with pytest.raises(ValueError, match="Segment names not found in plan:") as e:
             assign_records_to_segments(records, otu.plan)

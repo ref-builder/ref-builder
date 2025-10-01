@@ -36,9 +36,7 @@ def test_commit(empty_repo: Repo, otu_factory: OTUFactory):
 
             empty_repo.link_sequence(otu_init.id, isolate_init.id, sequence_init.id)
 
-        empty_repo.set_representative_isolate(otu_init.id, isolate_init.id)
-
-    assert empty_repo.last_id == 6
+    assert empty_repo.last_id == 5
     assert len(list(empty_repo.iter_otus())) == 1
 
 
