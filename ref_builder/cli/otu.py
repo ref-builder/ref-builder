@@ -9,7 +9,6 @@ import structlog
 from ref_builder.cli.options import ignore_cache_option, path_option
 from ref_builder.cli.utils import (
     get_otu_from_identifier,
-    get_otu_isolate_ids_from_identifier,
     pass_repo,
 )
 from ref_builder.cli.validate import validate_no_duplicate_accessions
@@ -25,7 +24,6 @@ from ref_builder.otu.modify import (
     allow_accessions_into_otu,
     exclude_accessions_from_otu,
     rename_plan_segment,
-    set_representative_isolate,
 )
 from ref_builder.otu.promote import (
     promote_otu_accessions,
@@ -321,32 +319,6 @@ def otu_allow_accessions(
     otu_ = get_otu_from_identifier(repo, identifier)
 
     allow_accessions_into_otu(repo, otu_, set(accessions_))
-
-
-@otu.command(name="set-default-isolate")  # type: ignore
-@click.argument("IDENTIFIER", type=str)
-@click.option(
-    "--isolate-id",
-    "isolate_id_",
-    type=str,
-    required=True,
-    help="The id of the isolate to set as default.",
-)
-@pass_repo
-def otu_set_representative_isolate(
-    repo: Repo,
-    isolate_id_: str,
-    identifier: str,
-) -> None:
-    """Update the OTU with a new representative isolate.
-
-    IDENTIFIER is a taxonomy ID or unique OTU ID (>8 characters)
-    """
-    otu_ = get_otu_from_identifier(repo, identifier)
-
-    otu_id, isolate_id = get_otu_isolate_ids_from_identifier(repo, isolate_id_)
-
-    set_representative_isolate(repo, otu_, isolate_id)
 
 
 @otu.command(name="extend-plan")

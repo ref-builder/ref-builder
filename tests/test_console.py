@@ -172,7 +172,6 @@ class TestPrintOTU:
                     ),
                 ],
             ),
-            representative_isolate=None,
             taxid=438782,
             isolates=[],
         )
@@ -248,7 +247,6 @@ class TestPrintOTU:
                     ),
                 ],
             ),
-            representative_isolate=None,
             taxid=438782,
             isolates=[],
         )

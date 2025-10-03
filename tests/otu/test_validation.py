@@ -12,13 +12,18 @@ class TestValidateOTU:
 
     def test_no_isolates(self, scratch_repo: Repo):
         """Test that validating an OTU with no isolates returns False."""
-        otu_clean = scratch_repo.get_otu_by_taxid(223262)
+        otu = scratch_repo.get_otu_by_taxid(223262)
 
-        assert check_otu_is_valid(otu_clean)
+        assert otu
+        assert check_otu_is_valid(otu)
 
-        otu_invalid = otu_clean.model_copy()
-        otu_invalid.delete_isolate(otu_clean.representative_isolate)
+        isolate = otu.isolates[0]
 
-        assert not otu_invalid.isolates
+        assert isolate
+
+        otu_invalid = otu.model_copy()
+        otu_invalid.delete_isolate(isolate.id)
+
+        assert otu_invalid.isolates == []
 
         assert not check_otu_is_valid(otu_invalid)

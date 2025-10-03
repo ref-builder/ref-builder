@@ -2,10 +2,6 @@
 
 This is a work in progress.
 
-**Check that OTUs have only one representative (default) isolate.**
-
-The default isolate is set using `rep_isolate` in the `CreateOTU` event. Therefore only
-one isolate in an OTU can be default.
 
 TODO: Check if excluded accessions exist in the repo.
 TODO: Check for accessions filed in wrong isolates.
@@ -60,8 +56,6 @@ from ref_builder.events.otu import (
     CreatePlanData,
     DeleteOTU,
     DeleteOTUData,
-    SetRepresentativeIsolate,
-    SetRepresentativeIsolateData,
     UpdateExcludedAccessions,
     UpdateExcludedAccessionsData,
 )
@@ -494,9 +488,6 @@ class Repo:
         if isolate_id not in otu_.isolate_ids:
             raise ValueError(f"Isolate does not exist: {isolate_id}")
 
-        if isolate_id == otu_.representative_isolate:
-            raise ValueError("Representative isolate cannot be deleted.")
-
         self._write_event(
             DeleteIsolate,
             DeleteIsolateData(rationale=rationale),
@@ -673,20 +664,6 @@ class Repo:
         return (
             self.get_otu(otu_id).get_isolate(isolate_id).get_sequence_by_id(sequence_id)
         )
-
-    def set_representative_isolate(
-        self, otu_id: uuid.UUID, isolate_id: uuid.UUID
-    ) -> uuid.UUID:
-        """Set the representative isolate for an OTU."""
-        otu = self.get_otu(otu_id)
-
-        self._write_event(
-            SetRepresentativeIsolate,
-            SetRepresentativeIsolateData(isolate_id=isolate_id),
-            OTUQuery(otu_id=otu.id),
-        )
-
-        return self.get_otu(otu_id).representative_isolate
 
     def exclude_accession(self, otu_id: uuid.UUID, accession: str) -> set:
         """Exclude an accession for an OTU.

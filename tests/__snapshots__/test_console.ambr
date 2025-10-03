@@ -79,7 +79,7 @@
   d11af726838","length":1074,"length_tolerance":0.03,"name":{"prefix":"DNA","key":
   "M"},"rule":"required"},{"id":"af02c6ab-7438-4c9a-807e-553a711a94e3","length":10
   87,"length_tolerance":0.03,"name":{"prefix":"DNA","key":"S"},"rule":"required"}]
-  },"taxid":438782,"isolates":[],"representative_isolate":null}
+  },"taxid":438782,"isolates":[]}
   
   '''
 # ---
@@ -118,12 +118,12 @@
 # ---
 # name: TestPrintOTUList.test_ok
   '''
-  [1mNAME                       ACRONYM  TAXID   ID                                  [0m
-  Maize bunchy top virus     MBTV     30724   cd613e30-d8f1-4adf-91b7-584a2265b1f5
-  Garlic leaf crumple virus  GLCV     24406   6ec9d286-63ca-428d-95f4-b3b2e4b06ce6
-  Tomato leafroll virus      TLV      243081  025b413f-8a9a-421e-a648-a7dd06839eb9
-  Garlic leaf crumple virus  GLCV     533380  75a89294-c2cd-489a-b802-08a9ad45f23d
-  Squash tatter leaf virus   STLV     385957  3099fdf5-ab99-454a-a901-e35cd47d380d
+  [1mNAME                        ACRONYM  TAXID   ID                                  [0m
+  Cucumber canker virus       CCV      30724   cd613e30-d8f1-4adf-91b7-584a2265b1f5
+  Spinach canker virus        SCV      33075   6ec9d286-63ca-428d-95f4-b3b2e4b06ce6
+  Prunus stem necrosis virus  PSNV     363493  8a9a021e-a648-47dd-8683-9eb905b6e6e3
+  Cabbage leaf drop virus     CLDV     533380  c2cd789a-3802-48a9-ad45-f23d3b1a11df
+  Zucchini leafroll virus     ZLV      698034  3099fdf5-ab99-454a-a901-e35cd47d380d
   
   '''
 # ---

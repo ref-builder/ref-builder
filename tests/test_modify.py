@@ -16,7 +16,6 @@ from ref_builder.otu.modify import (
     replace_sequence_in_otu,
     set_plan,
     set_plan_length_tolerances,
-    set_representative_isolate,
 )
 from ref_builder.plan import (
     Plan,
@@ -78,56 +77,6 @@ def test_allow_accessions(scratch_repo: Repo):
     assert otu_after is not None
 
     assert otu_after.excluded_accessions == {"DQ178609"}
-
-
-class TestSetRepresentativeIsolate:
-    """Test representative isolate replacement."""
-
-    def test_ok(self, scratch_repo: Repo):
-        taxid = 345184
-
-        otu_before = scratch_repo.get_otu_by_taxid(taxid)
-        assert otu_before is not None
-
-        representative_isolate_after = None
-
-        for isolate_id in otu_before.isolate_ids:
-            if isolate_id != otu_before.representative_isolate:
-                representative_isolate_after = isolate_id
-                break
-
-        assert representative_isolate_after is not None
-
-        with scratch_repo.lock():
-            set_representative_isolate(
-                scratch_repo, otu_before, representative_isolate_after
-            )
-
-        otu_after = scratch_repo.get_otu_by_taxid(taxid)
-        assert otu_after is not None
-
-        assert otu_after.representative_isolate != otu_before.representative_isolate
-
-        assert otu_after.representative_isolate == representative_isolate_after
-
-    def test_redundant(self, scratch_repo: Repo):
-        """Test behaviour when the current representative isolate is entered."""
-        taxid = 345184
-
-        otu_before = scratch_repo.get_otu_by_taxid(taxid)
-        assert otu_before is not None
-
-        event_id_before = scratch_repo.last_id
-
-        assert otu_before.representative_isolate is not None
-        with scratch_repo.lock():
-            set_representative_isolate(
-                scratch_repo,
-                otu_before,
-                otu_before.representative_isolate,
-            )
-
-        assert scratch_repo.last_id == event_id_before
 
 
 class TestSetPlan:
@@ -378,25 +327,6 @@ class TestDeleteIsolate:
 
         assert len(otu_after.isolate_ids) == len(otu_before.isolate_ids) - 1
 
-    def test_representative_isolate_fail(self, scratch_repo: Repo):
-        """Test that the representative isolate cannot be deleted."""
-        taxid = 1169032
-
-        otu_before = scratch_repo.get_otu_by_taxid(taxid)
-        assert otu_before is not None
-        assert otu_before.representative_isolate is not None
-
-        with scratch_repo.lock():
-            assert not delete_isolate_from_otu(
-                scratch_repo,
-                otu_before,
-                isolate_id=otu_before.representative_isolate,
-            )
-
-        otu_result = scratch_repo.get_otu(otu_before.id)
-        assert otu_result is not None
-        assert otu_result.isolate_ids == otu_before.isolate_ids
-
 
 class TestReplaceSequence:
     def test_ok(self, precached_repo):
@@ -416,8 +346,6 @@ class TestReplaceSequence:
         isolate_id = next(
             iter(otu_init.get_isolate_ids_containing_sequence_id(old_sequence.id))
         )
-
-        assert isolate_id == otu_init.representative_isolate
 
         with precached_repo.lock():
             new_sequence = replace_sequence_in_otu(
@@ -453,9 +381,6 @@ class TestReplaceSequence:
 
         assert post_init_otu.accessions == {"DQ178608", "DQ178609"}
 
-        rep_isolate = post_init_otu.get_isolate(post_init_otu.representative_isolate)
-        assert rep_isolate is not None
-
         mock_isolate = IsolateFactory.build_on_plan(otu_init.plan)
         mock_sequence = mock_isolate.sequences[1]
 
@@ -475,10 +400,11 @@ class TestReplaceSequence:
                 name=mock_isolate.name,
             )
 
+            first_isolate = post_init_otu.isolates[0]
             precached_repo.link_sequence(
                 otu_id=otu_id,
                 isolate_id=isolate_init.id,
-                sequence_id=rep_isolate.sequences[0].id,
+                sequence_id=first_isolate.sequences[0].id,
             )
 
             precached_repo.link_sequence(

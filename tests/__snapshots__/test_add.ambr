@@ -38,7 +38,7 @@
 # ---
 # name: TestImportOTU.test_ok
   dict({
-    'acronym': 'MBTV',
+    'acronym': 'CCV',
     'excluded_accessions': set({
     }),
     'isolates': list([
@@ -97,7 +97,7 @@
       'topology': 'linear',
       'type': 'mRNA',
     }),
-    'name': 'Maize bunchy top virus',
+    'name': 'Cucumber canker virus',
     'plan': dict({
       'segments': list([
         dict({
@@ -113,7 +113,7 @@
 # ---
 # name: TestImportOTU.test_ok.1
   dict({
-    'acronym': 'MBTV',
+    'acronym': 'CCV',
     'excluded_accessions': set({
     }),
     'isolates': list([
@@ -172,7 +172,7 @@
       'topology': 'linear',
       'type': 'mRNA',
     }),
-    'name': 'Maize bunchy top virus',
+    'name': 'Cucumber canker virus',
     'plan': dict({
       'segments': list([
         dict({

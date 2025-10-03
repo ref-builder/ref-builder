@@ -1,6 +1,5 @@
 """Tests for OTU models."""
 
-import uuid
 import warnings
 
 import pytest
@@ -136,28 +135,6 @@ class TestOTU:
 
         with pytest.raises(
             ValueError, match="List should have at least 1 item after validation, not 0"
-        ):
-            assert OTU.model_validate(self.otu.model_dump())
-
-    def test_no_representative_isolate(self):
-        """Test that validation fails if the OTU has no representative isolate."""
-        self.otu.representative_isolate = None
-
-        with pytest.raises(
-            ValueError,
-            match="UUID input should be a string, bytes or UUID object.*input_value="
-            "None",
-        ):
-            assert OTU.model_validate(self.otu.model_dump())
-
-    def test_missing_representative_isolate(self):
-        """Test that validation fails if the representative isolate is not in the
-        OTU.
-        """
-        self.otu.representative_isolate = uuid.uuid4()
-
-        with pytest.raises(
-            ValueError, match="Representative isolate must be in the OTU"
         ):
             assert OTU.model_validate(self.otu.model_dump())
 

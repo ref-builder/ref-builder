@@ -49,9 +49,6 @@ class OTUBase(OTUModel):
     isolates: list[IsolateBase]
     """Isolates contained in this OTU."""
 
-    representative_isolate: UUID4 | None
-    """The UUID of the representative isolate of this OTU."""
-
     @property
     def sequences(self) -> list[SequenceBase]:
         """Sequences contained in this OTU."""
@@ -79,12 +76,6 @@ class OTU(OTUBase):
     """Isolates contained in this OTU.
 
     A valid OTU must have at least one isolate.
-    """
-
-    representative_isolate: UUID4
-    """The UUID of the representative isolate of this OTU.
-
-    A valid OTU must have a representative isolate.
     """
 
     @property
@@ -121,14 +112,6 @@ class OTU(OTUBase):
             raise ValueError(
                 f"Excluded accessions found in the OTU: {', '.join(accessions)}"
             )
-
-        return self
-
-    @model_validator(mode="after")
-    def check_representative_isolate(self) -> "OTU":
-        """Ensure that the default isolate is in the OTU."""
-        if self.representative_isolate not in {isolate.id for isolate in self.isolates}:
-            raise ValueError("Representative isolate must be in the OTU")
 
         return self
 

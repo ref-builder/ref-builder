@@ -1,13 +1,15 @@
 """Factories for generating quasi-realistic NCBISource and NCBIGenbank data."""
 
+from typing import Literal
+
 from faker.providers import lorem
 from polyfactory import PostGenerated, Use
 from polyfactory.decorators import post_generated
 from polyfactory.factories.pydantic_factory import ModelFactory
-from pydantic.v1 import UUID4
 
-from ref_builder.models import MolType, OTUMinimal
+from ref_builder.models import Molecule, MolType, OTUMinimal
 from ref_builder.ncbi.models import NCBIGenbank, NCBISource, NCBISourceMolType
+from ref_builder.otu.utils import get_segments_max_length, get_segments_min_length
 from ref_builder.otu.validators.isolate import IsolateBase
 from ref_builder.otu.validators.otu import OTUBase
 from ref_builder.otu.validators.sequence import SequenceBase
@@ -189,6 +191,223 @@ class NCBIGenbankFactory(ModelFactory[NCBIGenbank]):
         """Match taxid field to source.taxid."""
         return source.taxid
 
+    @classmethod
+    def build_isolate(
+        cls,
+        segment_count: int,
+        refseq: bool = True,
+        segment_prefix: str | None = None,
+        segment_key_style: Literal["letter", "number"] = "letter",
+        segment_delimiter: str | None = None,
+        version: int | None = None,
+        base_source: NCBISource | None = None,
+        **kwargs,
+    ) -> list[NCBIGenbank]:
+        """Build a list of NCBIGenbank records representing one virus isolate.
+
+        All records will share the same organism, taxid, and other metadata,
+        with sequential accessions and consistent segment naming.
+
+        Args:
+            segment_count: Number of segments to generate
+            refseq: Use RefSeq accessions (NC_*) if True, GenBank otherwise
+            segment_prefix: Prefix for segment names (e.g., "RNA", "DNA")
+                          Auto-detected from mol_type if None
+            segment_key_style: "letter" for A,B,C... or "number" for 1,2,3...
+            segment_delimiter: Delimiter between prefix and key
+                             Random choice if None
+            version: Version number for all records (random 1-3 if None)
+            base_source: Pre-built NCBISource to use for all records
+            **kwargs: Additional overrides for NCBIGenbank.build()
+
+        Returns:
+            List of NCBIGenbank records representing one isolate
+
+        Raises:
+            ValueError: If segment_count > 26 for letter style
+
+        """
+        if segment_key_style == "letter" and segment_count > 26:
+            raise ValueError("segment_count cannot exceed 26 for letter style")
+
+        if refseq:
+            accessions = cls.__faker__.refseq_accessions(segment_count)
+        else:
+            accessions = cls.__faker__.genbank_accessions(segment_count)
+
+        if version is None:
+            version = cls.__faker__.random_int(1, 3)
+
+        if base_source is None:
+            base_source = NCBISourceFactory.build()
+
+        if segment_prefix is None:
+            segment_prefix = "DNA" if base_source.mol_type in DNA_MOLTYPES else "RNA"
+
+        if segment_delimiter is None:
+            segment_delimiter = cls.__faker__.random_element([" ", "-", "_"])
+
+        if segment_key_style == "letter":
+            segment_keys = [chr(ord("A") + i) for i in range(segment_count)]
+        else:
+            segment_keys = [str(i + 1) for i in range(segment_count)]
+
+        records = []
+
+        for i in range(segment_count):
+            segment_name = f"{segment_prefix}{segment_delimiter}{segment_keys[i]}"
+
+            source = NCBISourceFactory.build(
+                organism=base_source.organism,
+                taxid=base_source.taxid,
+                mol_type=base_source.mol_type,
+                host=base_source.host,
+                isolate=base_source.isolate,
+                strain=base_source.strain,
+                clone=base_source.clone,
+                proviral=base_source.proviral,
+                macronuclear=base_source.macronuclear,
+                focus=base_source.focus,
+                transgenic=base_source.transgenic,
+                segment=segment_name,
+            )
+
+            record = cls.build(
+                accession=accessions[i],
+                accession_version=f"{accessions[i]}.{version}",
+                source=source,
+                **kwargs,
+            )
+
+            records.append(record)
+
+        return records
+
+    @classmethod
+    def build_from_plan(
+        cls,
+        plan: Plan,
+        refseq: bool = True,
+        version: int | None = None,
+        base_source: NCBISource | None = None,
+        organism: str | None = None,
+        taxid: int | None = None,
+        molecule: Molecule | None = None,
+        **kwargs,
+    ) -> list[NCBIGenbank]:
+        """Build NCBIGenbank records satisfying an OTU Plan.
+
+        All records will share the same organism, taxid, and other metadata,
+        with sequential accessions. Segment names and sequence lengths match the plan.
+
+        Args:
+            plan: The Plan object defining segment requirements
+            refseq: Use RefSeq accessions (NC_*) if True, GenBank otherwise
+            version: Version number for all records (random 1-3 if None)
+            base_source: Pre-built NCBISource to use for all records
+            organism: Override organism name (uses base_source if not specified)
+            taxid: Override taxid (uses base_source if not specified)
+            molecule: Molecule to derive mol_type from (uses base_source if not specified)
+            **kwargs: Additional overrides for NCBIGenbank.build()
+
+        Returns:
+            List of NCBIGenbank records matching the plan
+
+        """
+        if base_source is None:
+            base_source = NCBISourceFactory.build()
+
+        if organism is not None:
+            base_source = NCBISourceFactory.build(
+                organism=organism,
+                taxid=base_source.taxid,
+                mol_type=base_source.mol_type,
+                host=base_source.host,
+                isolate=base_source.isolate,
+                strain=base_source.strain,
+                clone=base_source.clone,
+                proviral=base_source.proviral,
+                macronuclear=base_source.macronuclear,
+                focus=base_source.focus,
+                transgenic=base_source.transgenic,
+                segment=base_source.segment,
+            )
+
+        if taxid is not None:
+            base_source = NCBISourceFactory.build(
+                organism=base_source.organism,
+                taxid=taxid,
+                mol_type=base_source.mol_type,
+                host=base_source.host,
+                isolate=base_source.isolate,
+                strain=base_source.strain,
+                clone=base_source.clone,
+                proviral=base_source.proviral,
+                macronuclear=base_source.macronuclear,
+                focus=base_source.focus,
+                transgenic=base_source.transgenic,
+                segment=base_source.segment,
+            )
+
+        if molecule is not None:
+            base_source = NCBISourceFactory.build(
+                organism=base_source.organism,
+                taxid=base_source.taxid,
+                mol_type=NCBISourceMolType.from_molecule(molecule),
+                host=base_source.host,
+                isolate=base_source.isolate,
+                strain=base_source.strain,
+                clone=base_source.clone,
+                proviral=base_source.proviral,
+                macronuclear=base_source.macronuclear,
+                focus=base_source.focus,
+                transgenic=base_source.transgenic,
+                segment=base_source.segment,
+            )
+
+        if version is None:
+            version = cls.__faker__.random_int(1, 3)
+
+        if refseq:
+            accessions = cls.__faker__.refseq_accessions(len(plan.segments))
+        else:
+            accessions = cls.__faker__.genbank_accessions(len(plan.segments))
+
+        records = []
+        for i, segment in enumerate(plan.segments):
+            min_length = get_segments_min_length([segment])
+            max_length = get_segments_max_length([segment])
+            sequence = cls.__faker__.sequence(min=min_length, max=max_length)
+
+            segment_name = str(segment.name) if segment.name is not None else ""
+
+            source = NCBISourceFactory.build(
+                organism=base_source.organism,
+                taxid=base_source.taxid,
+                mol_type=base_source.mol_type,
+                host=base_source.host,
+                isolate=base_source.isolate,
+                strain=base_source.strain,
+                clone=base_source.clone,
+                proviral=base_source.proviral,
+                macronuclear=base_source.macronuclear,
+                focus=base_source.focus,
+                transgenic=base_source.transgenic,
+                segment=segment_name,
+            )
+
+            record = cls.build(
+                accession=accessions[i],
+                accession_version=f"{accessions[i]}.{version}",
+                source=source,
+                sequence=sequence,
+                **kwargs,
+            )
+
+            records.append(record)
+
+        return records
+
 
 def derive_acronym(_: str, values: dict[str, str]) -> str:
     """Derive an acronym from an OTU name."""
@@ -216,12 +435,12 @@ class SegmentFactory(ModelFactory[Segment]):
         return None
 
     @classmethod
-    def length_tolerance(cls):
+    def length_tolerance(cls) -> float:
         """Generate a realistic length tolerance."""
         return cls.__faker__.random_int(0, 5) * 0.01
 
     @staticmethod
-    def build_series(n: int):
+    def build_series(n: int) -> list[Segment]:
         """Generate a matching series of segments"""
         segment_name_keys = "ABCDEF"
 
@@ -247,7 +466,7 @@ class PlanFactory(ModelFactory[Plan]):
     @classmethod
     def segments(cls) -> list[Segment]:
         """Return a set of quasi-realistic segments."""
-        # The segment represent a monopartite OTU 75% of the time.
+        # The segment represents a monopartite OTU 75% of the time.
         if cls.__faker__.random_int(0, 3):
             return [SegmentFactory.build(name=None, rule=SegmentRule.REQUIRED)]
 
@@ -283,8 +502,8 @@ class SequenceFactory(ModelFactory[SequenceBase]):
         cls, segment: Segment, accession: Accession | None = None
     ) -> SequenceBase:
         """Build a sequence based on a given segment. Takes an optional accession."""
-        min_length = int(segment.length * (1.0 - segment.length_tolerance))
-        max_length = int(segment.length * (1.0 + segment.length_tolerance))
+        min_length = get_segments_min_length([segment])
+        max_length = get_segments_max_length([segment])
 
         if accession is None:
             accession = Accession(key=ModelFactory.__faker__.accession(), version=1)
@@ -380,12 +599,6 @@ class OTUFactory(ModelFactory[OTUBase]):
 
     plan = Use(PlanFactory.build)
     """Generate a quasi-realistic plan for the OTU."""
-
-    @post_generated
-    @classmethod
-    def representative_isolate(cls, isolates: list[IsolateBase]) -> UUID4:
-        """Derive a representative isolate from a list of OTUs."""
-        return cls.__faker__.random_element(isolates).id
 
     @post_generated
     @classmethod

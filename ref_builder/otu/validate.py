@@ -27,7 +27,6 @@ def get_validated_otu(unvalidated_otu: OTUBuilder) -> OTU:
                     "plan": unvalidated_otu.plan,
                     "excluded_accessions": unvalidated_otu.excluded_accessions,
                     "isolates": unvalidated_otu.isolates,
-                    "representative_isolate": unvalidated_otu.representative_isolate,
                 }
             )
 

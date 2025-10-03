@@ -193,9 +193,6 @@ def write_otu(
     )
 
     otu.add_isolate(isolate)
-    otu.representative_isolate = repo.set_representative_isolate(
-        otu_id=otu.id, isolate_id=isolate.id
-    )
 
     if otu.plan.monopartite:
         record = records[0]
@@ -289,11 +286,6 @@ def create_otu_from_json(repo: Repo, json_: str) -> OTUBuilder | None:
 
                 repo.link_sequence(
                     otu_builder.id, isolate_builder.id, sequence_builder.id
-                )
-
-            if validated_isolate.id == validated_otu.representative_isolate:
-                otu_builder.representative_isolate = repo.set_representative_isolate(
-                    otu_id=otu_builder.id, isolate_id=isolate_builder.id
                 )
 
         if validated_otu.excluded_accessions:
