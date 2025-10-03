@@ -20,6 +20,7 @@ from tests.fixtures.factories import (
     IsolateFactory,
     NCBIGenbankFactory,
     NCBISourceFactory,
+    NCBITaxonomyFactory,
     OTUFactory,
     OTUMinimalFactory,
     PlanFactory,
@@ -288,3 +289,9 @@ def plan_factory() -> PlanFactory:
 def sequence_factory() -> SequenceFactory:
     """Fixture for a factory that generates SequenceBase instances."""
     return SequenceFactory
+
+
+@pytest.fixture
+def ncbi_taxonomy_factory() -> NCBITaxonomyFactory:
+    """Fixture for a factory that generates NCBITaxonomy instances."""
+    return NCBITaxonomyFactory
