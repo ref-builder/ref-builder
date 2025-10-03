@@ -20,11 +20,6 @@ class Service:
         self._ncbi = ncbi_client
 
     @property
-    def repo(self) -> Repo:
-        """The repository instance."""
-        return self._repo
-
-    @property
     def ncbi(self) -> NCBIClient:
         """The NCBI client instance."""
         return self._ncbi

@@ -8,7 +8,15 @@ from polyfactory.decorators import post_generated
 from polyfactory.factories.pydantic_factory import ModelFactory
 
 from ref_builder.models import Molecule, MolType, OTUMinimal
-from ref_builder.ncbi.models import NCBIGenbank, NCBISource, NCBISourceMolType
+from ref_builder.ncbi.models import (
+    NCBIGenbank,
+    NCBILineage,
+    NCBIRank,
+    NCBISource,
+    NCBISourceMolType,
+    NCBITaxonomy,
+    NCBITaxonomyOtherNames,
+)
 from ref_builder.otu.utils import get_segments_max_length, get_segments_min_length
 from ref_builder.otu.validators.isolate import IsolateBase
 from ref_builder.otu.validators.otu import OTUBase
@@ -627,3 +635,81 @@ class OTUMinimalFactory(ModelFactory[OTUMinimal]):
 
     taxid = Use(ModelFactory.__faker__.random_int, min=1000, max=999999)
     """A realistic taxonomy ID."""
+
+
+class NCBILineageFactory(ModelFactory[NCBILineage]):
+    """NCBILineage Factory with quasi-realistic data."""
+
+    id = Use(ModelFactory.__faker__.random_int, min=1000, max=999999)
+    """A realistic taxonomy ID."""
+
+    name = Use(ModelFactory.__faker__.organism)
+    """Generate a realistic organism name."""
+
+    rank = Use(
+        ModelFactory.__faker__.random_element,
+        elements=[NCBIRank.FAMILY, NCBIRank.ORDER, NCBIRank.GENUS, NCBIRank.SPECIES],
+    )
+    """A realistic NCBI rank."""
+
+
+class NCBITaxonomyOtherNamesFactory(ModelFactory[NCBITaxonomyOtherNames]):
+    """NCBITaxonomyOtherNames Factory with quasi-realistic data."""
+
+    @classmethod
+    def acronym(cls) -> list[str]:
+        """Generate a realistic acronym list."""
+        if cls.__faker__.boolean(30):
+            return [
+                "".join(
+                    [word[0].upper() for word in cls.__faker__.organism().split(" ")]
+                )
+            ]
+        return []
+
+    genbank_acronym = Use(list)
+    """Empty genbank acronym list."""
+
+    equivalent_name = Use(list)
+    """Empty equivalent name list."""
+
+    synonym = Use(list)
+    """Empty synonym list."""
+
+    includes = Use(list)
+    """Empty includes list."""
+
+
+class NCBITaxonomyFactory(ModelFactory[NCBITaxonomy]):
+    """NCBITaxonomy Factory with quasi-realistic data."""
+
+    id = Use(ModelFactory.__faker__.random_int, min=1000, max=999999)
+    """A realistic taxonomy ID."""
+
+    name = Use(ModelFactory.__faker__.organism)
+    """Generate a realistic organism name."""
+
+    other_names = Use(NCBITaxonomyOtherNamesFactory.build)
+    """Generate realistic other names."""
+
+    rank = Use(
+        ModelFactory.__faker__.random_element,
+        elements=[NCBIRank.SPECIES, NCBIRank.ISOLATE, NCBIRank.NO_RANK],
+    )
+    """A realistic NCBI rank (limited to species or below)."""
+
+    @post_generated
+    @classmethod
+    def lineage(cls, id: int, name: str, rank: NCBIRank) -> list[NCBILineage]:
+        """Generate a realistic lineage with species-level taxon."""
+        lineage = [
+            NCBILineageFactory.build(rank=NCBIRank.FAMILY),
+            NCBILineageFactory.build(rank=NCBIRank.ORDER),
+            NCBILineageFactory.build(rank=NCBIRank.GENUS),
+        ]
+
+        if rank == NCBIRank.SPECIES:
+            return lineage
+        species = NCBILineageFactory.build(rank=NCBIRank.SPECIES)
+        lineage.append(species)
+        return lineage

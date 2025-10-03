@@ -68,7 +68,7 @@ class OTUService(Service):
         if taxonomy.rank != NCBIRank.SPECIES:
             taxonomy = self.ncbi.fetch_taxonomy_record(taxonomy.species.id)
 
-        if self.repo.get_otu_id_by_taxid(taxonomy.id):
+        if self._repo.get_otu_id_by_taxid(taxonomy.id):
             otu_logger.error(
                 f"Taxonomy ID {taxonomy.id} has already been added to this reference."
             )
@@ -77,12 +77,14 @@ class OTUService(Service):
         if not acronym and taxonomy.other_names.acronym:
             acronym = taxonomy.other_names.acronym[0]
 
-        with self.repo.use_transaction():
+        with self._repo.use_transaction():
             return self._write_otu(
                 taxonomy,
                 records,
                 acronym,
-                isolate_name=next(iter(binned_records.keys())) if binned_records else None,
+                isolate_name=next(iter(binned_records.keys()))
+                if binned_records
+                else None,
             )
 
     def _write_otu(
@@ -104,7 +106,7 @@ class OTUService(Service):
 
         plan = create_plan_from_records(
             records,
-            length_tolerance=self.repo.settings.default_segment_length_tolerance,
+            length_tolerance=self._repo.settings.default_segment_length_tolerance,
         )
 
         if plan is None:
@@ -113,7 +115,7 @@ class OTUService(Service):
 
         molecule = get_molecule_from_records(records)
 
-        otu = self.repo.create_otu(
+        otu = self._repo.create_otu(
             acronym=acronym,
             legacy_id=None,
             molecule=molecule,
@@ -122,7 +124,7 @@ class OTUService(Service):
             taxid=taxonomy.id,
         )
 
-        isolate = self.repo.create_isolate(
+        isolate = self._repo.create_isolate(
             otu_id=otu.id,
             legacy_id=None,
             name=isolate_name,
@@ -134,15 +136,15 @@ class OTUService(Service):
             record = records[0]
 
             sequence = create_sequence_from_record(
-                self.repo, otu, record, plan.segments[0].id
+                self._repo, otu, record, plan.segments[0].id
             )
 
-            self.repo.link_sequence(otu.id, isolate.id, sequence.id)
+            self._repo.link_sequence(otu.id, isolate.id, sequence.id)
 
             if record.refseq:
                 _, old_accession = parse_refseq_comment(record.comment)
 
-                self.repo.exclude_accession(
+                self._repo.exclude_accession(
                     otu.id,
                     old_accession,
                 )
@@ -150,16 +152,16 @@ class OTUService(Service):
         else:
             for segment_id, record in assign_records_to_segments(records, plan).items():
                 sequence = create_sequence_from_record(
-                    self.repo, otu, record, segment_id
+                    self._repo, otu, record, segment_id
                 )
 
-                self.repo.link_sequence(otu.id, isolate.id, sequence.id)
+                self._repo.link_sequence(otu.id, isolate.id, sequence.id)
 
                 if record.refseq:
                     _, old_accession = parse_refseq_comment(record.comment)
-                    self.repo.exclude_accession(
+                    self._repo.exclude_accession(
                         otu.id,
                         old_accession,
                     )
 
-        return self.repo.get_otu(otu.id)
+        return self._repo.get_otu(otu.id)
