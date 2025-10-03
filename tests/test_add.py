@@ -4,7 +4,6 @@ from syrupy.assertion import SnapshotAssertion
 from syrupy.filters import props
 
 from ref_builder.otu.create import (
-    create_otu_from_json,
     create_otu_with_taxid,
     create_otu_without_taxid,
 )
@@ -478,37 +477,3 @@ class TestReplaceIsolateSequences:
 
         with pytest.raises(RefSeqConflictError):
             add_genbank_isolate(empty_repo, otu_before, refseq_accessions)
-
-
-class TestImportOTU:
-    """Test the import of an OTU from JSON data."""
-
-    def test_ok(self, empty_repo: Repo, otu_factory, snapshot: SnapshotAssertion):
-        mock_otu = otu_factory.build()
-
-        assert mock_otu.model_dump() == snapshot(exclude=props("id"))
-
-        with empty_repo.lock():
-            otu_init = create_otu_from_json(empty_repo, mock_otu.model_dump_json())
-
-            assert otu_init is not None
-
-        assert empty_repo.get_otu(otu_init.id).model_dump() == snapshot(
-            exclude=props("id")
-        )
-
-    def test_batch_ok(self, empty_repo: Repo, scratch_repo: Repo):
-        """Test the population of an empty repo with data from another repo."""
-        for scratch_otu in scratch_repo.iter_otus():
-            scratch_otu_json = scratch_otu.model_dump_json()
-
-            with empty_repo.lock():
-                create_otu_from_json(empty_repo, scratch_otu_json)
-
-        assert len(list(empty_repo.iter_otus())) == len(list(scratch_repo.iter_otus()))
-
-        for mini_scratch_otu in scratch_repo.iter_minimal_otus():
-            assert (
-                empty_repo.get_otu_by_taxid(mini_scratch_otu.taxid).taxid
-                == mini_scratch_otu.taxid
-            )
