@@ -114,8 +114,12 @@ class TestAssignRecordsToSegments:
 
         assigned_records = assign_records_to_segments(records, otu.plan)
 
+        segment_names_by_id = {
+            segment.id: segment.name for segment in otu.plan.segments
+        }
+
         assert {
-            (segment_id, record.accession, record.source.segment)
+            (segment_names_by_id[segment_id], record.accession, record.source.segment)
             for segment_id, record in assigned_records.items()
         } == snapshot()
 

@@ -8,12 +8,12 @@
 # name: TestAssignRecordsToSegments.test_ok[223262]
   set({
     tuple(
-      UUID('3bd4e678-7ea2-41fa-8a27-d852cad322bf'),
+      SegmentName(prefix='DNA', key='A'),
       'NC_907439',
       'DNA A',
     ),
     tuple(
-      UUID('fdce0f45-3f0d-46d4-945b-e1834c6f47eb'),
+      SegmentName(prefix='DNA', key='B'),
       'K93863',
       'DNA B',
     ),
@@ -22,34 +22,34 @@
 # name: TestAssignRecordsToSegments.test_ok[438782]
   set({
     tuple(
-      UUID('3bbc7891-74d7-4ce7-95f0-de1aa1bef55d'),
-      'SJ404705',
-      'DNA S',
-    ),
-    tuple(
-      UUID('6f8df50a-5241-47cc-8250-85f5c0c30cc1'),
+      SegmentName(prefix='DNA', key='C'),
       'NC_907439',
       'DNA C',
     ),
     tuple(
-      UUID('7e3f809c-4d8b-46fb-b486-068a17fdee62'),
-      'NC_934447',
-      'DNA R',
+      SegmentName(prefix='DNA', key='M'),
+      'K93863',
+      'DNA M',
     ),
     tuple(
-      UUID('bf9d0eea-7ba9-4346-b6d6-009b98abbf74'),
+      SegmentName(prefix='DNA', key='N'),
       'NC_314988',
       'DNA N',
     ),
     tuple(
-      UUID('c5a43c99-927e-42f5-a4c1-dd80a25dd986'),
-      'OC344875',
-      'DNA U3',
+      SegmentName(prefix='DNA', key='R'),
+      'NC_934447',
+      'DNA R',
     ),
     tuple(
-      UUID('db9041ef-f7d3-4dcf-bb5a-bc6dfedb47d7'),
-      'K93863',
-      'DNA M',
+      SegmentName(prefix='DNA', key='S'),
+      'SJ404705',
+      'DNA S',
+    ),
+    tuple(
+      SegmentName(prefix='DNA', key='U3'),
+      'OC344875',
+      'DNA U3',
     ),
   })
 # ---
