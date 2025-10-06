@@ -1,4 +1,3 @@
-
 from pydantic import UUID4, BaseModel, field_serializer, field_validator
 
 from ref_builder.models import Molecule
