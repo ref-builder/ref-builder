@@ -6,8 +6,8 @@ from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
+from ref_builder.otu.promote import promote_otu_accessions_from_records
 from ref_builder.otu.utils import (
-    RefSeqConflictError,
     assign_records_to_segments,
     fetch_records_from_accessions,
     group_genbank_records_by_isolate,
@@ -61,15 +61,25 @@ def add_genbank_isolate(
             "Isolate name already exists in this OTU.", name=isolate_name
         )
 
-        for record in isolate_records.values():
-            if record.accession.startswith("NC_"):
-                raise RefSeqConflictError(
-                    f"Potential RefSeq replacement for contents of {isolate_name}",
-                    isolate_id=isolate_id,
-                    isolate_name=isolate_name,
-                    accessions=accessions,
+        if all(record.refseq for record in isolate_records.values()):
+            otu_logger.info("Attempting to promote sequences to RefSeq")
+
+            promoted_accessions = promote_otu_accessions_from_records(
+                repo, otu, list(isolate_records.values())
+            )
+
+            if promoted_accessions:
+                otu = repo.get_otu(otu.id)
+                isolate = otu.get_isolate(isolate_id)
+                otu_logger.info(
+                    "Sequences promoted",
+                    promoted_accessions=sorted(promoted_accessions),
                 )
-            return None
+                return isolate
+
+            otu_logger.warning("No promotable sequences found")
+
+        return None
 
     with repo.use_transaction() as transaction:
         try:

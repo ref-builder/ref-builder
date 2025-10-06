@@ -62,11 +62,15 @@ class OTUService(Service):
         taxonomy = self.ncbi.fetch_taxonomy_record(taxid)
 
         if taxonomy is None:
-            otu_logger.fatal(f"Could not retrieve {taxid} from NCBI Taxonomy")
+            otu_logger.fatal("Could not retrieve data from NCBI Taxonomy", taxid=taxid)
             return None
 
         if taxonomy.rank != NCBIRank.SPECIES:
             taxonomy = self.ncbi.fetch_taxonomy_record(taxonomy.species.id)
+
+        if taxonomy is None:
+            otu_logger.fatal("Could not retrieve data from NCBI Taxonomy", taxid=taxid)
+            return None
 
         if self._repo.get_otu_id_by_taxid(taxonomy.id):
             otu_logger.error(

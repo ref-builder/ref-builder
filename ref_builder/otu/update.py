@@ -25,7 +25,6 @@ from ref_builder.otu.utils import (
     parse_refseq_comment,
 )
 from ref_builder.repo import Repo
-from ref_builder.utils import IsolateName
 
 logger = get_logger("otu.update")
 
@@ -351,27 +350,6 @@ def batch_fetch_new_records(
         return indexed_records
 
     return {}
-
-
-def update_isolate_from_accessions(
-    repo: Repo,
-    otu: OTUBuilder,
-    isolate_name: IsolateName,
-    accessions: list[str],
-    ignore_cache: bool = False,
-) -> IsolateBuilder | None:
-    """Fetch the records attached to a given list of accessions and
-    rebuild the isolate with it.
-    """
-    if (isolate_id := otu.get_isolate_id_by_name(isolate_name)) is None:
-        logger.error("OTU does not include isolate.", name=isolate_name)
-        return None
-
-    ncbi = NCBIClient(ignore_cache)
-
-    return update_isolate_from_records(
-        repo, otu, isolate_id, ncbi.fetch_genbank_records(accessions)
-    )
 
 
 def update_isolate_from_records(

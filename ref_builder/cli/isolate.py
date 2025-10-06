@@ -13,7 +13,6 @@ from ref_builder.otu.isolate import (
     add_unnamed_isolate,
 )
 from ref_builder.otu.modify import delete_isolate_from_otu
-from ref_builder.otu.utils import RefSeqConflictError
 from ref_builder.repo import Repo, locked_repo
 from ref_builder.utils import IsolateName, IsolateNameType
 
@@ -78,34 +77,21 @@ def isolate_create(
         isolate_name_type, isolate_name_value = name
         isolate_name_ = IsolateName(type=isolate_name_type, value=isolate_name_value)
 
-        try:
-            add_and_name_isolate(
-                repo,
-                otu_,
-                accessions_,
-                ignore_cache=ignore_cache,
-                isolate_name=isolate_name_,
-            )
-            sys.exit(0)
-
-        except RefSeqConflictError as e:
-            click.echo(
-                f"{e.isolate_name} already exists, but RefSeq items may be promotable.",
-            )
-            sys.exit(1)
-
-    try:
-        add_genbank_isolate(
+        add_and_name_isolate(
             repo,
             otu_,
             accessions_,
             ignore_cache=ignore_cache,
+            isolate_name=isolate_name_,
         )
-    except RefSeqConflictError as e:
-        click.echo(
-            f"{e.isolate_name} already exists, but RefSeq items may be promotable,",
-        )
-        sys.exit(1)
+        sys.exit(0)
+
+    add_genbank_isolate(
+        repo,
+        otu_,
+        accessions_,
+        ignore_cache=ignore_cache,
+    )
 
 
 @isolate.command(name="delete")  # type: ignore
