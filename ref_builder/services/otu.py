@@ -121,7 +121,6 @@ class OTUService(Service):
 
         otu = self._repo.create_otu(
             acronym=acronym,
-            legacy_id=None,
             molecule=molecule,
             name=taxonomy.name,
             plan=plan,
@@ -130,7 +129,6 @@ class OTUService(Service):
 
         isolate = self._repo.create_isolate(
             otu_id=otu.id,
-            legacy_id=None,
             name=isolate_name,
         )
 

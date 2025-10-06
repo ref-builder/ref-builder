@@ -177,7 +177,6 @@ def replace_otu_sequence_from_record(
                 otu.id,
                 accession=replacement_record.accession_version,
                 definition=replacement_record.definition,
-                legacy_id=None,
                 segment=segment_id,
                 sequence=replacement_record.sequence,
             )

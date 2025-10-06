@@ -389,14 +389,12 @@ class TestReplaceSequence:
                 otu_id=otu_id,
                 accession=str(mock_sequence.accession),
                 definition=mock_sequence.definition,
-                legacy_id=None,
                 segment=mock_sequence.segment,
                 sequence=mock_sequence.sequence,
             )
 
             isolate_init = precached_repo.create_isolate(
                 otu_id=otu_id,
-                legacy_id=None,
                 name=mock_isolate.name,
             )
 

@@ -1,6 +1,4 @@
-from typing import Annotated
-
-from pydantic import UUID4, BaseModel, Field, field_serializer, field_validator
+from pydantic import UUID4, BaseModel, field_serializer, field_validator
 
 from ref_builder.models import Molecule
 from ref_builder.plan import Plan
@@ -8,8 +6,6 @@ from ref_builder.utils import (
     Accession,
     IsolateName,
 )
-
-LegacyId = Annotated[str, Field(min_length=1, max_length=10, pattern=r"[A-Za-z0-9]+")]
 
 
 class SequenceModel(BaseModel):
@@ -23,12 +19,6 @@ class SequenceModel(BaseModel):
 
     definition: str
     """The sequence definition."""
-
-    legacy_id: str | None
-    """A string based ID carried over from a legacy Virtool reference repository.
-
-    It the sequence was not migrated from a legacy repository, this will be `None`.
-    """
 
     sequence: str
     """The sequence."""
@@ -61,12 +51,6 @@ class IsolateModel(BaseModel):
     id: UUID4
     """The isolate id."""
 
-    legacy_id: str | None
-    """A string based ID carried over from a legacy Virtool reference repository.
-
-    It the isolate was not migrated from a legacy repository, this will be `None`.
-    """
-
     name: IsolateName | None
     """The isolate's name."""
 
@@ -82,9 +66,6 @@ class OTUModel(BaseModel):
 
     excluded_accessions: set[str]
     """A set of accessions that should not be retrieved in future fetch operations."""
-
-    legacy_id: str | None
-    """A string based ID carried over from a legacy Virtool reference repository."""
 
     molecule: Molecule
     """The type of molecular information contained in this OTU."""

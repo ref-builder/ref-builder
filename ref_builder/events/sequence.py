@@ -16,7 +16,6 @@ class CreateSequenceData(EventData):
     id: UUID4
     accession: Accession
     definition: str
-    legacy_id: str | None
     segment: UUID4
     sequence: str
 
@@ -31,7 +30,6 @@ class CreateSequence(ApplicableEvent[CreateSequenceData, SequenceQuery]):
                 id=self.data.id,
                 accession=self.data.accession,
                 definition=self.data.definition,
-                legacy_id=self.data.legacy_id,
                 segment=self.data.segment,
                 sequence=self.data.sequence,
             ),

@@ -9,32 +9,34 @@ def test_commit(empty_repo: Repo, otu_factory: OTUFactory):
     fake_otu = otu_factory.build()
 
     with empty_repo.lock(), empty_repo.use_transaction():
-        otu_init = empty_repo.create_otu(
+        otu = empty_repo.create_otu(
             fake_otu.acronym,
-            fake_otu.legacy_id,
             molecule=fake_otu.molecule,
             name=fake_otu.name,
             plan=fake_otu.plan,
             taxid=fake_otu.taxid,
         )
 
-        isolate_init = empty_repo.create_isolate(
-            otu_init.id,
-            "isolate_id",
+        assert otu
+
+        isolate = empty_repo.create_isolate(
+            otu.id,
             name=fake_otu.isolates[0].name,
         )
 
         for fake_sequence in fake_otu.isolates[0].sequences:
-            sequence_init = empty_repo.create_sequence(
-                otu_init.id,
+            sequence = empty_repo.create_sequence(
+                otu.id,
                 accession=str(fake_sequence.accession),
                 definition=fake_sequence.definition,
-                legacy_id=fake_sequence.legacy_id,
                 segment=fake_sequence.segment,
                 sequence=fake_sequence.sequence,
             )
 
-            empty_repo.link_sequence(otu_init.id, isolate_init.id, sequence_init.id)
+            assert isolate
+            assert sequence
+
+            empty_repo.link_sequence(otu.id, isolate.id, sequence.id)
 
     assert empty_repo.last_id == 5
     assert len(list(empty_repo.iter_otus())) == 1
@@ -51,7 +53,6 @@ def test_fail(empty_repo: Repo, otu_factory: OTUFactory):
     with capture_logs() as cap_logs, empty_repo.lock(), empty_repo.use_transaction():
         empty_repo.create_otu(
             fake_otu.acronym,
-            fake_otu.legacy_id,
             molecule=fake_otu.molecule,
             name=fake_otu.name,
             plan=fake_otu.plan,
@@ -73,7 +74,6 @@ def test_abort(empty_repo: Repo, otu_factory: OTUFactory):
     with empty_repo.lock(), empty_repo.use_transaction() as transaction:
         empty_repo.create_otu(
             otu.acronym,
-            otu.legacy_id,
             molecule=otu.molecule,
             name=otu.name,
             plan=otu.plan,

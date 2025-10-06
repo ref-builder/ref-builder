@@ -7,7 +7,6 @@ from polyfactory.factories.pydantic_factory import ModelFactory
 from pydantic import BaseModel, TypeAdapter
 from pytest_mock import MockerFixture
 
-from ref_builder.legacy.utils import build_legacy_otu
 from ref_builder.logs import configure_logger
 from ref_builder.ncbi.cache import NCBICache
 from ref_builder.ncbi.client import NCBIClient
@@ -57,27 +56,6 @@ def empty_repo(tmp_path: Path) -> Repo:
         tmp_path / "test_repo",
         "virus",
     )
-
-
-@pytest.fixture
-def legacy_otu(legacy_repo_path: Path) -> dict:
-    """A legacy OTU."""
-    return build_legacy_otu(
-        legacy_repo_path / "src" / "a" / "abaca_bunchy_top_virus",
-    )
-
-
-@pytest.fixture
-def legacy_repo_path(
-    files_path: Path,
-    tmp_path: Path,
-) -> Path:
-    """The path to a scratch legacy reference."""
-    path = tmp_path / "legacy_repo"
-
-    shutil.copytree(files_path / "src_v1", path / "src", dirs_exist_ok=True)
-
-    return path
 
 
 @pytest.fixture
@@ -234,19 +212,9 @@ otu_contents_list_adapter = TypeAdapter(list[OTUContents])
 @pytest.fixture
 def indexable_otus() -> list[OTUBuilder]:
     """A list of eight OTUs for use in Snapshotter testing."""
-    otus = [
+    return [
         OTUBuilder.model_validate(OTUFactory.build().model_dump()) for _ in range(8)
     ]
-
-    # We want at least one OTU with a `None` legacy ID to test `get_id_by_legacy_id`.
-    if all(otu.legacy_id is not None for otu in otus):
-        otus[2].legacy_id = None
-
-    # We want at least one OTU with an assigned legacy ID to test `get_id_by_legacy_id`.
-    if all(otu.legacy_id is None for otu in otus):
-        otus[2].legacy_id = "legacy"
-
-    return otus
 
 
 @pytest.fixture

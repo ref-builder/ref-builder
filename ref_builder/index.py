@@ -64,13 +64,7 @@ sqlite3.register_converter("datetime", convert_datetime)
 
 
 class Index:
-    """An index for rapid access to repository data.
-
-    1. Get OTU IDs by legacy ID, name, or taxonomy ID.
-    2. Save and load complete snapshots of OTUs.
-    3. Get the event IDS associated with an OTU.
-
-    """
+    """An index for rapid access to repository data."""
 
     def __init__(self, path: Path) -> None:
         """Initialize the index."""
@@ -114,7 +108,6 @@ class Index:
                 id TEXT PRIMARY KEY,
                 acronym TEXT,
                 at_event INTEGER,
-                legacy_id TEXT,
                 name TEXT,
                 otu JSONB,
                 taxid INTEGER
@@ -147,7 +140,6 @@ class Index:
             ("events", "otu_id"),
             ("isolates", "id"),
             ("otus", "id"),
-            ("otus", "legacy_id"),
             ("otus", "name"),
             ("otus", "taxid"),
             ("sequences", "otu_id"),
@@ -268,18 +260,6 @@ class Index:
 
         return None
 
-    def get_id_by_legacy_id(self, legacy_id: str) -> UUID | None:
-        """Get an OTU ID by its legacy ID."""
-        cursor = self.con.execute(
-            'SELECT id AS "id [uuid]" FROM otus WHERE legacy_id = ?',
-            (legacy_id,),
-        )
-
-        if result := cursor.fetchone():
-            return result[0]
-
-        return None
-
     def get_id_by_name(self, name: str) -> UUID | None:
         """Get an OTU ID by its name."""
         cursor = self.con.execute(
@@ -392,7 +372,7 @@ class Index:
         """Iterate over minimal representations of all OTUs in the index."""
         rows = self.con.execute(
             """
-            SELECT acronym, id AS "id [uuid]", legacy_id, name, taxid
+            SELECT acronym, id AS "id [uuid]", name, taxid
             FROM otus ORDER BY name
             """,
         ).fetchall()
@@ -401,9 +381,8 @@ class Index:
             yield OTUMinimal(
                 acronym=row[0],
                 id=row[1],
-                legacy_id=row[2],
-                name=row[3],
-                taxid=row[4],
+                name=row[2],
+                taxid=row[3],
             )
 
     def get_last_otu_update_timestamp(self, otu_id: UUID) -> datetime.datetime | None:
@@ -563,14 +542,13 @@ class Index:
 
         self.con.execute(
             """
-            INSERT OR REPLACE INTO otus (id, acronym, at_event, legacy_id, name, otu, taxid)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO otus (id, acronym, at_event, name, otu, taxid)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 otu.id,
                 otu.acronym,
                 at_event,
-                otu.legacy_id,
                 otu.name,
                 otu.model_dump_json(),
                 otu.taxid,

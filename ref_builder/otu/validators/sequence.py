@@ -6,7 +6,7 @@ from pydantic import (
     field_validator,
 )
 
-from ref_builder.otu.models import LegacyId, SequenceModel
+from ref_builder.otu.models import SequenceModel
 from ref_builder.utils import Accession, is_accession_key_valid, is_refseq
 
 
@@ -23,12 +23,6 @@ class SequenceBase(SequenceModel):
 
     definition: str = Field(min_length=1)
     """The sequence definition."""
-
-    legacy_id: LegacyId | None
-    """A string based ID carried over from a legacy Virtool reference repository.
-
-    It the sequence was not migrated from a legacy repository, this will be `None`.
-    """
 
     sequence: str = Field(pattern=r"[ATGCURYKMSWBDHVN]+")
     """The sequence."""

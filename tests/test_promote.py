@@ -89,7 +89,7 @@ def test_multi_linked_promotion(empty_repo: Repo):
 
     with empty_repo.lock(), empty_repo.use_transaction():
         isolate_before = empty_repo.create_isolate(
-            otu_before.id, legacy_id=None, name=mock_isolate.name
+            otu_before.id, name=mock_isolate.name
         )
 
         assert isolate_before
@@ -113,7 +113,6 @@ def test_multi_linked_promotion(empty_repo: Repo):
                 otu_before.id,
                 accession=f"FA00000{accession_counter}.1",
                 definition=mock_sequence.definition,
-                legacy_id=None,
                 segment=mock_sequence.segment,
                 sequence=mock_sequence.sequence,
             )

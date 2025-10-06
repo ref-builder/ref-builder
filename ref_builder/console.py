@@ -56,10 +56,6 @@ def print_otu(otu: OTUBuilder) -> None:
 
     table.add_row("[bold]ACRONYM[/bold]", otu.acronym)
     table.add_row("[bold]ID[/bold]", str(otu.id))
-
-    if otu.legacy_id:
-        table.add_row("[bold]LEGACY ID[/bold]", otu.legacy_id)
-
     table.add_row("[bold]TAXID[/bold]", _render_taxonomy_id_link(otu.taxid))
 
     max_accession_length = max(

@@ -19,7 +19,6 @@ def get_validated_otu(unvalidated_otu: OTUBuilder) -> OTU:
             validated_otu = OTU.model_validate(
                 {
                     "id": unvalidated_otu.id,
-                    "legacy_id": unvalidated_otu.legacy_id,
                     "name": unvalidated_otu.name,
                     "taxid": unvalidated_otu.taxid,
                     "acronym": unvalidated_otu.acronym,

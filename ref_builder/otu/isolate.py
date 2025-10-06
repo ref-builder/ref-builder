@@ -187,7 +187,6 @@ def create_isolate(
 
     isolate = repo.create_isolate(
         otu.id,
-        legacy_id=None,
         name=isolate_name,
     )
 
@@ -197,7 +196,6 @@ def create_isolate(
                 otu.id,
                 accession=record.accession_version,
                 definition=record.definition,
-                legacy_id=None,
                 segment=segment_id,
                 sequence=record.sequence,
             )
@@ -228,7 +226,6 @@ def create_sequence_from_record(
         otu.id,
         accession=record.accession_version,
         definition=record.definition,
-        legacy_id=None,
         segment=segment_id,
         sequence=record.sequence,
     )
