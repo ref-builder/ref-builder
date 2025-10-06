@@ -34,25 +34,6 @@ class DeleteRationale(StrEnum):
     REFSEQ = "Superceded by RefSeq"
 
 
-class RefSeqConflictError(ValueError):
-    """Raised when a potential RefSeq replacement is found."""
-
-    def __init__(
-        self,
-        message: str,
-        isolate_id: UUID,
-        isolate_name: IsolateName,
-        accessions: list[str],
-    ) -> None:
-        super().__init__(message)
-
-        self.isolate_id = isolate_id
-
-        self.isolate_name = isolate_name
-
-        self.accessions = accessions
-
-
 def get_segments_min_length(segments: list[Segment]) -> int:
     """Return the shortest minimum length from a list of segments."""
     shortest_segment = min(segments, key=lambda s: s.length)
