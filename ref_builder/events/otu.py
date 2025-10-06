@@ -12,7 +12,6 @@ class CreateOTUData(EventData):
 
     id: UUID4
     acronym: str
-    legacy_id: str | None
     molecule: Molecule
     name: str
     taxid: int
@@ -28,7 +27,6 @@ class CreateOTU(Event[CreateOTUData, OTUQuery]):
             acronym=self.data.acronym,
             excluded_accessions=set(),
             isolates=[],
-            legacy_id=self.data.legacy_id,
             molecule=self.data.molecule,
             name=self.data.name,
             plan=self.data.plan,

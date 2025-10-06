@@ -14,7 +14,6 @@ class CreateIsolateData(EventData):
     """The data for a :class:`CreateIsolate` event."""
 
     id: UUID4
-    legacy_id: str | None
     name: IsolateName | None
 
 
@@ -26,7 +25,6 @@ class CreateIsolate(ApplicableEvent[CreateIsolateData, IsolateQuery]):
         otu.add_isolate(
             IsolateBuilder(
                 id=self.data.id,
-                legacy_id=self.data.legacy_id,
                 name=self.data.name,
                 sequences=[],
             ),

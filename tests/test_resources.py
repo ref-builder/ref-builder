@@ -42,7 +42,6 @@ class TestIsolate:
         """Test that an isolate initializes correctly with no sequences."""
         isolate = IsolateBuilder(
             id=uuid4(),
-            legacy_id=None,
             name=IsolateName(type=IsolateNameType.ISOLATE, value="A"),
             sequences=[],
         )
@@ -70,7 +69,6 @@ class TestOTU:
             acronym="TMV",
             excluded_accessions=set(),
             isolates=[],
-            legacy_id=None,
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
                 type=MolType.RNA,
@@ -152,26 +150,23 @@ class TestOTU:
             for sequence in isolate.sequences:
                 assert otu.get_sequence_by_accession(sequence.accession.key) == sequence
 
-    def test_otu_delete_isolate(self):
+    def test_delete_isolate(self):
         """Test that OTUBuilder.delete_isolate() does not affect other isolates."""
-        otu_before = OTUBuilder.model_validate(OTUFactory.build().model_dump())
+        otu = OTUBuilder.model_validate(OTUFactory.build().model_dump())
 
         for _ in range(10):
             isolate = IsolateBuilder.model_validate(
-                IsolateFactory.build_on_plan(otu_before.plan).model_dump()
+                IsolateFactory.build_on_plan(otu.plan).model_dump()
             )
-            otu_before.add_isolate(isolate)
+            otu.add_isolate(isolate)
 
-        initial_isolate_ids = [isolate.id for isolate in otu_before.isolates]
+        initial_isolates = {isolate.id: isolate for isolate in otu.isolates}
+        deleted_id = list(initial_isolates.keys())[3]
 
-        deleted_id = initial_isolate_ids[3]
+        otu.delete_isolate(deleted_id)
 
-        otu_after = otu_before.model_copy()
+        assert otu.get_isolate(deleted_id) is None
 
-        otu_after.delete_isolate(deleted_id)
-
-        assert otu_after.get_isolate(deleted_id) is None
-
-        for i in range(10):
-            extant_id = initial_isolate_ids[i + 3]
-            assert otu_after.get_isolate(extant_id) == otu_before.get_isolate(extant_id)
+        for isolate_id, isolate in initial_isolates.items():
+            if isolate_id != deleted_id:
+                assert otu.get_isolate(isolate_id) == isolate

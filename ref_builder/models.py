@@ -7,9 +7,8 @@ from pydantic import BaseModel, ConfigDict
 class OTUMinimal(BaseModel):
     """A minimal representation of an OTU."""
 
-    id: UUID
     acronym: str
-    legacy_id: str | None
+    id: UUID
     name: str
     taxid: int
 

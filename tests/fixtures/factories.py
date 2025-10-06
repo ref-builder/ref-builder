@@ -30,7 +30,6 @@ from ref_builder.plan import (
 from ref_builder.utils import Accession, IsolateName, IsolateNameType
 from tests.fixtures.providers import (
     AccessionProvider,
-    BusinessProvider,
     OrganismProvider,
     SegmentProvider,
     SequenceProvider,
@@ -45,7 +44,6 @@ DNA_MOLTYPES = {
 
 
 ModelFactory.__faker__.add_provider(AccessionProvider)
-ModelFactory.__faker__.add_provider(BusinessProvider)
 ModelFactory.__faker__.add_provider(OrganismProvider)
 ModelFactory.__faker__.add_provider(SegmentProvider)
 ModelFactory.__faker__.add_provider(SequenceProvider)
@@ -490,9 +488,6 @@ class SequenceFactory(ModelFactory[SequenceBase]):
     definition = Use(ModelFactory.__faker__.sentence)
     """Generate a mock sentence to serve as the definition field."""
 
-    legacy_id = Use(ModelFactory.__faker__.legacy_id)
-    """Generate an 8-character unique identifier as used in virtool-cli."""
-
     segment = Use(ModelFactory.__faker__.uuid4)
     """Generate a quasi-realistic mock segment string."""
 
@@ -526,13 +521,8 @@ class SequenceFactory(ModelFactory[SequenceBase]):
 class IsolateFactory(ModelFactory[IsolateBase]):
     """Isolate factory with quasi-realistic data."""
 
-    ModelFactory.__faker__.add_provider(BusinessProvider)
-
     id = Use(ModelFactory.__faker__.uuid4, cast_to=None)
     """Generate a UUID."""
-
-    legacy_id = Use(ModelFactory.__faker__.legacy_id)
-    """Generate an 8-character unique identifier as used in virtool-cli."""
 
     @classmethod
     def name(cls) -> IsolateName:
@@ -574,7 +564,6 @@ class IsolateFactory(ModelFactory[IsolateBase]):
 class OTUFactory(ModelFactory[OTUBase]):
     """OTU Factory with quasi-realistic data."""
 
-    ModelFactory.__faker__.add_provider(BusinessProvider)
     ModelFactory.__faker__.add_provider(OrganismProvider)
 
     acronym = PostGenerated(derive_acronym)
@@ -599,9 +588,6 @@ class OTUFactory(ModelFactory[OTUBase]):
     id = Use(ModelFactory.__faker__.uuid4, cast_to=None)
     """Generate a UUID."""
 
-    legacy_id = Use(ModelFactory.__faker__.legacy_id)
-    """Generate an 8-character unique identifier as used in virtool-cli."""
-
     name = Use(ModelFactory.__faker__.organism)
     """Generate a realistic name for a plant virus."""
 
@@ -621,14 +607,10 @@ class OTUFactory(ModelFactory[OTUBase]):
 class OTUMinimalFactory(ModelFactory[OTUMinimal]):
     """OTUMinimal Factory with quasi-realistic data."""
 
-    ModelFactory.__faker__.add_provider(BusinessProvider)
     ModelFactory.__faker__.add_provider(OrganismProvider)
 
     acronym = PostGenerated(derive_acronym)
     """An acronym for the OTU derived from its name."""
-
-    legacy_id = Use(ModelFactory.__faker__.legacy_id)
-    """Generate a realistic 8-character ``legacy_id`` for the OTU."""
 
     name = Use(ModelFactory.__faker__.organism)
     """Generate a realistic name for the OTU."""

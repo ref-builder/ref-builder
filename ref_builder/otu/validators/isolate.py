@@ -9,7 +9,7 @@ from pydantic import (
     field_validator,
 )
 
-from ref_builder.otu.models import IsolateModel, LegacyId
+from ref_builder.otu.models import IsolateModel
 from ref_builder.otu.validators.sequence import Sequence, SequenceBase
 from ref_builder.otu.validators.utils import IsolateInconsistencyWarning
 from ref_builder.utils import Accession, IsolateName, is_refseq
@@ -20,12 +20,6 @@ class IsolateBase(IsolateModel):
 
     id: UUID4
     """The isolate id."""
-
-    legacy_id: LegacyId | None
-    """A string based ID carried over from a legacy Virtool reference repository.
-
-    It the isolate was not migrated from a legacy repository, this will be `None`.
-    """
 
     name: IsolateName | None
     """The isolate's name."""

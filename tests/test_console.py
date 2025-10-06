@@ -140,7 +140,6 @@ class TestPrintOTU:
             id=fake.uuid4(),
             acronym="BabAV",
             excluded_accessions=set(),
-            legacy_id="",
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
                 topology=Topology.LINEAR,
@@ -182,7 +181,6 @@ class TestPrintOTU:
                     id=fake.uuid4(),
                     accession=Accession.from_string(fake.accession() + ".1"),
                     definition=fake.sentence(),
-                    legacy_id=None,
                     sequence=fake.sequence(),
                     segment=segment.id,
                 )
@@ -192,7 +190,6 @@ class TestPrintOTU:
             otu.isolates.append(
                 IsolateBuilder(
                     id=fake.uuid4(),
-                    legacy_id=None,
                     name=IsolateName(type=IsolateNameType.ISOLATE, value=fake.word()),
                     sequences=sequences,
                 )
@@ -214,7 +211,6 @@ class TestPrintOTU:
             id=fake.uuid4(),
             acronym="BabAV",
             excluded_accessions=set(),
-            legacy_id="",
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
                 topology=Topology.LINEAR,

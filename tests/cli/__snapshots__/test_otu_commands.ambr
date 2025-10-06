@@ -4,7 +4,6 @@
     'acronym': '',
     'excluded_accessions': set({
     }),
-    'legacy_id': None,
     'molecule': dict({
       'strandedness': 'double',
       'topology': 'circular',

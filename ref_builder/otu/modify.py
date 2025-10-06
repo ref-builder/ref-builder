@@ -282,7 +282,6 @@ def replace_sequence_in_otu(
             otu.id,
             accession=record.accession_version,
             definition=record.definition,
-            legacy_id=None,
             segment=segment_id,
             sequence=record.sequence,
         )

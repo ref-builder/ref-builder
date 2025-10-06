@@ -60,7 +60,6 @@ def test_iter_otus(index: Index, indexable_otus: list[OTUBuilder]):
             OTUMinimal(
                 acronym=otu.acronym,
                 id=otu.id,
-                legacy_id=otu.legacy_id,
                 name=otu.name,
                 taxid=otu.taxid,
             )
@@ -89,20 +88,6 @@ class TestLoadSnapshot:
 def test_otu_ids(index: Index, indexable_otus: list[OTUBuilder]):
     """Test that stored OTU IDs are correct."""
     assert index.otu_ids == {otu.id for otu in indexable_otus}
-
-
-class TestGetIDByLegacyID:
-    """Test the `get_id_by_legacy_id` method of the Snapshotter class."""
-
-    def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
-        """Test that the correct OTU ID is retrieved by legacy ID."""
-        for otu in indexable_otus:
-            if otu.legacy_id is not None:
-                assert index.get_id_by_legacy_id(otu.legacy_id) == otu.id
-
-    def test_not_found(self, index: Index):
-        """Test that `None` is returned when the legacy ID is not found."""
-        assert index.get_id_by_legacy_id("not found") is None
 
 
 class TestEvents:

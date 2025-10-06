@@ -177,7 +177,6 @@ def write_otu(
 
     otu = repo.create_otu(
         acronym=acronym,
-        legacy_id=None,
         molecule=molecule,
         name=taxonomy.name,
         plan=plan,
@@ -186,7 +185,6 @@ def write_otu(
 
     isolate = repo.create_isolate(
         otu_id=otu.id,
-        legacy_id=None,
         name=isolate_name,
     )
 

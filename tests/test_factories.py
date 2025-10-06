@@ -39,7 +39,6 @@ def test_ncbi_genbank_factory(
             id=uuid4(),
             accession=Accession.from_string(record.accession_version),
             definition=record.definition,
-            legacy_id=None,
             segment=uuid.uuid4(),
             sequence=record.sequence,
         )

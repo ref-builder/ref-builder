@@ -369,7 +369,6 @@ class Repo:
     def create_otu(
         self,
         acronym: str,
-        legacy_id: str | None,
         molecule: Molecule,
         name: str,
         plan: Plan,
@@ -383,9 +382,6 @@ class Repo:
         if self._index.get_id_by_name(name):
             raise ValueError(f"An OTU with the name '{name}' already exists")
 
-        if legacy_id and self._index.get_id_by_legacy_id(legacy_id):
-            raise ValueError(f"An OTU with the legacy ID '{legacy_id}' already exists")
-
         logger.info("Creating new OTU.", taxid=taxid, name=name)
 
         otu_id = uuid.uuid4()
@@ -395,7 +391,6 @@ class Repo:
             CreateOTUData(
                 id=otu_id,
                 acronym=acronym,
-                legacy_id=legacy_id,
                 molecule=molecule,
                 name=name,
                 plan=plan,
@@ -449,7 +444,6 @@ class Repo:
     def create_isolate(
         self,
         otu_id: uuid.UUID,
-        legacy_id: str | None,
         name: IsolateName | None,
     ) -> IsolateBuilder | None:
         """Create and isolate for the OTU with ``otu_id``.
@@ -462,7 +456,7 @@ class Repo:
 
         event = self._write_event(
             CreateIsolate,
-            CreateIsolateData(id=isolate_id, legacy_id=legacy_id, name=name),
+            CreateIsolateData(id=isolate_id, name=name),
             IsolateQuery(isolate_id=isolate_id, otu_id=otu_id),
         )
 
@@ -499,7 +493,6 @@ class Repo:
         otu_id: uuid.UUID,
         accession: str | Accession,
         definition: str,
-        legacy_id: str | None,
         segment: uuid.UUID,
         sequence: str,
     ) -> SequenceBuilder | None:
@@ -526,7 +519,6 @@ class Repo:
                 id=sequence_id,
                 accession=versioned_accession,
                 definition=definition,
-                legacy_id=legacy_id,
                 segment=segment,
                 sequence=sequence,
             ),
