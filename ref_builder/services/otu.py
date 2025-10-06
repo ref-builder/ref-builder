@@ -1,7 +1,9 @@
 """Manage OTU data."""
 
 import structlog
+from uuid import UUID
 
+from ref_builder.errors import InvalidInputError, PartialIDConflictError
 from ref_builder.ncbi.models import NCBIGenbank, NCBIRank, NCBITaxonomy
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.isolate import create_sequence_from_record
@@ -17,14 +19,53 @@ from ref_builder.utils import IsolateName
 
 logger = structlog.get_logger("services.otu")
 
+UUID_STRING_LENGTH = 36
+
 
 class OTUService(Service):
     """Service for managing OTU operations."""
 
+    def get_otu(self, identifier: str) -> OTUBuilder | None:
+        """Return an OTU from the repo if identifier matches a single OTU.
+
+        The identifier can either be a stringified UUIDv4, a truncated portion
+        of a UUID, a NCBI Taxonomy ID or an acronym associated with the OTU.
+
+        :param identifier: a non-UUID identifier.
+            Can be an integer Taxonomy ID, acronym or truncated partial UUID.
+        :return: the OTU or None if not found
+        """
+        otu_id = None
+
+        if len(identifier) == UUID_STRING_LENGTH:
+            try:
+                otu_id = UUID(identifier)
+            except ValueError:
+                otu_id = None
+
+        elif identifier.isnumeric():
+            try:
+                taxid = int(identifier)
+            except ValueError:
+                pass
+            else:
+                otu_id = self._repo.get_otu_id_by_taxid(taxid)
+
+        elif (otu_id := self._repo.get_otu_id_by_acronym(identifier)) is None:
+            try:
+                otu_id = self._repo.get_otu_id_by_partial(identifier)
+
+            except (PartialIDConflictError, InvalidInputError):
+                return None
+
+        if otu_id is None:
+            return None
+
+        return self._repo.get_otu(otu_id)
+
     def create(
         self,
         accessions: list[str],
-        acronym: str = "",
     ) -> OTUBuilder | None:
         """Create a new OTU from a list of accessions.
 
@@ -32,7 +73,6 @@ class OTUService(Service):
         Derives the taxonomy ID from the accessions.
 
         :param accessions: accessions to build the new OTU from
-        :param acronym: an alternative name to use during searches
         :return: the created OTU or None if creation failed
         """
         otu_logger = logger.bind(accessions=accessions)
@@ -78,7 +118,8 @@ class OTUService(Service):
             )
             return None
 
-        if not acronym and taxonomy.other_names.acronym:
+        acronym = ""
+        if taxonomy.other_names.acronym:
             acronym = taxonomy.other_names.acronym[0]
 
         with self._repo.use_transaction():

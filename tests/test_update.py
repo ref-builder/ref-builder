@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
-from ref_builder.otu.create import create_otu_with_taxid
+from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.isolate import add_genbank_isolate
 from ref_builder.otu.promote import promote_otu_accessions
 from ref_builder.otu.update import (
@@ -13,57 +13,7 @@ from ref_builder.otu.update import (
     batch_update_repo,
 )
 from ref_builder.repo import Repo
-
-
-@pytest.fixture
-def mock_repo(precached_repo: Repo) -> Repo:
-    with precached_repo.lock():
-        create_otu_with_taxid(
-            precached_repo,
-            2164102,
-            ["MF062125", "MF062126", "MF062127"],
-            "",
-        )
-
-    return precached_repo
-
-
-@pytest.fixture
-def mock_fetch_index() -> dict[int, set[str]]:
-    """A mock fetch index for NCBI Taxonomy ID 2164102."""
-    return {
-        2164102: {
-            "MF062130",
-            "MF062131",
-            "MF062132",
-            "MF062136",
-            "MF062137",
-            "MF062138",
-            "NC_055390",
-            "NC_055391",
-            "NC_055392",
-            "OR889795",
-            "OR889796",
-            "OR889797",
-        }
-    }
-
-
-@pytest.fixture
-def mock_fetch_index_path(
-    mock_fetch_index: dict[int, set[str]], tmp_path: Path
-) -> Path:
-    """A temporary path to a mock fetch index."""
-    file_path = tmp_path / "fetch_index_2165102.json"
-
-    fetch_index = BatchFetchIndex.model_validate(mock_fetch_index)
-
-    with open(file_path, "w") as f:
-        f.write(fetch_index.model_dump_json())
-
-    yield file_path
-
-    file_path.unlink()
+from ref_builder.services.otu import OTUService
 
 
 @pytest.mark.ncbi
@@ -72,17 +22,22 @@ class TestPromoteOTU:
 
     def test_ok(self, empty_repo: Repo):
         """Test that RefSeq accessions can be promoted automatically."""
+        otu_service = OTUService(empty_repo, NCBIClient(False))
+
         with empty_repo.lock():
-            otu = create_otu_with_taxid(
-                empty_repo, 2164102, ["MF062136", "MF062137", "MF062138"], acronym=""
-            )
+            otu = otu_service.create(["MF062136", "MF062137", "MF062138"])
+
+            assert otu
 
             isolate = add_genbank_isolate(
                 empty_repo, otu, ["MF062125", "MF062126", "MF062127"]
             )
 
+            assert isolate
+
         otu_before = empty_repo.get_otu(otu.id)
 
+        assert otu_before
         assert otu_before.accessions == {
             "MF062125",
             "MF062126",
@@ -92,7 +47,10 @@ class TestPromoteOTU:
             "MF062138",
         }
 
-        assert otu_before.get_isolate(isolate.id).accessions == {
+        isolate_before = otu_before.get_isolate(isolate.id)
+
+        assert isolate_before
+        assert isolate_before.accessions == {
             "MF062125",
             "MF062126",
             "MF062127",
@@ -105,8 +63,8 @@ class TestPromoteOTU:
 
         otu_after = empty_repo.get_otu(otu.id)
 
+        assert otu_after
         assert otu_after.isolate_ids == otu_before.isolate_ids
-
         assert otu_after.accessions == {
             "NC_055390",
             "NC_055391",
@@ -115,14 +73,16 @@ class TestPromoteOTU:
             "MF062137",
             "MF062138",
         }
+        assert otu_after.excluded_accessions == {"MF062125", "MF062126", "MF062127"}
 
-        assert otu_after.get_isolate(isolate.id).accessions == {
+        isolate_after = otu_after.get_isolate(isolate_before.id)
+
+        assert isolate_after
+        assert isolate_after.accessions == {
             "NC_055390",
             "NC_055391",
             "NC_055392",
         }
-
-        assert otu_after.excluded_accessions == {"MF062125", "MF062126", "MF062127"}
 
 
 @pytest.mark.ncbi
@@ -135,16 +95,13 @@ class TestUpdateOTU:
         snapshot: SnapshotAssertion,
     ):
         """Test automatic update behaviour."""
+        otu_service = OTUService(precached_repo, NCBIClient(False))
+
         with precached_repo.lock():
-            otu_before = create_otu_with_taxid(
-                precached_repo,
-                2164102,
-                ["NC_055390", "NC_055391", "NC_055392"],
-                "",
-            )
+            otu_before = otu_service.create(["NC_055390", "NC_055391", "NC_055392"])
 
+        assert otu_before
         assert otu_before.accessions == {"NC_055390", "NC_055391", "NC_055392"}
-
         assert otu_before.blocked_accessions == {
             "NC_055390",
             "NC_055391",
@@ -159,12 +116,10 @@ class TestUpdateOTU:
 
         otu_after = precached_repo.get_otu(otu_before.id)
 
+        assert otu_after
         assert otu_after.excluded_accessions == {"MF062125", "MF062126", "MF062127"}
-
         assert otu_after.id == otu_before.id
-
         assert otu_after.isolate_ids.issuperset(otu_before.isolate_ids)
-
         assert otu_after.accessions == {
             "MF062130",
             "MF062131",
@@ -179,21 +134,18 @@ class TestUpdateOTU:
             "OR889796",
             "OR889797",
         }
-
         assert {
             str(isolate.name): isolate.accessions for isolate in otu_after.isolates
         } == snapshot()
 
     def test_start_date_limit(self, precached_repo: Repo):
         """Test automatic update with the start date set to ``today``."""
-        with precached_repo.lock():
-            otu_before = create_otu_with_taxid(
-                precached_repo,
-                2164102,
-                ["NC_055390", "NC_055391", "NC_055392"],
-                "",
-            )
+        otu_service = OTUService(precached_repo, NCBIClient(False))
 
+        with precached_repo.lock():
+            otu_before = otu_service.create(["NC_055390", "NC_055391", "NC_055392"])
+
+        assert otu_before
         assert otu_before.accessions == {"NC_055390", "NC_055391", "NC_055392"}
 
         with precached_repo.lock():
@@ -203,6 +155,7 @@ class TestUpdateOTU:
                 start_date=datetime.date.today(),
             )
 
+        assert otu_after
         assert {
             "MF062130",
             "MF062131",
@@ -221,15 +174,10 @@ class TestUpdateOTU:
         snapshot: SnapshotAssertion,
     ):
         """Test that automatic update replaces accessions superceded by RefSeq."""
-        otu_before = None
+        otu_service = OTUService(precached_repo, NCBIClient(False))
 
         with precached_repo.lock():
-            otu_before = create_otu_with_taxid(
-                precached_repo,
-                2164102,
-                ["MF062125", "MF062126", "MF062127"],
-                "",
-            )
+            otu_before = otu_service.create(["MF062125", "MF062126", "MF062127"])
 
         assert otu_before
 
@@ -268,49 +216,77 @@ class TestUpdateOTU:
 class TestBatchUpdate:
     """Test rudimentary batch update operation with a single OTU."""
 
-    def test_ok(
-        self,
-        mock_repo: Repo,
-        mock_fetch_index: dict[int, set[str]],
-    ):
+    @pytest.fixture(autouse=True)
+    def setup(self, precached_repo: Repo, tmp_path: Path):
+        """Set up mock repo and fetch index for batch update tests."""
+        otu_service = OTUService(precached_repo, NCBIClient(False))
+
+        with precached_repo.lock():
+            otu = otu_service.create(["MF062125", "MF062126", "MF062127"])
+
+        self.repo = precached_repo
+        self.fetch_index = {
+            otu.taxid: {
+                "MF062130",
+                "MF062131",
+                "MF062132",
+                "MF062136",
+                "MF062137",
+                "MF062138",
+                "NC_055390",
+                "NC_055391",
+                "NC_055392",
+                "OR889795",
+                "OR889796",
+                "OR889797",
+            }
+        }
+
+        self.fetch_index_path = tmp_path / "fetch_index_2165102.json"
+
+        fetch_index = BatchFetchIndex.model_validate(self.fetch_index)
+
+        with open(self.fetch_index_path, "w") as f:
+            f.write(fetch_index.model_dump_json())
+
+        yield
+
+        self.fetch_index_path.unlink()
+
+    def test_ok(self):
         """Test that batch update works as expected."""
-        otu_before = next(mock_repo.iter_otus())
+        otu_before = next(self.repo.iter_otus())
 
-        with mock_repo.lock():
-            assert len(batch_update_repo(mock_repo)) == 1
+        with self.repo.lock():
+            assert len(batch_update_repo(self.repo)) == 1
 
-        otu_after = next(mock_repo.iter_otus())
+        otu_after = next(self.repo.iter_otus())
 
-        assert otu_after.accessions == mock_fetch_index[otu_before.taxid]
+        assert otu_after.accessions == self.fetch_index[otu_before.taxid]
 
-        with mock_repo.lock():
-            assert len(batch_update_repo(mock_repo)) == 0
+        with self.repo.lock():
+            assert len(batch_update_repo(self.repo)) == 0
 
-    def test_with_fetch_index_ok(
-        self,
-        mock_repo: Repo,
-        mock_fetch_index: dict[int, set[str]],
-        mock_fetch_index_path: Path,
-    ):
+    def test_with_fetch_index_ok(self):
         """Test with a path to a pre-made fetch index as input."""
-        otu_initial = next(mock_repo.iter_otus())
+        otu_initial = next(self.repo.iter_otus())
 
-        with mock_repo.lock():
+        with self.repo.lock():
             assert (
                 len(
-                    batch_update_repo(mock_repo, fetch_index_path=mock_fetch_index_path)
+                    batch_update_repo(self.repo, fetch_index_path=self.fetch_index_path)
                 )
                 == 1
             )
 
-        otu_after = next(mock_repo.iter_otus())
+        otu_after = next(self.repo.iter_otus())
 
-        assert otu_after.accessions == mock_fetch_index[otu_initial.taxid]
+        assert otu_after.accessions == self.fetch_index[otu_initial.taxid]
 
-        with mock_repo.lock():
+        with self.repo.lock():
             assert (
                 len(
-                    batch_update_repo(mock_repo, fetch_index_path=mock_fetch_index_path)
+                    batch_update_repo(self.repo, fetch_index_path=self.fetch_index_path)
                 )
                 == 0
             )

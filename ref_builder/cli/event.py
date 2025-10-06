@@ -4,14 +4,16 @@ from pathlib import Path
 import click
 
 from ref_builder.cli.options import path_option
-from ref_builder.cli.utils import get_otu_from_identifier, pass_repo
+from ref_builder.cli.utils import pass_repo
 from ref_builder.console import (
     print_event,
     print_event_as_json,
     print_event_list,
     print_otu_event_log,
 )
+from ref_builder.ncbi.client import NCBIClient
 from ref_builder.repo import Repo, locked_repo
+from ref_builder.services.otu import OTUService
 
 
 @click.group(name="event")
@@ -36,7 +38,12 @@ def event_list(repo: Repo, otu_identifier_: str | None) -> None:
         print_event_list(repo.iter_event_metadata())
 
     else:
-        otu = get_otu_from_identifier(repo, otu_identifier_)
+        otu_service = OTUService(repo, NCBIClient(False))
+        otu = otu_service.get_otu(otu_identifier_)
+
+        if otu is None:
+            click.echo("OTU not found.", err=True)
+            sys.exit(1)
 
         print_otu_event_log(list(repo.iter_otu_events(otu.id)))
 

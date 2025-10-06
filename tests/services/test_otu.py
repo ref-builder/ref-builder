@@ -124,40 +124,6 @@ class TestOTUServiceCreate:
         assert otu is not None
         assert otu.acronym == "TestAcronym"
 
-    def test_acronym_provided(
-        self,
-        empty_repo: Repo,
-        otu_service: OTUService,
-        mocker: MockerFixture,
-        ncbi_taxonomy_factory: type[NCBITaxonomyFactory],
-        ncbi_genbank_factory: type[NCBIGenbankFactory],
-    ):
-        """Test that provided acronym overrides NCBI acronym."""
-        other_names = NCBITaxonomyOtherNames()
-        other_names.acronym = ["NCBIAcronym"]
-
-        taxonomy = NCBITaxonomy(
-            id=12346,
-            name="Another Test Virus",
-            rank=NCBIRank.SPECIES,
-            other_names=other_names,
-            lineage=[],
-        )
-        records = [
-            ncbi_genbank_factory.build(source__taxid=taxonomy.id, accession="AB123456")
-        ]
-
-        otu_service.ncbi.fetch_genbank_records = mocker.Mock(return_value=records)
-        otu_service.ncbi.fetch_taxonomy_record = mocker.Mock(return_value=taxonomy)
-
-        accessions = [records[0].accession]
-
-        with empty_repo.lock():
-            otu = otu_service.create(accessions, acronym="CustomAcronym")
-
-        assert otu is not None
-        assert otu.acronym == "CustomAcronym"
-
     def test_refseq_exclusion(
         self,
         empty_repo: Repo,
