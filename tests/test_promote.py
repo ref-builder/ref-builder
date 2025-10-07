@@ -63,7 +63,6 @@ def test_replace_sequence(empty_repo: Repo):
 
 def test_multi_linked_promotion(empty_repo: Repo):
     """Test the promotion of a sequence that is linked to more than one isolate."""
-
     otu_service = OTUService(empty_repo, NCBIClient(False))
 
     with empty_repo.lock():
@@ -175,7 +174,6 @@ class TestUpgradeSequencesInOTU:
 
     def test_ok(self, precached_repo: Repo):
         """Test a simple fetch and replace upgrade."""
-
         otu_service = OTUService(precached_repo, NCBIClient(False))
 
         with precached_repo.lock():
@@ -226,7 +224,6 @@ class TestUpgradeSequencesInOTU:
 
     def test_with_future_date_limit(self, precached_repo: Repo):
         """Test that setting modification_date_start to a future date does returns no new sequences."""
-
         otu_service = OTUService(precached_repo, NCBIClient(False))
 
         with precached_repo.lock():

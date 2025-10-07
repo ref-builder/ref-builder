@@ -1,7 +1,8 @@
 """Manage OTU data."""
 
-import structlog
 from uuid import UUID
+
+import structlog
 
 from ref_builder.errors import InvalidInputError, PartialIDConflictError
 from ref_builder.ncbi.models import NCBIGenbank, NCBIRank, NCBITaxonomy

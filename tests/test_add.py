@@ -1,11 +1,14 @@
 import pytest
 from pytest_mock import MockerFixture
 from structlog.testing import capture_logs
-from syrupy.assertion import SnapshotAssertion
-from syrupy.filters import props
 
 from ref_builder.ncbi.client import NCBIClient
-from ref_builder.ncbi.models import NCBIGenbank, NCBIRank, NCBITaxonomy, NCBITaxonomyOtherNames
+from ref_builder.ncbi.models import (
+    NCBIGenbank,
+    NCBIRank,
+    NCBITaxonomy,
+    NCBITaxonomyOtherNames,
+)
 from ref_builder.otu.isolate import (
     add_and_name_isolate,
     add_genbank_isolate,
@@ -151,7 +154,7 @@ class TestCreateOTU:
         )
 
         # Update the records with proper RefSeq accessions and comments
-        for i, (record, old_acc) in enumerate(zip(records, old_accessions), start=4):
+        for i, (record, old_acc) in enumerate(zip(records, old_accessions, strict=False), start=4):
             record.accession = f"NC_01031{i}"
             record.comment = (
                 f"PROVISIONAL REFSEQ: This record has not yet been subject to final NCBI review. "
@@ -197,6 +200,7 @@ class TestCreateOTU:
 
         assert otu is not None
         assert otu.acronym == "KLV"
+
 
 class TestAddIsolate:
     def test_multipartite(self, precached_repo: Repo):

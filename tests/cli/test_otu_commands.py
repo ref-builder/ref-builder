@@ -1,10 +1,7 @@
 import pytest
 from click.testing import CliRunner
-from syrupy.assertion import SnapshotAssertion
-from syrupy.filters import props
 
 from ref_builder.cli.otu import otu as otu_command_group
-from ref_builder.console import console, print_otu
 from ref_builder.repo import Repo
 
 runner = CliRunner()
@@ -12,7 +9,6 @@ runner = CliRunner()
 
 class TestCreateOTUCommands:
     """Test the behaviour of ``ref-builder otu create``."""
-
 
     @pytest.mark.parametrize(
         ("taxid", "accessions"),
@@ -36,7 +32,6 @@ class TestCreateOTUCommands:
 
         assert len(otus) == 1
         assert otus[0].taxid == taxid
-
 
 
 @pytest.mark.ncbi
