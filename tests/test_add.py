@@ -154,7 +154,9 @@ class TestCreateOTU:
         )
 
         # Update the records with proper RefSeq accessions and comments
-        for i, (record, old_acc) in enumerate(zip(records, old_accessions, strict=False), start=4):
+        for i, (record, old_acc) in enumerate(
+            zip(records, old_accessions, strict=False), start=4
+        ):
             record.accession = f"NC_01031{i}"
             record.comment = (
                 f"PROVISIONAL REFSEQ: This record has not yet been subject to final NCBI review. "
