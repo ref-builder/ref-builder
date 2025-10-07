@@ -29,10 +29,13 @@ jobs:
         env:
           secret_email: ${{ secrets.NCBI_EMAIL }}
           secret_api_key: ${{ secrets.NCBI_API_KEY }}
-        if: ${{ env.secret_email == '' || env.secret_api_key == '' }}
         run: |
-          echo "NCBI authentication secret missing. Exiting."
-          exit 1
+          if [ -z "$secret_email" ] || [ -z "$secret_api_key" ]; then
+            echo "NCBI authentication secret missing. Exiting."
+            exit 1
+          else
+            echo "NCBI authentication secrets are configured."
+          fi
       - name: Checkout
         uses: actions/checkout@v4
       - name: Restore pytest cache
