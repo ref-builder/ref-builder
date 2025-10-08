@@ -40,9 +40,6 @@ dev = [
   "syrupy>=4.9.1",
 ]
 
-[tool.pytest.ini_options]
-markers = ["ncbi: test requires request to NCBI"]
-
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [

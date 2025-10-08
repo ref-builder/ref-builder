@@ -2,52 +2,37 @@ from pathlib import Path
 
 import arrow
 import orjson
-import pytest
-from syrupy import SnapshotAssertion
-from syrupy.filters import props
 
 from ref_builder.build import build_json
 from ref_builder.repo import Repo
 
 
-@pytest.fixture
-def comparison_reference(pytestconfig, scratch_repo: Repo, tmp_path: Path) -> dict:
-    """A prebuilt reference file. Cached in .pytest_cache."""
-    comparison_reference = pytestconfig.cache.get("comparison_reference", None)
+def test_ok(scratch_repo: Repo, tmp_path: Path):
+    """Test that build_json produces deterministic output with correct business logic."""
+    # Build twice to test determinism
+    output_1 = tmp_path / "ref1.json"
+    output_2 = tmp_path / "ref2.json"
 
-    if comparison_reference is not None:
-        return comparison_reference
+    build_json(False, output_1, scratch_repo.path, "2.1.0")
+    build_json(False, output_2, scratch_repo.path, "2.1.0")
 
-    output_path = tmp_path / "comparison_reference.json"
-    build_json(False, output_path, scratch_repo.path, "2.1.0")
+    ref_1 = orjson.loads(output_1.read_bytes())
+    ref_2 = orjson.loads(output_2.read_bytes())
 
-    with open(output_path, "rb") as f:
-        comparison_reference = orjson.loads(f.read())
+    # Test determinism (same input produces same output)
+    assert {**ref_1, "created_at": ""} == {**ref_2, "created_at": ""}
 
-    if comparison_reference:
-        pytestconfig.cache.set("comparison_reference", comparison_reference)
-        return comparison_reference
+    # Test timestamp is current
+    assert (arrow.utcnow() - arrow.get(ref_1["created_at"])).seconds == 0
 
-    raise ValueError("Could not build comparison reference")
+    # Test OTUs are sorted alphabetically
+    otu_names = [otu["name"] for otu in ref_1["otus"]]
+    assert otu_names == sorted(otu_names)
 
-
-def test_ok(
-    comparison_reference: dict,
-    scratch_repo: Repo,
-    snapshot: SnapshotAssertion,
-    tmp_path: Path,
-):
-    """Test that the command exits with a 0 exit code."""
-    output_path = tmp_path / "reference.json"
-
-    build_json(False, output_path, scratch_repo.path, "2.1.0")
-
-    with open(output_path, "rb") as f:
-        built_json = orjson.loads(f.read())
-
-    assert built_json == snapshot(exclude=props("created_at", "otus"))
-    assert built_json["otus"] == comparison_reference["otus"]
-    assert (arrow.utcnow() - arrow.get(built_json["created_at"])).seconds == 0
+    # Test each OTU has exactly one default isolate
+    for otu in ref_1["otus"]:
+        default_count = sum(1 for iso in otu["isolates"] if iso["default"])
+        assert default_count == 1
 
 
 def test_indent(scratch_path: Path, tmp_path: Path):

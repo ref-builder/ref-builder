@@ -232,7 +232,7 @@ class TestSetPlan:
         """Test that segments cannot be added to a monopartite plan with
         a preexisting unnamed segment.
         """
-        otu_before = scratch_repo.get_otu_by_taxid(96892)
+        otu_before = scratch_repo.get_otu_by_taxid(518829)
         assert otu_before is not None
 
         assert otu_before.plan.monopartite
@@ -248,7 +248,7 @@ class TestSetPlan:
     @pytest.mark.parametrize("tolerance", [0.05, 0.5, 1.0])
     def test_set_length_tolerances_ok(self, scratch_repo: Repo, tolerance: float):
         """Check that plan length tolerances can be modified by function."""
-        otu_before = scratch_repo.get_otu_by_taxid(96892)
+        otu_before = scratch_repo.get_otu_by_taxid(518829)
         assert otu_before is not None
 
         assert (
@@ -267,7 +267,7 @@ class TestSetPlan:
     @pytest.mark.parametrize("bad_tolerance", [-1.0, 1.1, 100.0])
     def test_set_length_tolerances_fail(self, scratch_repo: Repo, bad_tolerance: float):
         """Check that plan length tolerances cannot be set to an invalid float value."""
-        otu_before = scratch_repo.get_otu_by_taxid(96892)
+        otu_before = scratch_repo.get_otu_by_taxid(518829)
         assert otu_before is not None
 
         assert (

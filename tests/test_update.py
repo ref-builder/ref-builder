@@ -16,7 +16,6 @@ from ref_builder.repo import Repo
 from ref_builder.services.otu import OTUService
 
 
-@pytest.mark.ncbi
 class TestPromoteOTU:
     """Test OTU accession promotion from Genbank to RefSeq."""
 
@@ -85,7 +84,6 @@ class TestPromoteOTU:
         }
 
 
-@pytest.mark.ncbi
 class TestUpdateOTU:
     """Test automatic OTU update functionality."""
 
@@ -212,7 +210,6 @@ class TestUpdateOTU:
         } == snapshot()
 
 
-@pytest.mark.ncbi
 class TestBatchUpdate:
     """Test rudimentary batch update operation with a single OTU."""
 

@@ -6,6 +6,7 @@ from collections.abc import Collection
 from contextlib import contextmanager, suppress
 from enum import StrEnum
 from http import HTTPStatus
+from typing import Protocol
 from urllib.error import HTTPError
 from urllib.parse import quote_plus
 
@@ -35,6 +36,22 @@ ESEARCH_PAGE_SIZE = 1000
 
 DATE_TEMPLATE = "%Y/%m/%d"
 """The standard date format used by NCBI Entrez."""
+
+
+class NCBIClientProtocol(Protocol):
+    """Protocol defining the interface for NCBI client implementations."""
+
+    ignore_cache: bool
+    cache: NCBICache | None
+
+    def fetch_genbank_records(
+        self,
+        accessions: Collection[str | Accession],
+    ) -> list[NCBIGenbank]:
+        """Fetch GenBank records for the given accessions."""
+
+    def fetch_taxonomy_record(self, taxid: int) -> NCBITaxonomy | None:
+        """Fetch taxonomy record for the given taxid."""
 
 
 class TaxonLevelError(ValueError):

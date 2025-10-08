@@ -168,7 +168,6 @@ def test_multi_linked_promotion(empty_repo: Repo):
     )
 
 
-@pytest.mark.ncbi
 class TestUpgradeSequencesInOTU:
     """Test OTU-wide outdated sequence version upgrade."""
 

@@ -1,8 +1,0 @@
-# serializer version: 1
-# name: test_ok
-  dict({
-    'data_type': 'genome',
-    'name': '2.1.0',
-    'organism': 'viruses',
-  })
-# ---

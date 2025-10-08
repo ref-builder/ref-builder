@@ -34,7 +34,6 @@ class TestCreateOTUCommands:
         assert otus[0].taxid == taxid
 
 
-@pytest.mark.ncbi
 class TestPromoteOTUCommand:
     """Test that the ``ref-builder otu promote`` command works as planned."""
 
@@ -387,7 +386,7 @@ class TestExtendPlanCommand:
         """Test that segments cannot be added to a monopartite plan with
         a preexisting unnamed segment.
         """
-        otu_before = scratch_repo.get_otu_by_taxid(96892)
+        otu_before = scratch_repo.get_otu_by_taxid(518829)
         assert otu_before is not None
 
         assert otu_before.plan.monopartite
@@ -398,7 +397,7 @@ class TestExtendPlanCommand:
                 "--path",
                 str(scratch_repo.path),
                 "extend-plan",
-                "96892",
+                "518829",
                 "NC_010620",
                 "--optional",
             ],
