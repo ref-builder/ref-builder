@@ -18,6 +18,7 @@ class MockDataNotFoundError(LookupError):
     This indicates missing test data, not a test implementation error.
     Add the missing accession/taxid to tests/fixtures/ncbi_mock_data.py
     """
+
     pass
 
 
