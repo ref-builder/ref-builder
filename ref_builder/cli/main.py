@@ -18,9 +18,6 @@ from ref_builder.logs import configure_logger
 from ref_builder.repo import Repo
 from ref_builder.utils import DataType
 
-PRECACHE_BUFFER_SIZE = 450
-"""The number of Genbank records to fetch in a single request when pre-caching."""
-
 logger = structlog.get_logger()
 
 

@@ -1,12 +1,13 @@
 import pytest
+from pytest_mock import MockerFixture
 from structlog.testing import capture_logs
-from syrupy.assertion import SnapshotAssertion
-from syrupy.filters import props
 
 from ref_builder.ncbi.client import NCBIClient
-from ref_builder.otu.create import (
-    create_otu_with_taxid,
-    create_otu_without_taxid,
+from ref_builder.ncbi.models import (
+    NCBIGenbank,
+    NCBIRank,
+    NCBITaxonomy,
+    NCBITaxonomyOtherNames,
 )
 from ref_builder.otu.isolate import (
     add_and_name_isolate,
@@ -16,55 +17,84 @@ from ref_builder.otu.isolate import (
 from ref_builder.repo import Repo
 from ref_builder.services.otu import OTUService
 from ref_builder.utils import IsolateName, IsolateNameType
+from tests.fixtures.factories import (
+    NCBIGenbankFactory,
+    NCBISourceFactory,
+    NCBITaxonomyFactory,
+)
+
+
+def create_mocked_otu_service(
+    repo: Repo,
+    mocker: MockerFixture,
+    taxonomy: NCBITaxonomy,
+    records: list[NCBIGenbank],
+) -> OTUService:
+    """Create an OTUService with a mocked NCBIClient.
+
+    :param repo: repository to use
+    :param mocker: pytest-mock fixture
+    :param taxonomy: taxonomy record to return from fetch_taxonomy_record
+    :param records: genbank records to return from fetch_genbank_records
+    :return: OTUService with mocked NCBIClient
+    """
+    ncbi_client = mocker.create_autospec(NCBIClient, instance=True)
+    ncbi_client.fetch_genbank_records = mocker.Mock(return_value=records)
+    ncbi_client.fetch_taxonomy_record = mocker.Mock(return_value=taxonomy)
+    return OTUService(repo, ncbi_client)
 
 
 class TestCreateOTU:
     @pytest.mark.parametrize(
-        ("accessions", "expected_taxid"),
+        ("taxid", "segment_count"),
         [
-            (["DQ178610", "DQ178611"], 3426695),
-            (["NC_043170"], 3240630),
+            (3426695, 2),
+            (3240630, 1),
         ],
     )
-    def test_ok(self, accessions: list[str], expected_taxid: int, precached_repo: Repo):
-        with precached_repo.lock():
-            otu = create_otu_without_taxid(
-                precached_repo, accessions=accessions, acronym=""
-            )
-
-        assert otu
-        assert otu.taxid == expected_taxid
-        assert precached_repo.get_otu_by_taxid(expected_taxid) == otu
-
-    def test_empty_repo(
+    def test_ok(
         self,
-        precached_repo: Repo,
-        snapshot: SnapshotAssertion,
+        empty_repo: Repo,
+        mocker: MockerFixture,
+        ncbi_taxonomy_factory: type[NCBITaxonomyFactory],
+        ncbi_genbank_factory: type[NCBIGenbankFactory],
+        taxid: int,
+        segment_count: int,
     ):
-        """Test that an OTU can be created in an empty repository."""
-        with precached_repo.lock():
-            otu = create_otu_with_taxid(
-                precached_repo,
-                345184,
-                ["DQ178610", "DQ178611"],
-                "",
+        """Test the the default, happy case works."""
+        taxonomy = ncbi_taxonomy_factory.build(id=taxid, rank=NCBIRank.SPECIES)
+
+        if segment_count == 1:
+            records = [
+                ncbi_genbank_factory.build(
+                    source__taxid=taxid,
+                    source__isolate="Isolate A",
+                    accession="AB123456",
+                )
+            ]
+        else:
+            records = ncbi_genbank_factory.build_isolate(
+                segment_count=segment_count,
+                refseq=False,
+                base_source=NCBISourceFactory.build(taxid=taxid, isolate="Isolate A"),
             )
 
+        otu_service = create_mocked_otu_service(empty_repo, mocker, taxonomy, records)
+        accessions = [r.accession for r in records]
+
+        with empty_repo.lock():
+            otu = otu_service.create(accessions)
+
         assert otu
-        assert otu.model_dump() == snapshot(
-            exclude=props("id", "isolates"),
-        )
-        assert list(precached_repo.iter_otus()) == [otu]
+        assert otu.taxid == taxid
+        assert empty_repo.get_otu_by_taxid(taxid) == otu
 
     def test_no_accessions(self, empty_repo: Repo):
         """Test that creating an OTU with not accession fails with the expected log."""
+        otu_service = OTUService(empty_repo, NCBIClient(False))
+
         with empty_repo.lock(), capture_logs() as logs:
-            otu = create_otu_with_taxid(
-                empty_repo,
-                345184,
-                [],
-                "",
-            )
+            otu = otu_service.create([])
 
             assert otu is None
             assert any(
@@ -72,89 +102,106 @@ class TestCreateOTU:
                 for log in logs
             )
 
-    def test_duplicate_taxid(self, precached_repo: Repo):
+    def test_duplicate_taxid(
+        self,
+        empty_repo: Repo,
+        mocker: MockerFixture,
+        ncbi_taxonomy_factory: type[NCBITaxonomyFactory],
+        ncbi_genbank_factory: type[NCBIGenbankFactory],
+    ):
         """Test that an OTU with the same taxid cannot be created."""
-        accessions = ["DQ178610", "DQ178611"]
         taxid = 345184
+        taxonomy = ncbi_taxonomy_factory.build(id=taxid, rank=NCBIRank.SPECIES)
+        records = ncbi_genbank_factory.build_isolate(
+            segment_count=2,
+            refseq=False,
+            base_source=NCBISourceFactory.build(taxid=taxid, isolate="Isolate A"),
+        )
 
-        with precached_repo.lock():
-            otu = create_otu_with_taxid(
-                precached_repo,
-                taxid,
-                accessions,
-                "",
-            )
+        otu_service = create_mocked_otu_service(empty_repo, mocker, taxonomy, records)
+        accessions = [r.accession for r in records]
+
+        with empty_repo.lock():
+            otu = otu_service.create(accessions)
 
         assert otu
+        assert otu.taxid == taxid
 
-        with (
-            pytest.raises(
-                ValueError,
-                match="Taxonomy ID 345184 has already been added to this reference.",
-            ),
-            precached_repo.lock(),
-        ):
-            create_otu_with_taxid(
-                precached_repo,
-                taxid,
-                accessions,
-                "",
-            )
+        with empty_repo.lock():
+            duplicate_otu = otu_service.create(accessions)
+            assert duplicate_otu is None
 
-    def test_refseq_autoexclude(self, precached_repo: Repo):
+    def test_refseq_autoexclude(
+        self,
+        empty_repo: Repo,
+        mocker: MockerFixture,
+        ncbi_taxonomy_factory: type[NCBITaxonomyFactory],
+        ncbi_genbank_factory: type[NCBIGenbankFactory],
+    ):
         """Test that the superceded accessions included in RefSeq metadata are
         automatically added to the OTU's excluded accessions list.
         """
-        with precached_repo.lock():
-            otu = create_otu_with_taxid(
-                precached_repo,
-                3158377,
-                [
-                    "NC_010314",
-                    "NC_010316",
-                    "NC_010315",
-                    "NC_010317",
-                    "NC_010318",
-                    "NC_010319",
-                ],
-                "",
+        taxid = 3158377
+        taxonomy = ncbi_taxonomy_factory.build(id=taxid, rank=NCBIRank.SPECIES)
+
+        # Create 6 RefSeq records with comments pointing to old accessions
+        old_accessions = [f"EF546{800 + i}" for i in range(8, 14)]
+
+        records = ncbi_genbank_factory.build_isolate(
+            segment_count=6,
+            refseq=True,
+            base_source=NCBISourceFactory.build(taxid=taxid, isolate="Isolate A"),
+        )
+
+        # Update the records with proper RefSeq accessions and comments
+        for i, (record, old_acc) in enumerate(
+            zip(records, old_accessions, strict=False), start=4
+        ):
+            record.accession = f"NC_01031{i}"
+            record.comment = (
+                f"PROVISIONAL REFSEQ: This record has not yet been subject to final NCBI review. "
+                f"The reference sequence is identical to {old_acc}."
             )
+
+        otu_service = create_mocked_otu_service(empty_repo, mocker, taxonomy, records)
+        accessions = [r.accession for r in records]
+
+        with empty_repo.lock():
+            otu = otu_service.create(accessions)
 
         assert otu
-        assert otu.excluded_accessions == {
-            "EF546808",
-            "EF546809",
-            "EF546810",
-            "EF546811",
-            "EF546812",
-            "EF546813",
-        }
+        assert otu.excluded_accessions == set(old_accessions)
 
-    def test_acronym(self, precached_repo: Repo) -> None:
+    def test_acronym(
+        self,
+        empty_repo: Repo,
+        mocker: MockerFixture,
+        ncbi_taxonomy_factory: type[NCBITaxonomyFactory],
+        ncbi_genbank_factory: type[NCBIGenbankFactory],
+    ) -> None:
         """Test that the acronym pulled from NCBI is correct."""
-        with precached_repo.lock():
-            otu = create_otu_with_taxid(
-                precached_repo,
-                132477,
-                ["NC_013006"],
-                "",
-            )
+        other_names = NCBITaxonomyOtherNames()
+        other_names.acronym = ["KLV"]
+
+        taxonomy = NCBITaxonomy(
+            id=132477,
+            name="Kasba virus",
+            rank=NCBIRank.SPECIES,
+            other_names=other_names,
+            lineage=[],
+        )
+
+        records = [
+            ncbi_genbank_factory.build(source__taxid=taxonomy.id, accession="AB123456")
+        ]
+
+        otu_service = create_mocked_otu_service(empty_repo, mocker, taxonomy, records)
+
+        with empty_repo.lock():
+            otu = otu_service.create(["AB123456"])
 
         assert otu is not None
         assert otu.acronym == "KLV"
-
-    def test_acronym_manual(self, precached_repo: Repo) -> None:
-        """Test the acronym can be set manually."""
-        with precached_repo.lock():
-            otu = create_otu_with_taxid(
-                precached_repo,
-                1441799,
-                ["NC_023881"],
-                "FBNSV",
-            )
-
-        assert otu
-        assert otu.acronym == "FBNSV"
 
 
 class TestAddIsolate:
@@ -162,10 +209,7 @@ class TestAddIsolate:
         otu_service = OTUService(precached_repo, NCBIClient(True))
 
         with precached_repo.lock():
-            otu_before = otu_service.create(
-                ["MF062136", "MF062137", "MF062138"],
-                acronym="",
-            )
+            otu_before = otu_service.create(["MF062136", "MF062137", "MF062138"])
 
         assert otu_before
         assert otu_before.accessions == {"MF062136", "MF062137", "MF062138"}
@@ -209,7 +253,7 @@ class TestAddIsolate:
         otu_service = OTUService(precached_repo, NCBIClient(True))
 
         with precached_repo.lock():
-            otu_before = otu_service.create(isolate_1_accessions, acronym="")
+            otu_before = otu_service.create(isolate_1_accessions)
 
             assert otu_before
             assert otu_before.accessions == set(isolate_1_accessions)
@@ -242,7 +286,7 @@ class TestAddIsolate:
         otu_service = OTUService(precached_repo, NCBIClient(True))
 
         with precached_repo.lock():
-            otu_before = otu_service.create(isolate_1_accessions, acronym="")
+            otu_before = otu_service.create(isolate_1_accessions)
 
         assert otu_before
         assert otu_before.accessions == set(isolate_1_accessions)
@@ -276,7 +320,7 @@ class TestAddIsolate:
         otu_service = OTUService(precached_repo, NCBIClient(True))
 
         with precached_repo.lock():
-            otu = otu_service.create(isolate_1_accessions, acronym="")
+            otu = otu_service.create(isolate_1_accessions)
 
         assert otu
         assert otu.accessions == set(isolate_1_accessions)
@@ -317,7 +361,7 @@ class TestAddIsolate:
         otu_service = OTUService(precached_repo, NCBIClient(True))
 
         with precached_repo.lock():
-            otu = otu_service.create(accessions, "")
+            otu = otu_service.create(accessions)
 
             assert otu
             assert add_genbank_isolate(precached_repo, otu, accessions) is None
@@ -389,7 +433,7 @@ class TestAddIsolate:
         otu_service = OTUService(empty_repo, NCBIClient(True))
 
         with empty_repo.lock():
-            otu = otu_service.create(accessions=original_accessions, acronym="")
+            otu = otu_service.create(accessions=original_accessions)
 
         assert otu
         assert otu.accessions == set(original_accessions)

@@ -1,10 +1,7 @@
 import pytest
 from click.testing import CliRunner
-from syrupy.assertion import SnapshotAssertion
-from syrupy.filters import props
 
 from ref_builder.cli.otu import otu as otu_command_group
-from ref_builder.console import console, print_otu
 from ref_builder.repo import Repo
 
 runner = CliRunner()
@@ -12,43 +9,6 @@ runner = CliRunner()
 
 class TestCreateOTUCommands:
     """Test the behaviour of ``ref-builder otu create``."""
-
-    def test_with_taxid_ok(
-        self,
-        precached_repo: Repo,
-        snapshot: SnapshotAssertion,
-    ):
-        """Test that an OTU can be created with the --taxid option.
-
-        Also check resulting print_otu() console output.
-        """
-        accessions = ["DQ178610", "DQ178611"]
-
-        result = runner.invoke(
-            otu_command_group,
-            [
-                "--path",
-                str(precached_repo.path),
-                "create",
-                "--taxid",
-                "345184",
-                *accessions,
-            ],
-        )
-
-        assert result.exit_code == 0
-
-        otus = list(Repo(precached_repo.path).iter_otus())
-
-        assert len(otus) == 1
-        assert otus[0].model_dump() == snapshot(
-            exclude=props("id", "isolates"),
-        )
-
-        with console.capture() as capture:
-            print_otu(otus[0])
-
-        assert capture.get() in result.output
 
     @pytest.mark.parametrize(
         ("taxid", "accessions"),
@@ -73,62 +33,13 @@ class TestCreateOTUCommands:
         assert len(otus) == 1
         assert otus[0].taxid == taxid
 
-    def test_acronym(self, precached_repo: Repo):
-        """Test that the --acronym option works as planned."""
-        acronym = "CabLCJV"
 
-        result = runner.invoke(
-            otu_command_group,
-            [
-                "--path",
-                str(precached_repo.path),
-                "create",
-                "--taxid",
-                "345184",
-                "--acronym",
-                acronym,
-                "DQ178610",
-                "DQ178611",
-            ],
-        )
-
-        assert result.exit_code == 0
-
-        otus = list(Repo(precached_repo.path).iter_otus())
-
-        assert len(otus) == 1
-        assert otus[0].acronym == acronym
-
-    def test_duplicate_accessions(self, precached_repo: Repo):
-        """Test that an error is raised when duplicate accessions are provided."""
-        runner = CliRunner()
-
-        result = runner.invoke(
-            otu_command_group,
-            [
-                "--path",
-                str(precached_repo.path),
-                "create",
-                "--taxid",
-                "1169032",
-                "MK431779",
-                "MK431779",
-            ],
-        )
-
-        assert result.exit_code == 2
-        assert "Duplicate accessions are not allowed." in result.output
-
-
-@pytest.mark.ncbi
 class TestPromoteOTUCommand:
     """Test that the ``ref-builder otu promote`` command works as planned."""
 
     def test_ok(self, empty_repo: Repo):
         """Test that otu promote adds new accessions to OTU."""
         path_option = ["--path", str(empty_repo.path)]
-
-        taxid = 2164102
 
         original_accessions = {"MF062125", "MF062126", "MF062127"}
 
@@ -137,13 +48,13 @@ class TestPromoteOTUCommand:
             [
                 *path_option,
                 "create",
-                "--taxid",
-                str(taxid),
                 *list(original_accessions),
             ],
         )
 
         assert result.exit_code == 0
+
+        taxid = int(result.output.split("TAXID")[1].split()[0])
 
         otu_before = empty_repo.get_otu_by_taxid(taxid)
 
@@ -169,8 +80,6 @@ class TestPromoteOTUCommand:
         """Test that command works correctly when the OTU is already up to date."""
         path_option = ["--path", str(empty_repo.path)]
 
-        taxid = 2164102
-
         rep_isolate_accessions = {"NC_055390", "NC_055391", "NC_055392"}
 
         result = runner.invoke(
@@ -178,13 +87,13 @@ class TestPromoteOTUCommand:
             [
                 *path_option,
                 "create",
-                "--taxid",
-                str(taxid),
                 *list(rep_isolate_accessions),
             ],
         )
 
         assert result.exit_code == 0
+
+        taxid = int(result.output.split("TAXID")[1].split()[0])
 
         otu = empty_repo.get_otu_by_taxid(taxid)
 
@@ -206,12 +115,12 @@ class TestUpgradeOTUCommand:
     def test_ok(self, precached_repo: Repo):
         path_option = ["--path", str(precached_repo.path)]
 
-        taxid = 196375
-
-        runner.invoke(
+        result = runner.invoke(
             otu_command_group,
-            [*path_option, "create", "--taxid", str(taxid), "NC_004452.1"],
+            [*path_option, "create", "NC_004452.1"],
         )
+
+        taxid = int(result.output.split("TAXID")[1].split()[0])
 
         otu_before = precached_repo.get_otu_by_taxid(taxid)
 
@@ -240,12 +149,12 @@ class TestUpgradeOTUCommand:
     def test_with_future_date_limit(self, precached_repo: Repo):
         path_option = ["--path", str(precached_repo.path)]
 
-        taxid = 196375
-
-        runner.invoke(
+        result = runner.invoke(
             otu_command_group,
-            [*path_option, "create", "--taxid", str(taxid), "NC_004452.1"],
+            [*path_option, "create", "NC_004452.1"],
         )
+
+        taxid = int(result.output.split("TAXID")[1].split()[0])
 
         otu_before = precached_repo.get_otu_by_taxid(taxid)
 
@@ -429,8 +338,6 @@ class TestExtendPlanCommand:
         new_accessions: list[str],
     ):
         """Test the addition of segments to an OTU plan."""
-        taxid = 2164102
-
         filled_path_options = ["--path", str(precached_repo.path)]
 
         result = runner.invoke(
@@ -439,12 +346,12 @@ class TestExtendPlanCommand:
                 *filled_path_options,
                 "create",
                 *initial_accessions,
-                "--taxid",
-                str(taxid),
             ],
         )
 
         assert result.exit_code == 0
+
+        taxid = int(result.output.split("TAXID")[1].split()[0])
 
         otu_before = precached_repo.get_otu_by_taxid(taxid)
 
@@ -479,7 +386,7 @@ class TestExtendPlanCommand:
         """Test that segments cannot be added to a monopartite plan with
         a preexisting unnamed segment.
         """
-        otu_before = scratch_repo.get_otu_by_taxid(96892)
+        otu_before = scratch_repo.get_otu_by_taxid(518829)
         assert otu_before is not None
 
         assert otu_before.plan.monopartite
@@ -490,7 +397,7 @@ class TestExtendPlanCommand:
                 "--path",
                 str(scratch_repo.path),
                 "extend-plan",
-                "96892",
+                "518829",
                 "NC_010620",
                 "--optional",
             ],

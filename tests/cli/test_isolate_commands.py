@@ -14,18 +14,16 @@ class TestIsolateCreateCommand:
         """Test basic command functionality."""
         path_option_list = ["--path", str(precached_repo.path)]
 
-        taxid = 1169032
-
         rep_isolate_accessions = ["MF062136", "MF062137", "MF062138"]
 
         result = runner.invoke(
             otu_command_group,
-            path_option_list
-            + ["create", "--taxid", str(taxid)]
-            + rep_isolate_accessions,
+            [*path_option_list, "create", *rep_isolate_accessions],
         )
 
         assert result.exit_code == 0
+
+        taxid = result.output.split("TAXID")[1].split()[0]
 
         second_isolate_accessions = ["MF062125", "MF062126", "MF062127"]
 
@@ -44,16 +42,14 @@ class TestIsolateCreateCommand:
         """Test that --name option exits smoothly"""
         path_option_list = ["--path", str(precached_repo.path)]
 
-        taxid = 345184
-
         result = runner.invoke(
             otu_command_group,
-            path_option_list
-            + ["create", "--taxid", str(taxid)]
-            + ["DQ178610", "DQ178611"],
+            [*path_option_list, "create", "DQ178610", "DQ178611"],
         )
 
         assert result.exit_code == 0
+
+        taxid = result.output.split("TAXID")[1].split()[0]
 
         result = runner.invoke(
             isolate_command_group,
@@ -71,16 +67,14 @@ class TestIsolateCreateCommand:
         """Test that --unnamed option exits smoothly."""
         path_option_list = ["--path", str(precached_repo.path)]
 
-        taxid = 345184
-
         result = runner.invoke(
             otu_command_group,
-            path_option_list
-            + ["create", "--taxid", str(taxid)]
-            + ["DQ178610", "DQ178611"],
+            [*path_option_list, "create", "DQ178610", "DQ178611"],
         )
 
         assert result.exit_code == 0
+
+        taxid = result.output.split("TAXID")[1].split()[0]
 
         result = runner.invoke(
             isolate_command_group,

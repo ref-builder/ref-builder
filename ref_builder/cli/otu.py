@@ -7,10 +7,7 @@ import click
 import structlog
 
 from ref_builder.cli.options import ignore_cache_option, path_option
-from ref_builder.cli.utils import (
-    get_otu_from_identifier,
-    pass_repo,
-)
+from ref_builder.cli.utils import pass_repo
 from ref_builder.cli.validate import validate_no_duplicate_accessions
 from ref_builder.console import (
     print_otu,
@@ -18,7 +15,7 @@ from ref_builder.console import (
     print_otu_event_log,
     print_otu_list,
 )
-from ref_builder.otu.create import create_otu_with_taxid, create_otu_without_taxid
+from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.modify import (
     add_segments_to_plan,
     allow_accessions_into_otu,
@@ -35,6 +32,7 @@ from ref_builder.otu.update import (
 )
 from ref_builder.plan import SegmentName, SegmentRule
 from ref_builder.repo import Repo, locked_repo
+from ref_builder.services.otu import OTUService
 
 logger = structlog.get_logger()
 
@@ -48,7 +46,6 @@ def otu(ctx: click.Context, path: Path) -> None:
 
 
 @otu.command(name="create")
-@click.option("--taxid", type=int)
 @click.argument(
     "accessions_",
     callback=validate_no_duplicate_accessions,
@@ -57,15 +54,12 @@ def otu(ctx: click.Context, path: Path) -> None:
     type=str,
     required=True,
 )
-@click.option("--acronym", type=str, default="")
 @pass_repo
 @ignore_cache_option
 def otu_create(
     repo: Repo,
     accessions_: list[str],
-    acronym: str,
     ignore_cache: bool,
-    taxid: int,
 ) -> None:
     """Create a new OTU.
 
@@ -76,30 +70,13 @@ def otu_create(
         click.echo("Duplicate accessions were provided.", err=True)
         sys.exit(1)
 
-    if taxid:
-        try:
-            otu_ = create_otu_with_taxid(
-                repo,
-                taxid,
-                accessions_,
-                acronym=acronym,
-                ignore_cache=ignore_cache,
-            )
-        except ValueError as e:
-            click.echo(e, err=True)
-            sys.exit(1)
+    otu_service = OTUService(repo, NCBIClient(ignore_cache))
 
-    else:
-        try:
-            otu_ = create_otu_without_taxid(
-                repo,
-                accessions_,
-                acronym=acronym,
-                ignore_cache=ignore_cache,
-            )
-        except ValueError as e:
-            click.echo(e, err=True)
-            sys.exit(1)
+    try:
+        otu_ = otu_service.create(accessions_)
+    except ValueError as e:
+        click.echo(e, err=True)
+        sys.exit(1)
 
     if otu_ is None:
         click.echo("OTU was not created correctly.", err=True)
@@ -123,7 +100,12 @@ def otu_get(repo: Repo, identifier: str, as_json: bool) -> None:
 
     IDENTIFIER is a taxonomy ID or unique OTU ID (>8 characters)
     """
-    otu_ = get_otu_from_identifier(repo, identifier)
+    otu_service = OTUService(repo, NCBIClient(False))
+    otu_ = otu_service.get_otu(identifier)
+
+    if otu_ is None:
+        click.echo("OTU not found.", err=True)
+        sys.exit(1)
 
     if as_json:
         print_otu_as_json(otu_)
@@ -146,7 +128,12 @@ def otu_event_logs(repo: Repo, identifier: str) -> None:
 
     IDENTIFIER is a taxonomy ID or unique OTU ID (>8 characters)
     """
-    otu_ = get_otu_from_identifier(repo, identifier)
+    otu_service = OTUService(repo, NCBIClient(False))
+    otu_ = otu_service.get_otu(identifier)
+
+    if otu_ is None:
+        click.echo("OTU not found.", err=True)
+        sys.exit(1)
 
     print_otu_event_log(list(repo.iter_otu_events(otu_.id)))
 
@@ -220,7 +207,12 @@ def otu_auto_update(
     ignore_cache: bool,
 ) -> None:
     """Update an OTU with the latest data from NCBI."""
-    otu_ = get_otu_from_identifier(repo, identifier)
+    otu_service = OTUService(repo, NCBIClient(ignore_cache))
+    otu_ = otu_service.get_otu(identifier)
+
+    if otu_ is None:
+        click.echo("OTU not found.", err=True)
+        sys.exit(1)
 
     auto_update_otu(
         repo,
@@ -237,7 +229,12 @@ def otu_auto_update(
 @pass_repo
 def otu_promote_accessions(repo: Repo, identifier: str, ignore_cache: bool) -> None:
     """Promote all RefSeq accessions within an OTU."""
-    otu_ = get_otu_from_identifier(repo, identifier)
+    otu_service = OTUService(repo, NCBIClient(ignore_cache))
+    otu_ = otu_service.get_otu(identifier)
+
+    if otu_ is None:
+        click.echo("OTU not found.", err=True)
+        sys.exit(1)
 
     promote_otu_accessions(repo, otu_, ignore_cache)
 
@@ -255,7 +252,12 @@ def otu_upgrade_accessions(
     repo: Repo, identifier: str, start_date: datetime.date | None, ignore_cache: bool
 ) -> None:
     """Upgrade all outdated sequences within an OTU."""
-    otu_ = get_otu_from_identifier(repo, identifier)
+    otu_service = OTUService(repo, NCBIClient(ignore_cache))
+    otu_ = otu_service.get_otu(identifier)
+
+    if otu_ is None:
+        click.echo("OTU not found.", err=True)
+        sys.exit(1)
 
     upgrade_outdated_sequences_in_otu(
         repo,
@@ -289,7 +291,12 @@ def otu_exclude_accessions(
 
     IDENTIFIER is a taxonomy ID or unique OTU ID (>8 characters)
     """
-    otu_ = get_otu_from_identifier(repo, identifier)
+    otu_service = OTUService(repo, NCBIClient(False))
+    otu_ = otu_service.get_otu(identifier)
+
+    if otu_ is None:
+        click.echo("OTU not found.", err=True)
+        sys.exit(1)
 
     exclude_accessions_from_otu(repo, otu_, accessions_)
 
@@ -316,7 +323,12 @@ def otu_allow_accessions(
 
     IDENTIFIER is a taxonomy ID or unique OTU ID (>8 characters)
     """
-    otu_ = get_otu_from_identifier(repo, identifier)
+    otu_service = OTUService(repo, NCBIClient(False))
+    otu_ = otu_service.get_otu(identifier)
+
+    if otu_ is None:
+        click.echo("OTU not found.", err=True)
+        sys.exit(1)
 
     allow_accessions_into_otu(repo, otu_, set(accessions_))
 
@@ -348,7 +360,12 @@ def plan_extend_segment_list(
 
     IDENTIFIER is a taxonomy ID or unique OTU ID (>8 characters)
     """
-    otu_ = get_otu_from_identifier(repo, identifier)
+    otu_service = OTUService(repo, NCBIClient(ignore_cache))
+    otu_ = otu_service.get_otu(identifier)
+
+    if otu_ is None:
+        click.echo("OTU not found.", err=True)
+        sys.exit(1)
 
     if not add_segments_to_plan(
         repo,
@@ -388,7 +405,12 @@ def plan_rename_segment(
 
     IDENTIFIER is a taxonomy ID or unique OTU ID (>8 characters)
     """
-    otu_ = get_otu_from_identifier(repo, identifier)
+    otu_service = OTUService(repo, NCBIClient(False))
+    otu_ = otu_service.get_otu(identifier)
+
+    if otu_ is None:
+        click.echo("OTU not found.", err=True)
+        sys.exit(1)
 
     try:
         rename_plan_segment(

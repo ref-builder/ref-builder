@@ -6,23 +6,23 @@ from structlog.testing import capture_logs
 
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.builders.isolate import IsolateBuilder
-from ref_builder.otu.create import create_otu_with_taxid
 from ref_builder.otu.promote import (
     promote_otu_accessions_from_records,
     replace_otu_sequence_from_record,
     upgrade_outdated_sequences_in_otu,
 )
 from ref_builder.repo import Repo
+from ref_builder.services.otu import OTUService
 from ref_builder.utils import Accession
 from tests.fixtures.factories import IsolateFactory
 
 
 def test_replace_sequence(empty_repo: Repo):
     """Test OTU sequence replacement."""
+    otu_service = OTUService(empty_repo, NCBIClient(False))
+
     with empty_repo.lock():
-        otu_before = create_otu_with_taxid(
-            empty_repo, 2164102, ["MF062125", "MF062126", "MF062127"], acronym=""
-        )
+        otu_before = otu_service.create(["MF062125", "MF062126", "MF062127"])
 
     assert otu_before
     assert otu_before.accessions == {"MF062125", "MF062126", "MF062127"}
@@ -63,10 +63,10 @@ def test_replace_sequence(empty_repo: Repo):
 
 def test_multi_linked_promotion(empty_repo: Repo):
     """Test the promotion of a sequence that is linked to more than one isolate."""
+    otu_service = OTUService(empty_repo, NCBIClient(False))
+
     with empty_repo.lock():
-        otu_before = create_otu_with_taxid(
-            empty_repo, 2164102, ["MF062125", "MF062126", "MF062127"], acronym=""
-        )
+        otu_before = otu_service.create(["MF062125", "MF062126", "MF062127"])
 
     assert otu_before
     assert otu_before.accessions == {"MF062125", "MF062126", "MF062127"}
@@ -168,32 +168,31 @@ def test_multi_linked_promotion(empty_repo: Repo):
     )
 
 
-@pytest.mark.ncbi
 class TestUpgradeSequencesInOTU:
     """Test OTU-wide outdated sequence version upgrade."""
 
     def test_ok(self, precached_repo: Repo):
         """Test a simple fetch and replace upgrade."""
+        otu_service = OTUService(precached_repo, NCBIClient(False))
+
         with precached_repo.lock():
-            otu_before = create_otu_with_taxid(
-                precached_repo,
-                196375,
-                ["NC_004452.1"],
-                acronym="",
-            )
+            otu_before = otu_service.create(["NC_004452.1"])
 
         assert otu_before
         assert "NC_004452" in otu_before.accessions
 
-        outdated_sequence = otu_before.get_sequence_by_accession("NC_004452")
+        sequence_before = otu_before.get_sequence_by_accession("NC_004452")
+
+        assert sequence_before
+        assert sequence_before.accession.version == 1
 
         containing_isolate_id = list(
-            otu_before.get_isolate_ids_containing_sequence_id(outdated_sequence.id)
+            otu_before.get_isolate_ids_containing_sequence_id(sequence_before.id)
         )[0]
 
-        containing_isolate_init = otu_before.get_isolate(containing_isolate_id)
+        isolate_before = otu_before.get_isolate(containing_isolate_id)
 
-        assert outdated_sequence.accession.version == 1
+        assert isolate_before
 
         with precached_repo.lock():
             upgraded_sequence_ids = upgrade_outdated_sequences_in_otu(
@@ -204,43 +203,43 @@ class TestUpgradeSequencesInOTU:
 
         otu_after = precached_repo.get_otu(otu_before.id)
 
-        assert containing_isolate_init.id in otu_after.isolate_ids
+        assert otu_after
+        assert isolate_before.id in otu_after.isolate_ids
 
-        containing_isolate_after = otu_after.get_isolate(containing_isolate_id)
+        isolate_after = otu_after.get_isolate(containing_isolate_id)
 
+        assert isolate_after
         assert (
-            containing_isolate_after.sequence_ids
-            != containing_isolate_init.sequence_ids
+            isolate_after.sequence_ids
+            == {updated_sequence_id}
+            != isolate_before.sequence_ids
         )
 
-        assert containing_isolate_after.sequence_ids == {updated_sequence_id}
+        sequence_after = otu_after.get_sequence_by_id(updated_sequence_id)
 
-        updated_sequence = otu_after.get_sequence_by_id(updated_sequence_id)
-
-        assert updated_sequence.accession.key == outdated_sequence.accession.key
-
-        assert updated_sequence.accession.version > outdated_sequence.accession.version
+        assert sequence_after
+        assert sequence_after.accession.key == sequence_before.accession.key
+        assert sequence_after.accession.version > sequence_before.accession.version
 
     def test_with_future_date_limit(self, precached_repo: Repo):
         """Test that setting modification_date_start to a future date does returns no new sequences."""
+        otu_service = OTUService(precached_repo, NCBIClient(False))
+
         with precached_repo.lock():
-            otu_init = create_otu_with_taxid(
-                precached_repo,
-                196375,
-                ["NC_004452.1"],
-                acronym="",
-            )
+            otu_before = otu_service.create(["NC_004452.1"])
 
-        assert "NC_004452" in otu_init.accessions
+        assert otu_before
+        assert "NC_004452" in otu_before.accessions
 
-        assert otu_init.get_sequence_by_accession("NC_004452").accession == (
-            Accession(key="NC_004452", version=1)
-        )
+        sequence = otu_before.get_sequence_by_accession("NC_004452")
+
+        assert sequence
+        assert sequence.accession == (Accession(key="NC_004452", version=1))
 
         with precached_repo.lock(), capture_logs() as captured_logs:
             upgrade_outdated_sequences_in_otu(
                 precached_repo,
-                otu_init,
+                otu_before,
                 modification_date_start=arrow.utcnow().naive
                 + datetime.timedelta(days=1),
             )

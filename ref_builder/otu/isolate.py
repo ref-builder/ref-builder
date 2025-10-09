@@ -82,15 +82,12 @@ def add_genbank_isolate(
         return None
 
     with repo.use_transaction() as transaction:
-        try:
-            isolate = create_isolate(
-                repo,
-                otu,
-                isolate_name,
-                records,
-            )
-        except ValueError:
-            otu_logger.exception()
+        isolate = create_isolate(
+            repo,
+            otu,
+            isolate_name,
+            records,
+        )
 
         if isolate:
             return isolate

@@ -5,8 +5,7 @@ from pydantic import ValidationError
 from syrupy.assertion import SnapshotAssertion
 from syrupy.filters import props
 
-from ref_builder.otu.builders.sequence import SequenceBuilder
-from ref_builder.otu.create import create_otu_with_taxid
+from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.modify import (
     add_segments_to_plan,
     allow_accessions_into_otu,
@@ -24,6 +23,7 @@ from ref_builder.plan import (
     SegmentRule,
 )
 from ref_builder.repo import Repo
+from ref_builder.services.otu import OTUService
 from ref_builder.utils import IsolateName, IsolateNameType
 from tests.fixtures.factories import IsolateFactory
 
@@ -197,18 +197,16 @@ class TestSetPlan:
         snapshot: SnapshotAssertion,
     ):
         """Test the addition of segments to an OTU plan."""
+        otu_service = OTUService(precached_repo, NCBIClient(False))
+
         with precached_repo.lock():
-            otu_before = create_otu_with_taxid(
-                precached_repo,
-                2164102,
-                initial_accessions,
-                acronym="",
-            )
+            otu_before = otu_service.create(initial_accessions)
 
         assert otu_before is not None
-        original_plan = otu_before.plan
 
-        assert isinstance(original_plan, Plan)
+        plan_before = otu_before.plan
+
+        assert isinstance(plan_before, Plan)
 
         with precached_repo.lock():
             new_segment_ids = add_segments_to_plan(
@@ -221,12 +219,10 @@ class TestSetPlan:
         assert len(new_segment_ids) == len(new_accessions)
 
         otu_after = precached_repo.get_otu(otu_before.id)
-        assert otu_after is not None
 
+        assert otu_after
         assert new_segment_ids.issubset(otu_before.plan.segment_ids)
-
         assert otu_after.plan.segment_ids.issubset(otu_before.plan.segment_ids)
-
         assert otu_after.plan.model_dump() == snapshot(exclude=props("id"))
 
     def test_add_segments_to_plan_fail(
@@ -236,7 +232,7 @@ class TestSetPlan:
         """Test that segments cannot be added to a monopartite plan with
         a preexisting unnamed segment.
         """
-        otu_before = scratch_repo.get_otu_by_taxid(96892)
+        otu_before = scratch_repo.get_otu_by_taxid(518829)
         assert otu_before is not None
 
         assert otu_before.plan.monopartite
@@ -252,7 +248,7 @@ class TestSetPlan:
     @pytest.mark.parametrize("tolerance", [0.05, 0.5, 1.0])
     def test_set_length_tolerances_ok(self, scratch_repo: Repo, tolerance: float):
         """Check that plan length tolerances can be modified by function."""
-        otu_before = scratch_repo.get_otu_by_taxid(96892)
+        otu_before = scratch_repo.get_otu_by_taxid(518829)
         assert otu_before is not None
 
         assert (
@@ -271,7 +267,7 @@ class TestSetPlan:
     @pytest.mark.parametrize("bad_tolerance", [-1.0, 1.1, 100.0])
     def test_set_length_tolerances_fail(self, scratch_repo: Repo, bad_tolerance: float):
         """Check that plan length tolerances cannot be set to an invalid float value."""
-        otu_before = scratch_repo.get_otu_by_taxid(96892)
+        otu_before = scratch_repo.get_otu_by_taxid(518829)
         assert otu_before is not None
 
         assert (
@@ -329,101 +325,99 @@ class TestDeleteIsolate:
 
 
 class TestReplaceSequence:
-    def test_ok(self, precached_repo):
+    def test_ok(self, precached_repo: Repo):
         """Test sequence replacement and deletion."""
-        with precached_repo.lock():
-            otu_init = create_otu_with_taxid(
-                precached_repo,
-                1169032,
-                ["MK431779"],
-                acronym="",
-            )
+        otu_service = OTUService(precached_repo, NCBIClient(False))
 
-        assert otu_init is not None
-        old_sequence = otu_init.get_sequence_by_accession("MK431779")
-        assert old_sequence is not None
+        with precached_repo.lock():
+            otu_before = otu_service.create(["MK431779"])
+
+        assert otu_before
+
+        sequence_before = otu_before.get_sequence_by_accession("MK431779")
+
+        assert sequence_before
 
         isolate_id = next(
-            iter(otu_init.get_isolate_ids_containing_sequence_id(old_sequence.id))
+            iter(otu_before.get_isolate_ids_containing_sequence_id(sequence_before.id))
         )
 
         with precached_repo.lock():
             new_sequence = replace_sequence_in_otu(
                 repo=precached_repo,
-                otu=otu_init,
+                otu=otu_before,
                 new_accession="NC_003355",
                 replaced_accession="MK431779",
             )
 
-        assert isinstance(new_sequence, SequenceBuilder)
+        assert new_sequence
 
-        otu_after = precached_repo.get_otu_by_taxid(1169032)
-        assert otu_after is not None
+        otu_after = precached_repo.get_otu(otu_before.id)
+
+        assert otu_after
 
         isolate_after = otu_after.get_isolate(isolate_id)
+
         assert isolate_after is not None
         assert otu_after.accessions == isolate_after.accessions == {"NC_003355"}
 
-    def test_multiple_link_ok(self, precached_repo):
+    def test_multiple_links(self, precached_repo: Repo):
+        otu_service = OTUService(precached_repo, NCBIClient(False))
+
         with precached_repo.lock():
-            otu_init = create_otu_with_taxid(
-                precached_repo,
-                345184,
-                ["DQ178608", "DQ178609"],
-                acronym="",
-            )
+            otu_before = otu_service.create(["DQ178608", "DQ178609"])
 
-        assert otu_init is not None
-        otu_id = otu_init.id
+        assert otu_before
+        assert otu_before == precached_repo.get_otu(otu_before.id)
 
-        post_init_otu = precached_repo.get_otu(otu_init.id)
-        assert post_init_otu is not None
-
-        assert post_init_otu.accessions == {"DQ178608", "DQ178609"}
-
-        mock_isolate = IsolateFactory.build_on_plan(otu_init.plan)
+        mock_isolate = IsolateFactory.build_on_plan(otu_before.plan)
         mock_sequence = mock_isolate.sequences[1]
 
         with precached_repo.lock(), precached_repo.use_transaction():
-            sequence_seg2 = precached_repo.create_sequence(
-                otu_id=otu_id,
+            sequence = precached_repo.create_sequence(
+                otu_id=otu_before.id,
                 accession=str(mock_sequence.accession),
                 definition=mock_sequence.definition,
                 segment=mock_sequence.segment,
                 sequence=mock_sequence.sequence,
             )
 
-            isolate_init = precached_repo.create_isolate(
-                otu_id=otu_id,
+            assert sequence
+
+            isolate_before = precached_repo.create_isolate(
+                otu_id=otu_before.id,
                 name=mock_isolate.name,
             )
 
-            first_isolate = post_init_otu.isolates[0]
+            assert isolate_before
+
+            first_isolate = otu_before.isolates[0]
+
             precached_repo.link_sequence(
-                otu_id=otu_id,
-                isolate_id=isolate_init.id,
+                otu_id=otu_before.id,
+                isolate_id=isolate_before.id,
                 sequence_id=first_isolate.sequences[0].id,
             )
 
             precached_repo.link_sequence(
-                otu_id=otu_id,
-                isolate_id=isolate_init.id,
-                sequence_id=sequence_seg2.id,
+                otu_id=otu_before.id,
+                isolate_id=isolate_before.id,
+                sequence_id=sequence.id,
             )
 
-        otu_second_isolate = precached_repo.get_otu(otu_id)
-        assert otu_second_isolate is not None
+        otu_after = precached_repo.get_otu(otu_before.id)
 
-        assert otu_second_isolate.accessions == {
+        assert otu_after
+        assert otu_after.accessions == {
             "DQ178608",
             "DQ178609",
-            sequence_seg2.accession.key,
+            sequence.accession.key,
         }
 
         with precached_repo.lock():
             replace_sequence_in_otu(
                 precached_repo,
-                otu_second_isolate,
+                otu_after,
                 new_accession="NC_038792",
                 replaced_accession="DQ178608",
             )

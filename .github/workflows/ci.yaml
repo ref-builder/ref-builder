@@ -1,0 +1,74 @@
+name: CI
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  ruff-format:
+    name: "Ruff / Format"
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - name: Install packages
+        run: uv sync --dev
+      - name: Run Ruff
+        run: uv run ruff format --check
+
+  test:
+    name: "Test"
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check NCBI secrets
+        env:
+          secret_email: ${{ secrets.NCBI_EMAIL }}
+          secret_api_key: ${{ secrets.NCBI_API_KEY }}
+        run: |
+          if [ -z "$secret_email" ] || [ -z "$secret_api_key" ]; then
+            echo "NCBI authentication secret missing. Exiting."
+            exit 1
+          else
+            echo "NCBI authentication secrets are configured."
+          fi
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - name: Install packages
+        run: uv sync --dev
+      - name: Test
+        run: uv run pytest
+        env:
+          NCBI_EMAIL: ${{ secrets.NCBI_EMAIL }}
+          NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
+
+  release:
+    name: "Publish / Release"
+    if: github.event_name == 'push'
+    needs:
+      - ruff-format
+      - test
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install semantic-release
+        run: npm i semantic-release@v23.0.0 conventional-changelog-conventionalcommits@7.0.2
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
