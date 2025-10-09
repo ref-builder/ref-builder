@@ -38,12 +38,6 @@ jobs:
           fi
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Restore pytest cache
-        id: cache-pytest-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: .pytest_cache
-          key: saved-pytest
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
@@ -55,12 +49,6 @@ jobs:
         env:
           NCBI_EMAIL: ${{ secrets.NCBI_EMAIL }}
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
-      - name: Save pytest cache
-        id: cache-pytest-save
-        uses: actions/cache/save@v4
-        with:
-          path: .pytest_cache
-          key: ${{ steps.cache-pytest-restore.outputs.cache-primary-key}}
 
   release:
     name: "Publish / Release"
