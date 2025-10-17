@@ -7,6 +7,7 @@ from ref_builder.cli.options import ignore_cache_option, path_option
 from ref_builder.cli.utils import get_otu_isolate_ids_from_identifier, pass_repo
 from ref_builder.cli.validate import validate_no_duplicate_accessions
 from ref_builder.console import print_isolate, print_isolate_as_json
+from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.isolate import (
     add_and_name_isolate,
     add_genbank_isolate,
@@ -63,12 +64,14 @@ def isolate_create(
         click.echo(f"OTU {taxid} not found.", err=True)
         sys.exit(1)
 
+    ncbi_client = NCBIClient(ignore_cache=ignore_cache)
+
     if unnamed:
         add_unnamed_isolate(
             repo,
             otu_,
             accessions_,
-            ignore_cache=ignore_cache,
+            ncbi_client,
         )
 
         sys.exit(0)
@@ -81,8 +84,8 @@ def isolate_create(
             repo,
             otu_,
             accessions_,
-            ignore_cache=ignore_cache,
-            isolate_name=isolate_name_,
+            isolate_name_,
+            ncbi_client,
         )
         sys.exit(0)
 
@@ -90,7 +93,7 @@ def isolate_create(
         repo,
         otu_,
         accessions_,
-        ignore_cache=ignore_cache,
+        ncbi_client,
     )
 
 

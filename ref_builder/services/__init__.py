@@ -25,6 +25,4 @@ class Service:
         return self._ncbi
 
 
-__all__ = [
-    "Service",
-]
+__all__ = ["Service"]

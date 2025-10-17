@@ -7,6 +7,7 @@ import structlog
 from rich.table import Table
 
 from ref_builder.build import build_json
+from ref_builder.cli.dev import dev
 from ref_builder.cli.event import event
 from ref_builder.cli.isolate import isolate
 from ref_builder.cli.options import (
@@ -95,6 +96,7 @@ def init(data_type: DataType, name: str, organism: str, path: Path) -> None:
 entry.add_command(otu)
 entry.add_command(isolate)
 entry.add_command(event)
+entry.add_command(dev)
 
 
 @entry.command()

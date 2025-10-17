@@ -1,7 +1,6 @@
 import datetime
 
 import arrow
-import pytest
 from structlog.testing import capture_logs
 
 from ref_builder.ncbi.client import NCBIClient

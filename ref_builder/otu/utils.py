@@ -112,7 +112,7 @@ def create_plan_from_records(
 def fetch_records_from_accessions(
     accessions: list | set,
     blocked_accessions: set,
-    ignore_cache: bool = False,
+    ncbi_client: NCBIClient,
 ) -> list[NCBIGenbank]:
     """Fetch Genbank records from a list of accessions.
 
@@ -120,6 +120,7 @@ def fetch_records_from_accessions(
 
     :param accessions: A list of accessions to fetch.
     :param blocked_accessions: A set of accessions to ignore.
+    :param ncbi_client: NCBI client to use for fetching records.
     """
     log = logger.bind(
         requested=sorted(accessions),
@@ -138,7 +139,7 @@ def fetch_records_from_accessions(
         count=len(eligible),
     )
 
-    return NCBIClient(ignore_cache).fetch_genbank_records(eligible)
+    return ncbi_client.fetch_genbank_records(eligible)
 
 
 def get_molecule_from_records(records: list[NCBIGenbank]) -> Molecule:
