@@ -206,7 +206,8 @@ class TestCreateOTU:
 
 class TestAddIsolate:
     def test_multipartite(self, precached_repo: Repo):
-        otu_service = OTUService(precached_repo, NCBIClient(True))
+        ncbi_client = NCBIClient(ignore_cache=True)
+        otu_service = OTUService(precached_repo, ncbi_client)
 
         with precached_repo.lock():
             otu_before = otu_service.create(["MF062136", "MF062137", "MF062138"])
@@ -217,7 +218,10 @@ class TestAddIsolate:
 
         with precached_repo.lock():
             isolate = add_genbank_isolate(
-                precached_repo, otu_before, ["MF062125", "MF062126", "MF062127"]
+                precached_repo,
+                otu_before,
+                ["MF062125", "MF062126", "MF062127"],
+                ncbi_client,
             )
 
         assert isolate
@@ -250,7 +254,8 @@ class TestAddIsolate:
         isolate_1_accessions = ["DQ178610", "DQ178611"]
         isolate_2_accessions = ["DQ178613", "DQ178614"]
 
-        otu_service = OTUService(precached_repo, NCBIClient(True))
+        ncbi_client = NCBIClient(ignore_cache=True)
+        otu_service = OTUService(precached_repo, ncbi_client)
 
         with precached_repo.lock():
             otu_before = otu_service.create(isolate_1_accessions)
@@ -259,7 +264,7 @@ class TestAddIsolate:
             assert otu_before.accessions == set(isolate_1_accessions)
 
             isolate = add_genbank_isolate(
-                precached_repo, otu_before, isolate_2_accessions
+                precached_repo, otu_before, isolate_2_accessions, ncbi_client
             )
 
             assert isolate
@@ -283,7 +288,8 @@ class TestAddIsolate:
         isolate_1_accessions = ["DQ178610", "DQ178611"]
         isolate_2_accessions = ["DQ178613", "DQ178614"]
 
-        otu_service = OTUService(precached_repo, NCBIClient(True))
+        ncbi_client = NCBIClient(ignore_cache=True)
+        otu_service = OTUService(precached_repo, ncbi_client)
 
         with precached_repo.lock():
             otu_before = otu_service.create(isolate_1_accessions)
@@ -298,7 +304,7 @@ class TestAddIsolate:
 
         with precached_repo.lock():
             isolate_2 = add_unnamed_isolate(
-                precached_repo, otu_before, isolate_2_accessions
+                precached_repo, otu_before, isolate_2_accessions, ncbi_client
             )
 
         assert isolate_2
@@ -317,7 +323,8 @@ class TestAddIsolate:
         isolate_1_accessions = ["DQ178610", "DQ178611"]
         isolate_2_accessions = ["DQ178613", "DQ178614"]
 
-        otu_service = OTUService(precached_repo, NCBIClient(True))
+        ncbi_client = NCBIClient(ignore_cache=True)
+        otu_service = OTUService(precached_repo, ncbi_client)
 
         with precached_repo.lock():
             otu = otu_service.create(isolate_1_accessions)
@@ -335,7 +342,8 @@ class TestAddIsolate:
                 precached_repo,
                 otu,
                 isolate_2_accessions,
-                isolate_name=IsolateName(type=IsolateNameType.ISOLATE, value="dummy"),
+                IsolateName(type=IsolateNameType.ISOLATE, value="dummy"),
+                ncbi_client,
             )
 
         assert isolate_2
@@ -358,17 +366,22 @@ class TestAddIsolate:
         """
         accessions = ["MF062136", "MF062137", "MF062138"]
 
-        otu_service = OTUService(precached_repo, NCBIClient(True))
+        ncbi_client = NCBIClient(ignore_cache=True)
+        otu_service = OTUService(precached_repo, ncbi_client)
 
         with precached_repo.lock():
             otu = otu_service.create(accessions)
 
             assert otu
-            assert add_genbank_isolate(precached_repo, otu, accessions) is None
+            assert (
+                add_genbank_isolate(precached_repo, otu, accessions, ncbi_client)
+                is None
+            )
 
     def test_name_conflict(self, precached_repo: Repo):
         """Test that an isolate cannot be added to an OTU if its name is already contained."""
-        otu_service = OTUService(precached_repo, NCBIClient(True))
+        ncbi_client = NCBIClient(ignore_cache=True)
+        otu_service = OTUService(precached_repo, ncbi_client)
 
         with precached_repo.lock():
             otu_before = otu_service.create(["MF062136", "MF062137", "MF062138"])
@@ -383,6 +396,7 @@ class TestAddIsolate:
                 otu_before,
                 ["NC_055390", "NC_055391", "NC_055392"],
                 IsolateName(type=IsolateNameType.ISOLATE, value="4342-5"),
+                ncbi_client,
             )
 
         assert isolate
@@ -399,12 +413,15 @@ class TestAddIsolate:
 
         assert otu_before
 
+        ncbi_client = NCBIClient(ignore_cache=True)
+
         with scratch_repo.lock():
             assert (
                 add_genbank_isolate(
                     scratch_repo,
                     otu_before,
-                    accessions=["AB017503"],
+                    ["AB017503"],
+                    ncbi_client,
                 )
                 is None
             )
@@ -430,7 +447,8 @@ class TestAddIsolate:
         refseq_accessions: list[str],
     ):
         """Test that RefSeq accessions automatically promote GenBank sequences."""
-        otu_service = OTUService(empty_repo, NCBIClient(True))
+        ncbi_client = NCBIClient(ignore_cache=True)
+        otu_service = OTUService(empty_repo, ncbi_client)
 
         with empty_repo.lock():
             otu = otu_service.create(accessions=original_accessions)
@@ -442,7 +460,9 @@ class TestAddIsolate:
         original_isolate_name = original_isolate.name
 
         with empty_repo.lock():
-            isolate = add_genbank_isolate(empty_repo, otu, refseq_accessions)
+            isolate = add_genbank_isolate(
+                empty_repo, otu, refseq_accessions, ncbi_client
+            )
 
         assert isolate is not None
         assert isolate.name == original_isolate_name

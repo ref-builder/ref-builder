@@ -7,10 +7,10 @@ from pytest_mock import MockerFixture
 
 from ref_builder.logs import configure_logger
 from ref_builder.ncbi.cache import NCBICache
-from ref_builder.ncbi.client import NCBIClient
+from ref_builder.ncbi.client import NCBIClient, NCBIClientProtocol
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.isolate import add_genbank_isolate
 from ref_builder.repo import Repo
+from ref_builder.services.isolate import IsolateService
 from ref_builder.services.otu import OTUService
 from ref_builder.utils import DataType
 from tests.fixtures.factories import (
@@ -23,8 +23,7 @@ from tests.fixtures.factories import (
     PlanFactory,
     SequenceFactory,
 )
-from tests.fixtures.mock_ncbi_client import MockNCBIClient
-from tests.fixtures.ncbi_mock_data import get_test_otu_structure
+from tests.fixtures.ncbi import mock_ncbi_client as _module_mock_ncbi_client
 
 configure_logger(True)
 
@@ -36,9 +35,9 @@ def _seed_factories() -> None:
 
 
 @pytest.fixture
-def mock_ncbi_client() -> MockNCBIClient:
+def mock_ncbi_client() -> NCBIClientProtocol:
     """A mock NCBI client with hardcoded test data."""
-    return MockNCBIClient()
+    return _module_mock_ncbi_client
 
 
 @pytest.fixture
@@ -120,14 +119,20 @@ def scratch_repo(tmp_path: Path) -> Repo:
         organism="viruses",
     )
 
-    otu_service = OTUService(repo, MockNCBIClient())
+    otu_service = OTUService(repo, _module_mock_ncbi_client)
+    isolate_service = IsolateService(repo, _module_mock_ncbi_client)
 
     with repo.lock():
-        for taxid, plan_accessions, isolate_accessions in get_test_otu_structure():
+        for (
+            taxid,
+            plan_accessions,
+            isolate_accessions,
+        ) in _module_mock_ncbi_client.get_otu_structure():
             otu = otu_service.create(plan_accessions)
 
-            for accessions in isolate_accessions:
-                add_genbank_isolate(repo, otu, accessions)
+            if otu is not None:
+                for accessions in isolate_accessions:
+                    isolate_service.create(otu.id, accessions)
 
     return repo
 

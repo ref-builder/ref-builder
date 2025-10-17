@@ -21,7 +21,8 @@ class TestPromoteOTU:
 
     def test_ok(self, empty_repo: Repo):
         """Test that RefSeq accessions can be promoted automatically."""
-        otu_service = OTUService(empty_repo, NCBIClient(False))
+        ncbi_client = NCBIClient(ignore_cache=False)
+        otu_service = OTUService(empty_repo, ncbi_client)
 
         with empty_repo.lock():
             otu = otu_service.create(["MF062136", "MF062137", "MF062138"])
@@ -29,7 +30,7 @@ class TestPromoteOTU:
             assert otu
 
             isolate = add_genbank_isolate(
-                empty_repo, otu, ["MF062125", "MF062126", "MF062127"]
+                empty_repo, otu, ["MF062125", "MF062126", "MF062127"], ncbi_client
             )
 
             assert isolate

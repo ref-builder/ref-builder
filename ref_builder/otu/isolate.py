@@ -24,7 +24,7 @@ def add_genbank_isolate(
     repo: Repo,
     otu: OTUBuilder,
     accessions: list[str],
-    ignore_cache: bool = False,
+    ncbi_client: "NCBIClient",
 ) -> IsolateBuilder | None:
     """Take a list of accessions that make up a new isolate and check that they make up
      a valid isolate before adding new isolate to the OTU.
@@ -35,7 +35,7 @@ def add_genbank_isolate(
     otu_logger = logger.bind(taxid=otu.taxid, otu_id=str(otu.id), name=otu.name)
 
     records = fetch_records_from_accessions(
-        accessions, otu.blocked_accessions, ignore_cache
+        accessions, otu.blocked_accessions, ncbi_client
     )
 
     if not records:
@@ -101,7 +101,7 @@ def add_unnamed_isolate(
     repo: Repo,
     otu: OTUBuilder,
     accessions: list[str],
-    ignore_cache: bool = False,
+    ncbi_client: "NCBIClient",
 ) -> IsolateBuilder | None:
     """Create an unnamed isolate from a list of accessions.
 
@@ -109,7 +109,7 @@ def add_unnamed_isolate(
     method.
     """
     records = fetch_records_from_accessions(
-        accessions, otu.blocked_accessions, ignore_cache
+        accessions, otu.blocked_accessions, ncbi_client
     )
 
     if not records:
@@ -131,7 +131,7 @@ def add_and_name_isolate(
     otu: OTUBuilder,
     accessions: list[str],
     isolate_name: IsolateName,
-    ignore_cache: bool = False,
+    ncbi_client: "NCBIClient",
 ) -> IsolateBuilder | None:
     """Take a list of accessions that make up a new isolate and a preferred
     isolate name, then add a new isolate to the OTU.
@@ -140,7 +140,7 @@ def add_and_name_isolate(
     the add method.
     """
     records = fetch_records_from_accessions(
-        accessions, otu.blocked_accessions, ignore_cache
+        accessions, otu.blocked_accessions, ncbi_client
     )
 
     if not records:
