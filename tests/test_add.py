@@ -407,9 +407,10 @@ class TestAddIsolate:
         assert isolate.id not in otu_after.isolate_ids
         assert precached_repo.last_id == last_event_id_before_test
 
-    def test_plan_mismatch(self, scratch_repo: Repo):
+    def test_plan_mismatch(self, scratch_repo: Repo, mock_ncbi_client):
         """Test that an isolate cannot be added to if it does not match the plan."""
-        otu_before = scratch_repo.get_otu_by_taxid(345184)
+        taxid = mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        otu_before = scratch_repo.get_otu_by_taxid(taxid)
 
         assert otu_before
 
@@ -426,27 +427,51 @@ class TestAddIsolate:
                 is None
             )
 
-        otu_after = scratch_repo.get_otu_by_taxid(345184)
+        otu_after = scratch_repo.get_otu_by_taxid(taxid)
 
         assert otu_after
         assert otu_after == otu_before
         assert "AB017503" not in otu_after.accessions
 
-    @pytest.mark.parametrize(
-        "taxid, original_accessions, refseq_accessions",
-        [
-            (1169032, ["AB017503"], ["NC_003355"]),
-            (345184, ["DQ178608", "DQ178609"], ["NC_038792", "NC_038793"]),
-        ],
-    )
-    def test_auto_promote_refseq(
-        self,
-        empty_repo: Repo,
-        taxid: int,
-        original_accessions: list[str],
-        refseq_accessions: list[str],
-    ):
-        """Test that RefSeq accessions automatically promote GenBank sequences."""
+    def test_auto_promote_refseq_monopartite(self, empty_repo: Repo):
+        """Test that RefSeq accessions automatically promote GenBank sequences (monopartite)."""
+        taxid = 1169032
+        original_accessions = ["AB017503"]
+        refseq_accessions = ["NC_003355"]
+
+        ncbi_client = NCBIClient(ignore_cache=True)
+        otu_service = OTUService(empty_repo, ncbi_client)
+
+        with empty_repo.lock():
+            otu = otu_service.create(accessions=original_accessions)
+
+        assert otu
+        assert otu.accessions == set(original_accessions)
+
+        original_isolate = otu.isolates[0]
+        original_isolate_name = original_isolate.name
+
+        with empty_repo.lock():
+            isolate = add_genbank_isolate(
+                empty_repo, otu, refseq_accessions, ncbi_client
+            )
+
+        assert isolate is not None
+        assert isolate.name == original_isolate_name
+        assert isolate.accessions == set(refseq_accessions)
+
+        otu_after = empty_repo.get_otu(otu.id)
+
+        assert otu_after
+        assert otu_after.accessions == set(refseq_accessions)
+        assert set(original_accessions).issubset(otu_after.excluded_accessions)
+
+    def test_auto_promote_refseq_multipartite(self, empty_repo: Repo, mock_ncbi_client):
+        """Test that RefSeq accessions automatically promote GenBank sequences (multipartite)."""
+        taxid = mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        original_accessions = ["DQ178608", "DQ178609"]
+        refseq_accessions = ["NC_038792", "NC_038793"]
+
         ncbi_client = NCBIClient(ignore_cache=True)
         otu_service = OTUService(empty_repo, ncbi_client)
 

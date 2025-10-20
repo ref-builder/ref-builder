@@ -23,7 +23,7 @@ from tests.fixtures.factories import (
     PlanFactory,
     SequenceFactory,
 )
-from tests.fixtures.ncbi import mock_ncbi_client as _module_mock_ncbi_client
+from tests.fixtures.ncbi import OTUManifest
 
 configure_logger(True)
 
@@ -37,7 +37,12 @@ def _seed_factories() -> None:
 @pytest.fixture
 def mock_ncbi_client() -> NCBIClientProtocol:
     """A mock NCBI client with hardcoded test data."""
-    return _module_mock_ncbi_client
+    from tests.fixtures.mock_ncbi_client import MockNCBIClient
+
+    return MockNCBIClient(
+        manifest=OTUManifest,
+        data_dir=Path(__file__).parent / "fixtures" / "ncbi" / "otus",
+    )
 
 
 @pytest.fixture
@@ -110,7 +115,7 @@ def scratch_path(scratch_repo: Repo) -> Path:
 
 
 @pytest.fixture
-def scratch_repo(tmp_path: Path) -> Repo:
+def scratch_repo(tmp_path: Path, mock_ncbi_client: NCBIClientProtocol) -> Repo:
     """A prepared scratch repository built from mock data."""
     repo = Repo.new(
         data_type=DataType.GENOME,
@@ -119,20 +124,25 @@ def scratch_repo(tmp_path: Path) -> Repo:
         organism="viruses",
     )
 
-    otu_service = OTUService(repo, _module_mock_ncbi_client)
-    isolate_service = IsolateService(repo, _module_mock_ncbi_client)
+    otu_service = OTUService(repo, mock_ncbi_client)
+    isolate_service = IsolateService(repo, mock_ncbi_client)
 
     with repo.lock():
         for (
             taxid,
             plan_accessions,
             isolate_accessions,
-        ) in _module_mock_ncbi_client.get_otu_structure():
+        ) in mock_ncbi_client.get_otu_structure():
             otu = otu_service.create(plan_accessions)
 
-            if otu is not None:
-                for accessions in isolate_accessions:
-                    isolate_service.create(otu.id, accessions)
+            if otu is None:
+                raise RuntimeError(
+                    f"Failed to create OTU for taxid {taxid} with accessions {plan_accessions}. "
+                    f"Check mock data in tests/fixtures/ncbi/ for validation errors."
+                )
+
+            for accessions in isolate_accessions:
+                isolate_service.create(otu.id, accessions)
 
     return repo
 

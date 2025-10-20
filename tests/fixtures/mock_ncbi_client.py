@@ -1,11 +1,18 @@
 """Mock NCBI client for testing without real API calls or file cache."""
 
+import json
 from collections.abc import Collection
+from pathlib import Path
 
 from structlog import get_logger
 
-from ref_builder.ncbi.models import NCBIGenbank, NCBITaxonomy
+from ref_builder.ncbi.models import (
+    NCBIGenbank,
+    NCBIRank,
+    NCBITaxonomy,
+)
 from ref_builder.utils import Accession
+from tests.fixtures.ncbi.models import OTURegistry
 
 logger = get_logger("tests.mock_ncbi_client")
 
@@ -16,7 +23,6 @@ class MockDataNotFoundError(LookupError):
     This indicates missing test data, not a test implementation error.
     Add the missing accession/taxid to tests/fixtures/ncbi/ modules.
     """
-
 
 
 class MockOTUBuilder:
@@ -73,6 +79,34 @@ class MockOTUBuilder:
 
         return self
 
+    def add_incompatible_isolate(
+        self,
+        accessions: list[str],
+        genbank: list[NCBIGenbank],
+    ) -> "MockOTUBuilder":
+        """Add an incompatible isolate that will fail OTU validation.
+
+        These records are registered in mock data (fetchable) but not included
+        in OTU structure, allowing tests to verify validation error handling.
+
+        Args:
+            accessions: Accessions for this incompatible isolate
+            genbank: GenBank records for this isolate. Use empty list if none available.
+
+        Returns:
+            Self for chaining
+
+        """
+        for gb in genbank:
+            self._client._genbank_records[gb.accession] = gb
+
+        if self._taxid not in self._client._incompatible_isolates:
+            self._client._incompatible_isolates[self._taxid] = []
+
+        self._client._incompatible_isolates[self._taxid].append(accessions)
+
+        return self
+
 
 class MockNCBIClient:
     """Mock NCBIClient that returns hardcoded test data.
@@ -83,11 +117,18 @@ class MockNCBIClient:
     Also serves as a registry for mock data, populated by per-OTU modules.
     """
 
-    def __init__(self, ignore_cache: bool = False) -> None:
+    def __init__(
+        self,
+        ignore_cache: bool = False,
+        manifest: type | None = None,
+        data_dir: Path | None = None,
+    ) -> None:
         """Initialize mock client.
 
         Args:
             ignore_cache: Ignored in mock (for interface compatibility)
+            manifest: Optional manifest class declaring test OTUs
+            data_dir: Optional directory containing JSON data files
 
         """
         self.ignore_cache = ignore_cache
@@ -95,6 +136,57 @@ class MockNCBIClient:
         self._genbank_records: dict[str, NCBIGenbank] = {}
         self._taxonomy_records: dict[int, NCBITaxonomy] = {}
         self._otu_structure: list[tuple[int, list[str], list[list[str]]]] = []
+        self._incompatible_isolates: dict[int, list[list[str]]] = {}
+
+        if manifest and data_dir:
+            self._load_json_data(manifest, data_dir)
+        else:
+            self.otus = None
+
+    def _load_json_data(self, manifest: type, data_dir: Path) -> None:
+        """Load JSON data files and populate registries.
+
+        Args:
+            manifest: Manifest class declaring test OTUs
+            data_dir: Directory containing JSON data files
+
+        """
+        for json_file in data_dir.glob("*.json"):
+            data = json.loads(json_file.read_text())
+
+            taxonomy = NCBITaxonomy.model_validate(data["taxonomy"])
+            self._taxonomy_records[taxonomy.id] = taxonomy
+
+            # Mirror OTUService.create() behavior: if taxonomy is not species-level,
+            # register the species-level ancestor so it can be fetched
+            if taxonomy.rank != NCBIRank.SPECIES:
+                species_lineage = taxonomy.species
+                # Create a minimal species-level taxonomy record
+                species_taxonomy = NCBITaxonomy(
+                    id=species_lineage.id,
+                    name=species_lineage.name,
+                    rank=NCBIRank.SPECIES,
+                    lineage=[],
+                )
+                self._taxonomy_records[species_lineage.id] = species_taxonomy
+
+            for acc, gb_data in data["genbank"].items():
+                genbank = NCBIGenbank.model_validate(gb_data)
+                self._genbank_records[acc] = genbank
+
+        self.otus = OTURegistry(manifest, data_dir)
+        self.otus.validate()
+
+        # Populate _otu_structure from manifest
+        for attr_name in dir(manifest):
+            attr = getattr(manifest, attr_name)
+            if hasattr(attr, "refseq") and hasattr(attr, "isolates"):
+                # Get taxid from loaded taxonomy
+                handle = getattr(self.otus, attr_name, None)
+                if handle:
+                    self._otu_structure.append(
+                        (handle.taxid, attr.refseq, attr.isolates)
+                    )
 
     def add_otu(
         self,
@@ -137,21 +229,26 @@ class MockNCBIClient:
         """
         return self._otu_structure
 
+    def get_incompatible_isolates(self, taxid: int) -> list[list[str]]:
+        """Get incompatible isolate groups for a specific taxid.
+
+        Args:
+            taxid: NCBI taxonomy ID
+
+        Returns:
+            List of incompatible isolate groups (each group is a list of accessions)
+
+        """
+        return self._incompatible_isolates.get(taxid, [])
+
     def fetch_genbank_records(
         self,
         accessions: Collection[str | Accession],
     ) -> list[NCBIGenbank]:
         """Fetch mocked GenBank records.
 
-        Args:
-            accessions: List of accessions to fetch
-
-        Returns:
-            List of NCBIGenbank records
-
-        Raises:
-            MockDataNotFoundError: If any accession is not mocked
-
+        Accessions starting with 'MISS' or 'NC_MISS' are treated as intentional
+        test cases for missing data and silently skipped (matching real NCBI behavior).
         """
         if not accessions:
             return []
@@ -159,22 +256,23 @@ class MockNCBIClient:
         records = []
 
         for accession in accessions:
-            # Normalize accession to string without version
             if isinstance(accession, Accession):
-                acc_key = accession.key
+                accession_key = accession.key
             else:
                 try:
-                    acc_key = Accession.from_string(accession).key
+                    accession_key = Accession.from_string(accession).key
                 except ValueError:
-                    # Not a versioned accession, use as-is
-                    acc_key = accession
+                    accession_key = accession
+
+            if accession_key.startswith("MISS") or accession_key.startswith("NC_MISS"):
+                continue
 
             try:
-                records.append(self._genbank_records[acc_key])
+                records.append(self._genbank_records[accession_key])
             except KeyError:
                 available = ", ".join(sorted(self._genbank_records.keys())[:10])
                 msg = (
-                    f"Accession '{acc_key}' not in mock data. "
+                    f"Accession '{accession_key}' not in mock data. "
                     f"Add it to tests/fixtures/ncbi/ modules\n"
                     f"Available accessions (first 10): {available}..."
                 )

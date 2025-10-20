@@ -6,16 +6,24 @@ class TestValidateOTU:
     """Test OTU validation."""
 
     def test_ok(self, scratch_repo: Repo):
-        """Validate scratch_repo contents"""
-        for otu_metadata in scratch_repo.iter_minimal_otus():
-            assert check_otu_is_valid(scratch_repo.get_otu_by_taxid(otu_metadata.taxid))
+        """Validate scratch_repo contents."""
+        for minimal_otu in scratch_repo.iter_minimal_otus():
+            assert minimal_otu
 
-    def test_no_isolates(self, scratch_repo: Repo):
+            otu = scratch_repo.get_otu(minimal_otu.id)
+
+            assert otu
+            assert check_otu_is_valid(otu)
+
+    def test_no_isolates(self, scratch_repo: Repo, mock_ncbi_client):
         """Test that validating an OTU with no isolates returns False."""
-        otu = scratch_repo.get_otu_by_taxid(223262)
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.saccharum_streak_virus.taxid
+        )
 
         assert otu
         assert check_otu_is_valid(otu)
+        assert len(otu.isolates) == 1
 
         isolate = otu.isolates[0]
 

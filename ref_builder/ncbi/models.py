@@ -80,11 +80,11 @@ class NCBISource(BaseModel):
     taxid: int
     organism: str
     mol_type: NCBISourceMolType
-    isolate: str = ""
-    host: str = ""
-    segment: str = ""
-    strain: str = ""
-    clone: str = ""
+    isolate: str | None = None
+    host: str | None = None
+    segment: str | None = None
+    strain: str | None = None
+    clone: str | None = None
     proviral: bool = False
     macronuclear: bool = False
     focus: bool = False
@@ -150,11 +150,17 @@ class NCBIGenbank(BaseModel):
 
     @field_validator("source", mode="before")
     @classmethod
-    def convert_source(cls, raw: NCBISource | list[dict[str:Any]]) -> NCBISource:
+    def convert_source(cls, raw: NCBISource | dict | list[dict[str:Any]]) -> NCBISource:
         """If the source field isn't a ``NCBISource`` object, convert it."""
+        # Already validated NCBISource instance (no conversion needed).
         if isinstance(raw, NCBISource):
             return raw
 
+        # Serialized dict from model_dump().
+        if isinstance(raw, dict) and "taxid" in raw:
+            return NCBISource(**raw)
+
+        # Raw NCBI XML format from API.
         for feature in raw:
             if feature["GBFeature_key"] == "source":
                 data = {}
