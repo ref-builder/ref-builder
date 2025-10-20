@@ -203,16 +203,9 @@ def parse_refseq_comment(comment: str) -> tuple[str, str]:
 
 def _extract_isolate_name_from_record(record: NCBIGenbank) -> IsolateName | None:
     """Get the isolate name from a Genbank record."""
-    if record.source.model_fields_set.intersection(
-        {IsolateNameType.ISOLATE, IsolateNameType.STRAIN, IsolateNameType.CLONE},
-    ):
-        for source_type in IsolateNameType:
-            if source_type in record.source.model_fields_set:
-                return IsolateName(
-                    type=IsolateNameType(source_type),
-                    value=record.source.model_dump()[source_type],
-                )
-
+    for source_type in IsolateNameType:
+        if value := getattr(record.source, source_type, None):
+            return IsolateName(type=source_type, value=value)
     return None
 
 

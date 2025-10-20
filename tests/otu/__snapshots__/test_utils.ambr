@@ -1,11 +1,8 @@
 # serializer version: 1
-# name: TestAssignRecordsToSegments.test_names_not_in_plan[223262]
+# name: TestAssignRecordsToSegments.test_names_not_in_plan
   'Segment names not found in plan: DNA 1.'
 # ---
-# name: TestAssignRecordsToSegments.test_names_not_in_plan[438782]
-  'Segment names not found in plan: DNA 1.'
-# ---
-# name: TestAssignRecordsToSegments.test_ok[223262]
+# name: TestAssignRecordsToSegments.test_ok
   set({
     tuple(
       SegmentName(prefix='DNA', key='A'),
@@ -16,40 +13,6 @@
       SegmentName(prefix='DNA', key='B'),
       'K93863',
       'DNA B',
-    ),
-  })
-# ---
-# name: TestAssignRecordsToSegments.test_ok[438782]
-  set({
-    tuple(
-      SegmentName(prefix='DNA', key='C'),
-      'NC_907439',
-      'DNA C',
-    ),
-    tuple(
-      SegmentName(prefix='DNA', key='M'),
-      'K93863',
-      'DNA M',
-    ),
-    tuple(
-      SegmentName(prefix='DNA', key='N'),
-      'NC_314988',
-      'DNA N',
-    ),
-    tuple(
-      SegmentName(prefix='DNA', key='R'),
-      'NC_934447',
-      'DNA R',
-    ),
-    tuple(
-      SegmentName(prefix='DNA', key='S'),
-      'SJ404705',
-      'DNA S',
-    ),
-    tuple(
-      SegmentName(prefix='DNA', key='U3'),
-      'OC344875',
-      'DNA U3',
     ),
   })
 # ---

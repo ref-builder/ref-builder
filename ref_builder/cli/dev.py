@@ -1,12 +1,14 @@
 """Development commands for ref-builder maintainers."""
 
+import json
 from pathlib import Path
 
 import click
-from jinja2 import Environment, FileSystemLoader
+from rich.table import Table
 
-from ref_builder.dev.format_model import format_model, format_value_list
-from tests.fixtures.ncbi import mock_ncbi_client
+from ref_builder.console import console
+from ref_builder.ncbi.client import NCBIClient
+from tests.fixtures.ncbi import OTUManifest, OTUSpec
 
 
 @click.group(name="dev")
@@ -14,91 +16,142 @@ def dev() -> None:
     """Development commands for ref-builder maintainers."""
 
 
+@dev.command(name="list")
+def list_otus() -> None:
+    """List all mock OTUs with their taxids and names."""
+    table = Table(title="Mock NCBI Data")
+
+    table.add_column("Taxid", style="cyan", justify="right")
+    table.add_column("Name", style="green")
+    table.add_column("# Segments", justify="right")
+    table.add_column("# Isolates", justify="right")
+
+    data_dir = Path("tests/fixtures/ncbi/otus")
+    otu_data = []
+
+    for attr_name in dir(OTUManifest):
+        if attr_name.startswith("_"):
+            continue
+        attr = getattr(OTUManifest, attr_name)
+        if not isinstance(attr, OTUSpec):
+            continue
+
+        json_path = data_dir / f"{attr_name}.json"
+        if not json_path.exists():
+            continue
+
+        data = json.loads(json_path.read_text())
+        taxid = data["taxonomy"]["id"]
+        name = data["taxonomy"]["name"]
+        segment_count = len(attr.refseq)
+        isolate_count = len(attr.isolates) + 1
+
+        otu_data.append((taxid, name, segment_count, isolate_count))
+
+    for taxid, name, segment_count, isolate_count in sorted(otu_data):
+        table.add_row(
+            str(taxid),
+            name,
+            str(segment_count),
+            str(isolate_count),
+        )
+
+    console.print(table)
+    console.print(f"\n[bold]Total:[/bold] {len(otu_data)} OTUs")
+
+
 @dev.command(name="refresh")
 @click.option(
     "--output-dir",
     type=click.Path(path_type=Path),
-    default="tests/fixtures/ncbi",
-    help="Output directory for generated modules",
+    default="tests/fixtures/ncbi/otus",
+    help="Output directory for generated JSON/FASTA files",
 )
 def refresh(output_dir: Path) -> None:
-    """Regenerate mock NCBI data modules from current registry.
+    """Regenerate mock NCBI data from manifest by fetching from NCBI.
 
-    Reads the current MockNCBIClient registry and regenerates all per-OTU
-    module files in tests/fixtures/ncbi/.
-
-    This is useful when:
-    - Adding new mock data to existing OTUs
-    - Updating mock data structure
-    - Fixing formatting issues in generated modules
+    Reads OTUManifest and fetches real data from NCBI for each OTU.
+    Generates JSON (taxonomy + genbank) and FASTA files.
     """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    # Load Jinja2 template
-    template_dir = Path(__file__).parent.parent / "dev"
-    env = Environment(loader=FileSystemLoader(template_dir))
-    template = env.get_template("otu_module.py.j2")
+    # Initialize NCBI client (ignore cache to get fresh data)
+    client = NCBIClient(ignore_cache=True)
 
     generated_count = 0
 
-    for taxid, refseq, isolate_groups in mock_ncbi_client.get_otu_structure():
-        # Get taxonomy record
-        taxonomy = mock_ncbi_client._taxonomy_records.get(taxid)
-
-        if taxonomy is None:
-            click.echo(
-                f"Warning: No taxonomy record for taxid {taxid}, skipping",
-                err=True,
-            )
+    # Iterate over all OTUSpec attributes in the manifest
+    for attr_name in dir(OTUManifest):
+        if attr_name.startswith("_"):
             continue
 
-        name = taxonomy.name
+        attr = getattr(OTUManifest, attr_name)
+        if not isinstance(attr, OTUSpec):
+            continue
 
-        # Create safe variable name from organism name
-        var_name = name.lower().replace(" ", "_").replace("-", "_")
+        click.echo(f"Fetching data for {attr_name}...")
 
-        # Get GenBank records for RefSeq accessions
-        refseq_genbank = []
-        for acc in refseq:
-            if acc in mock_ncbi_client._genbank_records:
-                refseq_genbank.append(mock_ncbi_client._genbank_records[acc])
+        # Fetch all GenBank records
+        all_accessions = attr.all_accessions
+        genbank_records = client.fetch_genbank_records(all_accessions)
 
-        # Build isolate data
-        isolates = []
-        for accessions in isolate_groups:
-            isolate_genbank = []
-            for acc in accessions:
-                if acc in mock_ncbi_client._genbank_records:
-                    isolate_genbank.append(mock_ncbi_client._genbank_records[acc])
+        if not genbank_records:
+            click.echo(f"  Warning: No GenBank records found for {attr_name}", err=True)
+            continue
 
-            isolates.append(
-                {
-                    "accessions": repr(accessions),
-                    "genbank": format_value_list(isolate_genbank, indent=3)
-                    if isolate_genbank
-                    else "[]",
-                }
-            )
+        # Build genbank dict keyed by accession
+        genbank_dict = {
+            record.accession: record.model_dump() for record in genbank_records
+        }
 
-        # Render template
-        content = template.render(
-            taxid=taxid,
-            name=name,
-            var_name=var_name,
-            refseq=repr(refseq),
-            taxonomy=format_model(taxonomy, indent=2) if taxonomy else None,
-            genbank=format_value_list(refseq_genbank, indent=2)
-            if refseq_genbank
-            else "[]",
-            isolates=isolates,
+        # Fetch taxonomy from first refseq accession
+        first_refseq_record = next(
+            (r for r in genbank_records if r.accession in attr.refseq), None
         )
 
-        # Write module file
-        module_path = output_path / f"otu_{var_name}.py"
-        module_path.write_text(content)
+        if not first_refseq_record:
+            click.echo(f"  Warning: No refseq record found for {attr_name}", err=True)
+            continue
+
+        taxid = first_refseq_record.source.taxid
+        taxonomy = client.fetch_taxonomy_record(taxid)
+
+        if not taxonomy:
+            click.echo(f"  Warning: No taxonomy found for taxid {taxid}", err=True)
+            continue
+
+        # Write JSON file
+        json_data = {
+            "taxonomy": taxonomy.model_dump(),
+            "genbank": genbank_dict,
+        }
+
+        json_path = output_path / f"{attr_name}.json"
+        json_path.write_text(json.dumps(json_data, indent=2))
+        click.echo(f"  Wrote {json_path}")
 
         generated_count += 1
-        click.echo(f"Generated {module_path}")
 
-    click.echo(f"\n✓ Generated {generated_count} OTU modules in {output_path}")
+    # Generate type stub
+    stub_path = Path("tests/fixtures/ncbi/otus.pyi")
+    stub_lines = [
+        "from tests.fixtures.ncbi.models import OTUHandle",
+        "",
+        "",
+        "class OTURegistry:",
+    ]
+
+    for attr_name in dir(OTUManifest):
+        if attr_name.startswith("_"):
+            continue
+        attr = getattr(OTUManifest, attr_name)
+        if isinstance(attr, OTUSpec):
+            stub_lines.append("    @property")
+            stub_lines.append(f"    def {attr_name}(self) -> OTUHandle: ...")
+            stub_lines.append("")
+
+    stub_path.write_text("\n".join(stub_lines))
+    click.echo(f"  Wrote {stub_path}")
+
+    click.echo(f"\n✓ Generated {generated_count} OTUs in {output_path}")

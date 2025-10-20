@@ -28,9 +28,9 @@ from ref_builder.utils import IsolateName, IsolateNameType
 from tests.fixtures.factories import IsolateFactory
 
 
-def test_exclude_accessions(scratch_repo: Repo):
+def test_exclude_accessions(scratch_repo: Repo, mock_ncbi_client):
     """Test accession exclusion."""
-    taxid = 345184
+    taxid = mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
 
     otu_before = scratch_repo.get_otu_by_taxid(taxid)
     assert otu_before is not None
@@ -48,8 +48,8 @@ def test_exclude_accessions(scratch_repo: Repo):
     assert otu_after.excluded_accessions == {"DQ178608", "DQ178609"}
 
 
-def test_allow_accessions(scratch_repo: Repo):
-    taxid = 345184
+def test_allow_accessions(scratch_repo: Repo, mock_ncbi_client):
+    taxid = mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
 
     otu_initial = scratch_repo.get_otu_by_taxid(taxid)
     assert otu_initial is not None
@@ -82,9 +82,11 @@ def test_allow_accessions(scratch_repo: Repo):
 class TestSetPlan:
     """Test functions that make changes to an OTU plan."""
 
-    def test_ok(self, scratch_repo: Repo):
+    def test_ok(self, scratch_repo: Repo, mock_ncbi_client):
         """Test that an OTU's plan can be replaced."""
-        otu_before = scratch_repo.get_otu_by_taxid(223262)
+        otu_before = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        )
         assert otu_before is not None
 
         original_plan = otu_before.plan
@@ -122,9 +124,11 @@ class TestSetPlan:
 
         assert otu_after.plan == new_plan
 
-    def test_rename_segment_ok(self, scratch_repo: Repo):
+    def test_rename_segment_ok(self, scratch_repo: Repo, mock_ncbi_client):
         """Test that a given plan segment can be renamed."""
-        otu_before = scratch_repo.get_otu_by_taxid(223262)
+        otu_before = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        )
         assert otu_before is not None
 
         first_segment_id = otu_before.plan.segments[0].id
@@ -143,16 +147,20 @@ class TestSetPlan:
                 segment_name=SegmentName(prefix="RNA", key="TestName"),
             )
 
-        otu_after = scratch_repo.get_otu_by_taxid(223262)
+        otu_after = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        )
         assert otu_after is not None
 
         segment_after = otu_after.plan.get_segment_by_id(first_segment_id)
         assert segment_after is not None
         assert segment_after.name == new_name
 
-    def test_rename_segment_fail(self, scratch_repo: Repo):
+    def test_rename_segment_fail(self, scratch_repo: Repo, mock_ncbi_client):
         """Test that an attempt to rename a nonexistent segment does not change the OTU."""
-        otu_before = scratch_repo.get_otu_by_taxid(223262)
+        otu_before = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        )
         assert otu_before is not None
 
         first_segment = otu_before.plan.segments[0]
@@ -173,7 +181,9 @@ class TestSetPlan:
             is None
         )
 
-        otu_after = scratch_repo.get_otu_by_taxid(223262)
+        otu_after = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        )
         assert otu_after is not None
 
         assert otu_after.plan.model_dump_json() == otu_before.plan.model_dump_json()
@@ -228,11 +238,14 @@ class TestSetPlan:
     def test_add_segments_to_plan_fail(
         self,
         scratch_repo: Repo,
+        mock_ncbi_client,
     ):
         """Test that segments cannot be added to a monopartite plan with
         a preexisting unnamed segment.
         """
-        otu_before = scratch_repo.get_otu_by_taxid(518829)
+        otu_before = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.okra_leaf_curl_alphasatellite.taxid
+        )
         assert otu_before is not None
 
         assert otu_before.plan.monopartite
@@ -246,9 +259,13 @@ class TestSetPlan:
             )
 
     @pytest.mark.parametrize("tolerance", [0.05, 0.5, 1.0])
-    def test_set_length_tolerances_ok(self, scratch_repo: Repo, tolerance: float):
+    def test_set_length_tolerances_ok(
+        self, scratch_repo: Repo, tolerance: float, mock_ncbi_client
+    ):
         """Check that plan length tolerances can be modified by function."""
-        otu_before = scratch_repo.get_otu_by_taxid(518829)
+        otu_before = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.okra_leaf_curl_alphasatellite.taxid
+        )
         assert otu_before is not None
 
         assert (
@@ -265,9 +282,13 @@ class TestSetPlan:
         assert otu_after.plan.segments[0].length_tolerance == tolerance
 
     @pytest.mark.parametrize("bad_tolerance", [-1.0, 1.1, 100.0])
-    def test_set_length_tolerances_fail(self, scratch_repo: Repo, bad_tolerance: float):
+    def test_set_length_tolerances_fail(
+        self, scratch_repo: Repo, bad_tolerance: float, mock_ncbi_client
+    ):
         """Check that plan length tolerances cannot be set to an invalid float value."""
-        otu_before = scratch_repo.get_otu_by_taxid(518829)
+        otu_before = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.okra_leaf_curl_alphasatellite.taxid
+        )
         assert otu_before is not None
 
         assert (
@@ -294,9 +315,9 @@ class TestSetPlan:
 class TestDeleteIsolate:
     """Test isolate deletion behaviour."""
 
-    def test_ok(self, scratch_repo):
+    def test_ok(self, scratch_repo, mock_ncbi_client):
         """Test that a given isolate can be deleted from the OTU."""
-        taxid = 1169032
+        taxid = mock_ncbi_client.otus.wasabi_mottle_virus.taxid
 
         otu_before = scratch_repo.get_otu_by_taxid(taxid)
         assert otu_before is not None

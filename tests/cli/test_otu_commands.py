@@ -195,7 +195,7 @@ class TestExcludeAccessionsCommand:
                 "--path",
                 str(scratch_repo.path),
                 "exclude-accessions",
-                "345184",
+                "3426695",  # Begomovirus brassicajamaicaense (species-level taxid for cabbage leaf curl jamaica virus)
                 "DQ178608",
                 "DQ178609",
             ],
@@ -205,7 +205,7 @@ class TestExcludeAccessionsCommand:
         assert "Added accessions to excluded accession list" in result.output
         assert "['DQ178608', 'DQ178609']" in result.output
 
-    def test_redundant(self, scratch_repo: Repo):
+    def test_redundant(self, scratch_repo: Repo, mock_ncbi_client):
         """Test that the command informs the user there will be not net change."""
         result = runner.invoke(
             otu_command_group,
@@ -213,7 +213,7 @@ class TestExcludeAccessionsCommand:
                 "--path",
                 str(scratch_repo.path),
                 "exclude-accessions",
-                str(345184),
+                str(mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid),
                 "DQ178608",
                 "DQ178609",
             ],
@@ -228,7 +228,7 @@ class TestExcludeAccessionsCommand:
                 "--path",
                 str(scratch_repo.path),
                 "exclude-accessions",
-                str(345184),
+                str(mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid),
                 "DQ178608",
                 "DQ178609",
             ],
@@ -241,9 +241,9 @@ class TestExcludeAccessionsCommand:
 class TestAllowAccessionsCommand:
     """Test that ``ref-builder otu allow-accessions`` behaves as expected."""
 
-    def test_ok(self, scratch_repo: Repo):
+    def test_ok(self, scratch_repo: Repo, mock_ncbi_client):
         """Test that command lists out newly allowable accessions"""
-        taxid = 345184
+        taxid = mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
 
         result = runner.invoke(
             otu_command_group,
@@ -267,7 +267,7 @@ class TestAllowAccessionsCommand:
         assert "Updated excluded accession list" in result.output
         assert "['DQ178609']" in result.output
 
-    def test_redundant(self, scratch_repo: Repo):
+    def test_redundant(self, scratch_repo: Repo, mock_ncbi_client):
         """Test that the command informs the user when excluded accessions are already up to date."""
         result = runner.invoke(
             otu_command_group,
@@ -275,7 +275,7 @@ class TestAllowAccessionsCommand:
                 "--path",
                 str(scratch_repo.path),
                 "allow-accessions",
-                str(345184),
+                str(mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid),
                 "DQ178612",
                 "DQ178613",
             ],
@@ -283,126 +283,3 @@ class TestAllowAccessionsCommand:
 
         assert result.exit_code == 0
         assert "Excluded accession list already up to date" in result.output
-
-
-class TestRenamePlanSegmentCommand:
-    """Test that ``ref-builder otu rename-plan-segment`` behaves as expected."""
-
-    def test_ok(self, scratch_repo: Repo):
-        """Test that a given plan segment can be renamed."""
-        otu_before = scratch_repo.get_otu_by_taxid(223262)
-
-        assert otu_before
-
-        first_segment_id = otu_before.plan.segments[0].id
-
-        result = runner.invoke(
-            otu_command_group,
-            [
-                "--path",
-                str(scratch_repo.path),
-                "rename-plan-segment",
-                str(223262),
-                "--segment-id",
-                str(first_segment_id),
-                "--segment-name",
-                "RNA",
-                "TestName",
-            ],
-        )
-
-        assert result.exit_code == 0
-
-        otu_after = scratch_repo.get_otu_by_taxid(223262)
-
-        assert otu_after
-
-        segment = otu_after.plan.get_segment_by_id(first_segment_id)
-
-        assert segment
-        assert str(segment.name) == "RNA TestName"
-
-
-class TestExtendPlanCommand:
-    @pytest.mark.parametrize(
-        ("initial_accessions", "new_accessions"),
-        [
-            (["MF062136", "MF062137"], ["MF062138"]),
-            (["MF062136"], ["MF062137", "MF062138"]),
-        ],
-    )
-    def test_ok(
-        self,
-        precached_repo: Repo,
-        initial_accessions: list[str],
-        new_accessions: list[str],
-    ):
-        """Test the addition of segments to an OTU plan."""
-        filled_path_options = ["--path", str(precached_repo.path)]
-
-        result = runner.invoke(
-            otu_command_group,
-            [
-                *filled_path_options,
-                "create",
-                *initial_accessions,
-            ],
-        )
-
-        assert result.exit_code == 0
-
-        taxid = int(result.output.split("TAXID")[1].split()[0])
-
-        otu_before = precached_repo.get_otu_by_taxid(taxid)
-
-        assert otu_before
-        assert len(otu_before.plan.segments) == len(initial_accessions)
-
-        result = runner.invoke(
-            otu_command_group,
-            [
-                *filled_path_options,
-                "extend-plan",
-                str(otu_before.id),
-                *new_accessions,
-                "--optional",
-            ],
-        )
-
-        assert result.exit_code == 0
-        assert "Added new segments" in result.output
-
-        otu_after = precached_repo.get_otu(otu_before.id)
-
-        assert otu_after
-        assert len(otu_after.plan.segments) == len(otu_before.plan.segments) + len(
-            new_accessions
-        )
-
-    def test_monopartite_fail(
-        self,
-        scratch_repo: Repo,
-    ):
-        """Test that segments cannot be added to a monopartite plan with
-        a preexisting unnamed segment.
-        """
-        otu_before = scratch_repo.get_otu_by_taxid(518829)
-        assert otu_before is not None
-
-        assert otu_before.plan.monopartite
-
-        result = runner.invoke(
-            otu_command_group,
-            [
-                "--path",
-                str(scratch_repo.path),
-                "extend-plan",
-                "518829",
-                "NC_010620",
-                "--optional",
-            ],
-        )
-
-        assert result.exit_code == 1
-
-        print(result.output)

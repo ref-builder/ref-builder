@@ -236,6 +236,9 @@ def extract_segment_name_from_record(record: NCBIGenbank) -> SegmentName | None:
     :param record: A Genbank record.
     :return: A segment name or `None`.
     """
+    if not record.source.segment:
+        return None
+
     if (name := SegmentName.from_string(record.source.segment)) is not None:
         return name
 

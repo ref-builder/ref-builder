@@ -156,7 +156,7 @@ class TestIsolateServiceCreateValidation:
 
             isolate = services.isolate.create(
                 otu_id=otu.id,
-                accessions=["MISSING123"],
+                accessions=["MISS123"],
             )
 
         assert isolate is None
@@ -212,7 +212,9 @@ class TestIsolateServiceCreateValidation:
         """Test that multiple isolate names in records returns None."""
         services = Services(scratch_repo, mock_ncbi_client)
 
-        otu = scratch_repo.get_otu_by_taxid(1169032)
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.wasabi_mottle_virus.taxid
+        )
 
         source_1 = NCBISourceFactory.build(
             taxid=otu.taxid,
@@ -249,7 +251,9 @@ class TestIsolateServiceCreateValidation:
         """Test that duplicate isolate name returns None."""
         services = Services(scratch_repo, mock_ncbi_client)
 
-        otu = scratch_repo.get_otu_by_taxid(1169032)
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.wasabi_mottle_virus.taxid
+        )
 
         # Use an existing isolate name from scratch_repo
         existing_isolate = otu.isolates[0]
@@ -292,7 +296,9 @@ class TestIsolateServicePromotion:
         """Test promoting sequences when adding RefSeq version of existing isolate."""
         services = Services(scratch_repo, mock_ncbi_client)
 
-        otu = scratch_repo.get_otu_by_taxid(1169032)
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.wasabi_mottle_virus.taxid
+        )
 
         # Get an existing isolate
         existing_isolate = otu.isolates[0]
@@ -339,8 +345,10 @@ class TestIsolateServiceDelete:
         """Test successful isolate deletion."""
         services = Services(scratch_repo, mock_ncbi_client)
 
-        otu = scratch_repo.get_otu_by_taxid(1169032)
-        isolate_id = otu.isolate_ids[0]
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.wasabi_mottle_virus.taxid
+        )
+        isolate_id = next(iter(otu.isolate_ids))
 
         with scratch_repo.lock():
             result = services.isolate.delete(otu_id=otu.id, isolate_id=isolate_id)
@@ -374,7 +382,9 @@ class TestIsolateServiceDelete:
         """Test deletion with non-existent isolate returns False."""
         services = Services(scratch_repo, mock_ncbi_client)
 
-        otu = scratch_repo.get_otu_by_taxid(1169032)
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.wasabi_mottle_virus.taxid
+        )
 
         with scratch_repo.lock():
             result = services.isolate.delete(

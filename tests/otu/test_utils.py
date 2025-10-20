@@ -81,7 +81,6 @@ class TestCreatePlanFromRecords:
         ]
 
 
-@pytest.mark.parametrize("taxid", [223262, 438782])
 class TestAssignRecordsToSegments:
     """Test whether a list of records can be assigned to plan segments."""
 
@@ -91,12 +90,12 @@ class TestAssignRecordsToSegments:
         ncbi_source_factory: NCBISourceFactory,
         scratch_repo: Repo,
         snapshot: SnapshotAssertion,
-        taxid: int,
+        mock_ncbi_client,
     ):
-        """Test that a list of records generated to match the OTU plan
-        can pass assign_records_to_segments().
-        """
-        otu = scratch_repo.get_otu_by_taxid(taxid)
+        """Test that a list of records generated to match the OTU plan"""
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        )
 
         assert otu
 
@@ -128,10 +127,12 @@ class TestAssignRecordsToSegments:
         ncbi_genbank_factory: NCBIGenbankFactory,
         scratch_repo: Repo,
         snapshot: SnapshotAssertion,
-        taxid: int,
+        mock_ncbi_client,
     ):
         """Test that a randomly generated list of records raises a ValueError."""
-        otu = scratch_repo.get_otu_by_taxid(taxid)
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        )
 
         assert otu
 

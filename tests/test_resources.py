@@ -1,7 +1,5 @@
 from uuid import uuid4
 
-import pytest
-
 from ref_builder.models import Molecule, MolType, Strandedness, Topology
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
@@ -14,17 +12,11 @@ from tests.fixtures.factories import IsolateFactory, OTUFactory
 class TestSequence:
     """Test properties of SequenceBuilder."""
 
-    @pytest.mark.parametrize(
-        ("taxid", "accessions"),
-        [
-            (
-                345184,
-                ["DQ178614", "DQ178613", "DQ178610", "DQ178611"],
-            ),
-        ],
-    )
-    def test_equivalence(self, taxid: int, accessions: list["str"], scratch_repo: Repo):
+    def test_equivalence(self, scratch_repo: Repo, mock_ncbi_client):
         """Test that the == operator works correctly."""
+        taxid = mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        accessions = ["DQ178614", "DQ178613", "DQ178610", "DQ178611"]
+
         otu = scratch_repo.get_otu_by_taxid(taxid)
 
         assert otu
@@ -48,10 +40,11 @@ class TestIsolate:
 
         assert isolate.sequences == []
 
-    @pytest.mark.parametrize("taxid", [345184])
-    def test_equivalence(self, taxid: int, scratch_repo: Repo):
+    def test_equivalence(self, scratch_repo: Repo, mock_ncbi_client):
         """Test that the == operator works correctly."""
-        otu = scratch_repo.get_otu_by_taxid(taxid)
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        )
 
         assert otu
 
@@ -97,9 +90,11 @@ class TestOTU:
             taxid,
         )
 
-    def test_get_sequence_id_hierarchy(self, scratch_repo: Repo):
+    def test_get_sequence_id_hierarchy(self, scratch_repo: Repo, mock_ncbi_client):
         """Test that the isolate ID can be found from a sequence ID."""
-        otu = scratch_repo.get_otu_by_taxid(345184)
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        )
 
         assert otu
 

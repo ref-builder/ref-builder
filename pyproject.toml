@@ -30,7 +30,6 @@ ref-builder = "ref_builder.cli.main:entry"
 
 [dependency-groups]
 dev = [
-  "jinja2>=3.1.6",
   "polyfactory>=2.22.2",
   "pyright>=1.1.405",
   "pytest>=8.4.2",
