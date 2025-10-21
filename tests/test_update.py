@@ -1,5 +1,4 @@
 import datetime
-from pathlib import Path
 
 import pytest
 from syrupy.assertion import SnapshotAssertion
@@ -8,7 +7,6 @@ from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.isolate import add_genbank_isolate
 from ref_builder.otu.promote import promote_otu_accessions
 from ref_builder.otu.update import (
-    BatchFetchIndex,
     auto_update_otu,
     batch_update_repo,
 )
@@ -215,76 +213,38 @@ class TestBatchUpdate:
     """Test rudimentary batch update operation with a single OTU."""
 
     @pytest.fixture(autouse=True)
-    def setup(self, precached_repo: Repo, tmp_path: Path):
-        """Set up mock repo and fetch index for batch update tests."""
+    def setup(self, precached_repo: Repo):
+        """Set up mock repo for batch update tests."""
         otu_service = OTUService(precached_repo, NCBIClient(False))
 
         with precached_repo.lock():
             otu = otu_service.create(["MF062125", "MF062126", "MF062127"])
 
         self.repo = precached_repo
-        self.fetch_index = {
-            otu.taxid: {
-                "MF062130",
-                "MF062131",
-                "MF062132",
-                "MF062136",
-                "MF062137",
-                "MF062138",
-                "NC_055390",
-                "NC_055391",
-                "NC_055392",
-                "OR889795",
-                "OR889796",
-                "OR889797",
-            }
+        self.expected_accessions = {
+            "MF062130",
+            "MF062131",
+            "MF062132",
+            "MF062136",
+            "MF062137",
+            "MF062138",
+            "NC_055390",
+            "NC_055391",
+            "NC_055392",
+            "OR889795",
+            "OR889796",
+            "OR889797",
         }
 
-        self.fetch_index_path = tmp_path / "fetch_index_2165102.json"
-
-        fetch_index = BatchFetchIndex.model_validate(self.fetch_index)
-
-        with open(self.fetch_index_path, "w") as f:
-            f.write(fetch_index.model_dump_json())
-
-        yield
-
-        self.fetch_index_path.unlink()
 
     def test_ok(self):
         """Test that batch update works as expected."""
-        otu_before = next(self.repo.iter_otus())
-
         with self.repo.lock():
             assert len(batch_update_repo(self.repo)) == 1
 
         otu_after = next(self.repo.iter_otus())
 
-        assert otu_after.accessions == self.fetch_index[otu_before.taxid]
+        assert otu_after.accessions == self.expected_accessions
 
         with self.repo.lock():
             assert len(batch_update_repo(self.repo)) == 0
-
-    def test_with_fetch_index_ok(self):
-        """Test with a path to a pre-made fetch index as input."""
-        otu_initial = next(self.repo.iter_otus())
-
-        with self.repo.lock():
-            assert (
-                len(
-                    batch_update_repo(self.repo, fetch_index_path=self.fetch_index_path)
-                )
-                == 1
-            )
-
-        otu_after = next(self.repo.iter_otus())
-
-        assert otu_after.accessions == self.fetch_index[otu_initial.taxid]
-
-        with self.repo.lock():
-            assert (
-                len(
-                    batch_update_repo(self.repo, fetch_index_path=self.fetch_index_path)
-                )
-                == 0
-            )

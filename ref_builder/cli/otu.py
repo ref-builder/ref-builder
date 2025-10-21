@@ -151,15 +151,6 @@ def otu_event_logs(repo: Repo, identifier: str) -> None:
     type=click.DateTime(["%Y-%m-%d", "%Y/%m/%d"]),
     help="Exclude records edited before this date",
 )
-@click.option(
-    "--fetch-index-path",
-    type=click.Path(
-        exists=True,
-        file_okay=True,
-        path_type=Path,
-    ),
-    help="Input a file path to a fetch index file.",
-)
 @ignore_cache_option
 @pass_repo
 def otu_batch_auto_update(
@@ -168,13 +159,11 @@ def otu_batch_auto_update(
     precache: bool,
     ignore_cache: bool,
     start_date: datetime.date | None,
-    fetch_index_path: Path | None,
 ) -> None:
     """Update all OTUs with the latest data from NCBI."""
     batch_update_repo(
         repo,
         start_date=start_date,
-        fetch_index_path=fetch_index_path,
         chunk_size=precache_batch_size,
         precache_records=precache,
         ignore_cache=ignore_cache,
@@ -188,22 +177,12 @@ def otu_batch_auto_update(
     type=click.DateTime(["%Y-%m-%d", "%Y/%m/%d"]),
     help="Exclude records edited before this date",
 )
-@click.option(
-    "--fetch-index-path",
-    type=click.Path(
-        exists=True,
-        file_okay=True,
-        path_type=Path,
-    ),
-    help="Input a file path to a fetch index file.",
-)
 @ignore_cache_option
 @pass_repo
 def otu_auto_update(
     repo: Repo,
     identifier: str,
     start_date: datetime.date | None,
-    fetch_index_path: Path | None,
     ignore_cache: bool,
 ) -> None:
     """Update an OTU with the latest data from NCBI."""
@@ -217,7 +196,6 @@ def otu_auto_update(
     auto_update_otu(
         repo,
         otu_,
-        fetch_index_path=fetch_index_path,
         start_date=start_date,
         ignore_cache=ignore_cache,
     )
