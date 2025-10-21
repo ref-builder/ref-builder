@@ -20,7 +20,6 @@ from ref_builder.otu.modify import (
     add_segments_to_plan,
     allow_accessions_into_otu,
     exclude_accessions_from_otu,
-    rename_plan_segment,
 )
 from ref_builder.otu.promote import (
     promote_otu_accessions,
@@ -342,49 +341,3 @@ def plan_extend_segment_list(
         ignore_cache=ignore_cache,
     ):
         sys.exit(1)
-
-
-@otu.command(name="rename-plan-segment")
-@click.argument("IDENTIFIER", type=str)
-@click.option(
-    "--segment-id",
-    "segment_id_",
-    type=str,
-    required=True,
-    help="The ID of the segment.",
-)
-@click.option(
-    "--segment-name",
-    "--name",
-    "segment_name_",
-    type=(str, str),
-    required=True,
-    help="A segment name, e.g. 'RNA B'",
-)
-@pass_repo
-def plan_rename_segment(
-    repo: Repo,
-    segment_id_: str,
-    segment_name_: tuple[str, str],
-    identifier: str,
-) -> None:
-    """Give an unnamed segment a name.
-
-    IDENTIFIER is a taxonomy ID or unique OTU ID (>8 characters)
-    """
-    otu_service = OTUService(repo, NCBIClient(False))
-    otu_ = otu_service.get_otu(identifier)
-
-    if otu_ is None:
-        click.echo("OTU not found.", err=True)
-        sys.exit(1)
-
-    try:
-        rename_plan_segment(
-            repo,
-            otu_,
-            segment_id=UUID(segment_id_),
-            segment_name=SegmentName(segment_name_[0], segment_name_[1]),
-        )
-    except ValueError as e:
-        click.echo(e, err=True)
