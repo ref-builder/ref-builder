@@ -139,13 +139,6 @@ def otu_event_logs(repo: Repo, identifier: str) -> None:
 
 
 @otu.command(name="batch-update")
-@click.option("--precache", is_flag=True, help="Precache all NCBI Nucleotide records.")
-@click.option(
-    "--precache-batch-size",
-    type=int,
-    default=250,
-    help="Change precache batch size (default 250).",
-)
 @click.option(
     "--start-date",
     type=click.DateTime(["%Y-%m-%d", "%Y/%m/%d"]),
@@ -155,8 +148,6 @@ def otu_event_logs(repo: Repo, identifier: str) -> None:
 @pass_repo
 def otu_batch_auto_update(
     repo: Repo,
-    precache_batch_size: int,
-    precache: bool,
     ignore_cache: bool,
     start_date: datetime.date | None,
 ) -> None:
@@ -164,8 +155,6 @@ def otu_batch_auto_update(
     batch_update_repo(
         repo,
         start_date=start_date,
-        chunk_size=precache_batch_size,
-        precache_records=precache,
         ignore_cache=ignore_cache,
     )
 

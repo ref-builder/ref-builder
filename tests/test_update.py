@@ -236,7 +236,6 @@ class TestBatchUpdate:
             "OR889797",
         }
 
-
     def test_ok(self):
         """Test that batch update works as expected."""
         with self.repo.lock():
