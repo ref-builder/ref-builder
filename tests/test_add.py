@@ -9,11 +9,7 @@ from ref_builder.ncbi.models import (
     NCBITaxonomy,
     NCBITaxonomyOtherNames,
 )
-from ref_builder.otu.isolate import (
-    add_and_name_isolate,
-    add_genbank_isolate,
-    add_unnamed_isolate,
-)
+from ref_builder.otu.isolate import add_genbank_isolate
 from ref_builder.repo import Repo
 from ref_builder.services.otu import OTUService
 from ref_builder.utils import IsolateName, IsolateNameType
@@ -283,83 +279,6 @@ class TestAddIsolate:
             "Douglas Castle",
         )
 
-    def test_ignore_name(self, precached_repo: Repo):
-        """Test that add_unnamed_isolate() adds the isolate with a ``None`` name."""
-        isolate_1_accessions = ["DQ178610", "DQ178611"]
-        isolate_2_accessions = ["DQ178613", "DQ178614"]
-
-        ncbi_client = NCBIClient(ignore_cache=True)
-        otu_service = OTUService(precached_repo, ncbi_client)
-
-        with precached_repo.lock():
-            otu_before = otu_service.create(isolate_1_accessions)
-
-        assert otu_before
-        assert otu_before.accessions == set(isolate_1_accessions)
-
-        isolate_1 = otu_before.isolates[0]
-
-        assert isolate_1
-        assert isolate_1.accessions == set(isolate_1_accessions)
-
-        with precached_repo.lock():
-            isolate_2 = add_unnamed_isolate(
-                precached_repo, otu_before, isolate_2_accessions, ncbi_client
-            )
-
-        assert isolate_2
-
-        otu_after = precached_repo.get_otu(otu_before.id)
-
-        assert otu_after
-        assert otu_after.isolate_ids == {isolate_1.id, isolate_2.id}
-
-        assert isolate_2 == otu_after.get_isolate(isolate_2.id)
-        assert isolate_2.name is None
-        assert isolate_2.accessions == set(isolate_2_accessions)
-
-    def test_add_and_name_isolate(self, precached_repo: Repo):
-        """Test that add_and_name_isolate() creates an isolate with the correct name."""
-        isolate_1_accessions = ["DQ178610", "DQ178611"]
-        isolate_2_accessions = ["DQ178613", "DQ178614"]
-
-        ncbi_client = NCBIClient(ignore_cache=True)
-        otu_service = OTUService(precached_repo, ncbi_client)
-
-        with precached_repo.lock():
-            otu = otu_service.create(isolate_1_accessions)
-
-        assert otu
-        assert otu.accessions == set(isolate_1_accessions)
-
-        isolate_1 = otu.isolates[0]
-
-        assert isolate_1
-        assert isolate_1 == otu.get_isolate(isolate_1.id)
-
-        with precached_repo.lock():
-            isolate_2 = add_and_name_isolate(
-                precached_repo,
-                otu,
-                isolate_2_accessions,
-                IsolateName(type=IsolateNameType.ISOLATE, value="dummy"),
-                ncbi_client,
-            )
-
-        assert isolate_2
-
-        otu_after = precached_repo.get_otu(otu.id)
-
-        assert otu_after
-        assert otu_after.isolate_ids == {isolate_1.id, isolate_2.id}
-
-        assert isolate_2 == otu_after.get_isolate(isolate_2.id)
-        assert isolate_2.accessions == set(isolate_2_accessions)
-        assert isolate_2.name == IsolateName(
-            type=IsolateNameType.ISOLATE,
-            value="dummy",
-        )
-
     def test_blocked(self, precached_repo: Repo):
         """Test that an isolate cannot be added to an OTU if both its name and its
         accessions are already contained.
@@ -377,35 +296,6 @@ class TestAddIsolate:
                 add_genbank_isolate(precached_repo, otu, accessions, ncbi_client)
                 is None
             )
-
-    def test_name_conflict(self, precached_repo: Repo):
-        """Test that an isolate cannot be added to an OTU if its name is already contained."""
-        ncbi_client = NCBIClient(ignore_cache=True)
-        otu_service = OTUService(precached_repo, ncbi_client)
-
-        with precached_repo.lock():
-            otu_before = otu_service.create(["MF062136", "MF062137", "MF062138"])
-
-        assert otu_before
-
-        last_event_id_before_test = precached_repo.last_id
-
-        with precached_repo.lock():
-            isolate = add_and_name_isolate(
-                precached_repo,
-                otu_before,
-                ["NC_055390", "NC_055391", "NC_055392"],
-                IsolateName(type=IsolateNameType.ISOLATE, value="4342-5"),
-                ncbi_client,
-            )
-
-        assert isolate
-
-        otu_after = precached_repo.get_otu(otu_before.id)
-
-        assert otu_after
-        assert isolate.id not in otu_after.isolate_ids
-        assert precached_repo.last_id == last_event_id_before_test
 
     def test_plan_mismatch(self, scratch_repo: Repo, mock_ncbi_client):
         """Test that an isolate cannot be added to if it does not match the plan."""

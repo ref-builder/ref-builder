@@ -8,14 +8,9 @@ from ref_builder.cli.utils import get_otu_isolate_ids_from_identifier, pass_repo
 from ref_builder.cli.validate import validate_no_duplicate_accessions
 from ref_builder.console import print_isolate, print_isolate_as_json
 from ref_builder.ncbi.client import NCBIClient
-from ref_builder.otu.isolate import (
-    add_and_name_isolate,
-    add_genbank_isolate,
-    add_unnamed_isolate,
-)
+from ref_builder.otu.isolate import add_genbank_isolate
 from ref_builder.otu.modify import delete_isolate_from_otu
 from ref_builder.repo import Repo, locked_repo
-from ref_builder.utils import IsolateName, IsolateNameType
 
 
 @click.group(name="isolate")
@@ -36,26 +31,13 @@ def isolate(ctx: click.Context, path: Path) -> None:
     required=True,
 )
 @click.option("--taxid", type=int, required=True)
-@click.option(
-    "--unnamed",
-    is_flag=True,
-    default=False,
-    help="ignore isolate names in Genbank sources",
-)
-@click.option(
-    "--name",
-    type=(IsolateNameType, str),
-    help='an overriding name for the isolate, e.g. "isolate ARWV1"',
-)
 @ignore_cache_option
 @pass_repo
 def isolate_create(
     repo: Repo,
     accessions_: list[str],
     ignore_cache: bool,
-    name: tuple[IsolateNameType, str] | None,
     taxid: int,
-    unnamed: bool,
 ) -> None:
     """Create a new isolate using the given accessions."""
     otu_ = repo.get_otu_by_taxid(taxid)
@@ -65,29 +47,6 @@ def isolate_create(
         sys.exit(1)
 
     ncbi_client = NCBIClient(ignore_cache=ignore_cache)
-
-    if unnamed:
-        add_unnamed_isolate(
-            repo,
-            otu_,
-            accessions_,
-            ncbi_client,
-        )
-
-        sys.exit(0)
-
-    if name is not None:
-        isolate_name_type, isolate_name_value = name
-        isolate_name_ = IsolateName(type=isolate_name_type, value=isolate_name_value)
-
-        add_and_name_isolate(
-            repo,
-            otu_,
-            accessions_,
-            isolate_name_,
-            ncbi_client,
-        )
-        sys.exit(0)
 
     add_genbank_isolate(
         repo,
