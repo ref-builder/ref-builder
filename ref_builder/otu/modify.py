@@ -14,7 +14,6 @@ from ref_builder.otu.utils import (
 )
 from ref_builder.plan import (
     Plan,
-    SegmentName,
     SegmentRule,
 )
 from ref_builder.repo import Repo

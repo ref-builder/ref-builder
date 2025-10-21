@@ -1,5 +1,3 @@
-import datetime
-
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
@@ -7,8 +5,8 @@ from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.isolate import add_genbank_isolate
 from ref_builder.otu.promote import promote_otu_accessions
 from ref_builder.otu.update import (
-    auto_update_otu,
     batch_update_repo,
+    comprehensive_update_otu,
 )
 from ref_builder.repo import Repo
 from ref_builder.services.otu import OTUService
@@ -109,7 +107,7 @@ class TestUpdateOTU:
         }
 
         with precached_repo.lock():
-            auto_update_otu(precached_repo, otu_before)
+            comprehensive_update_otu(precached_repo, otu_before)
 
         otu_after = precached_repo.get_otu(otu_before.id)
 
@@ -135,36 +133,6 @@ class TestUpdateOTU:
             str(isolate.name): isolate.accessions for isolate in otu_after.isolates
         } == snapshot()
 
-    def test_start_date_limit(self, precached_repo: Repo):
-        """Test automatic update with the start date set to ``today``."""
-        otu_service = OTUService(precached_repo, NCBIClient(False))
-
-        with precached_repo.lock():
-            otu_before = otu_service.create(["NC_055390", "NC_055391", "NC_055392"])
-
-        assert otu_before
-        assert otu_before.accessions == {"NC_055390", "NC_055391", "NC_055392"}
-
-        with precached_repo.lock():
-            otu_after = auto_update_otu(
-                precached_repo,
-                otu_before,
-                start_date=datetime.date.today(),
-            )
-
-        assert otu_after
-        assert {
-            "MF062130",
-            "MF062131",
-            "MF062132",
-            "MF062136",
-            "MF062137",
-            "MF062138",
-            "OR889795",
-            "OR889796",
-            "OR889797",
-        }.isdisjoint(otu_after.accessions)
-
     def test_with_refseq_replacement_ok(
         self,
         precached_repo: Repo,
@@ -189,7 +157,7 @@ class TestUpdateOTU:
         )
 
         with precached_repo.lock():
-            otu_after = auto_update_otu(precached_repo, otu_before)
+            otu_after = comprehensive_update_otu(precached_repo, otu_before)
 
         isolate_after = otu_after.get_isolate(isolate_before.id)
 

@@ -16,7 +16,11 @@ from ref_builder.otu.isolate import (
     assign_records_to_segments,
     create_isolate,
 )
-from ref_builder.otu.promote import promote_otu_accessions_from_records
+from ref_builder.otu.promote import (
+    promote_otu_accessions,
+    promote_otu_accessions_from_records,
+    upgrade_outdated_sequences_in_otu,
+)
 from ref_builder.otu.utils import (
     DeleteRationale,
     get_segments_max_length,
@@ -50,39 +54,61 @@ class BaseBatchRecordGetter(ABC):
         return NotImplemented
 
 
-def auto_update_otu(
+def comprehensive_update_otu(
     repo: Repo,
     otu: OTUBuilder,
-    start_date: datetime.date | None = None,
     ignore_cache: bool = False,
 ) -> OTUBuilder:
-    """Fetch new accessions for the OTU and create isolates as possible."""
-    ncbi = NCBIClient(False)
+    """Comprehensively update an OTU by promoting, upgrading, and adding new isolates.
 
+    This function performs three operations in sequence:
+    1. Promote GenBank accessions to RefSeq equivalents where available
+    2. Upgrade outdated sequence versions (e.g., v1 → v2)
+    3. Add new isolates from newly available accessions
+    """
     log = logger.bind(taxid=otu.taxid, otu_id=str(otu.id), name=otu.name)
 
+    log.info("Starting comprehensive OTU update.")
+
+    # Step 1: Promote GenBank accessions to RefSeq
+    promoted_accessions = promote_otu_accessions(repo, otu, ignore_cache)
+    if promoted_accessions:
+        log.info("Promoted sequences", count=len(promoted_accessions))
+        otu = repo.get_otu(otu.id)
+
+    # Step 2: Upgrade outdated sequence versions
+    upgraded_sequence_ids = upgrade_outdated_sequences_in_otu(
+        repo,
+        otu,
+        modification_date_start=None,
+        ignore_cache=ignore_cache,
+    )
+    if upgraded_sequence_ids:
+        log.info("Upgraded sequences", count=len(upgraded_sequence_ids))
+        otu = repo.get_otu(otu.id)
+
+    # Step 3: Add new isolates
+    ncbi = NCBIClient(False)
     accessions = ncbi.filter_accessions(
         ncbi.fetch_accessions_by_taxid(
             otu.taxid,
             sequence_min_length=get_segments_min_length(otu.plan.segments),
             sequence_max_length=get_segments_max_length(otu.plan.segments),
-            modification_date_start=start_date,
         ),
     )
 
     fetch_set = {accession.key for accession in accessions} - otu.blocked_accessions
 
     if fetch_set:
-        log.info("Syncing OTU with Genbank.")
+        log.info("Adding new isolates from NCBI.")
         new_isolate_ids = update_otu_with_accessions(repo, otu, fetch_set, ignore_cache)
 
         if new_isolate_ids:
-            log.info("Added new isolates", isolate_ids=new_isolate_ids)
-
-    else:
-        log.info("OTU is up to date.")
+            log.info("Added new isolates", count=len(new_isolate_ids))
 
     repo.write_otu_update_history_entry(otu.id)
+
+    log.info("Comprehensive OTU update complete.")
 
     return repo.get_otu(otu.id)
 
