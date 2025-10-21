@@ -14,7 +14,6 @@ from ref_builder.otu.utils import (
 )
 from ref_builder.plan import (
     Plan,
-    SegmentName,
     SegmentRule,
 )
 from ref_builder.repo import Repo
@@ -213,33 +212,6 @@ def add_segments_to_plan(
     log.info("Added new segments", ids=[str(segment.id) for segment in new_segments])
 
     return {segment.id for segment in new_segments}
-
-
-def rename_plan_segment(
-    repo: Repo,
-    otu: OTUBuilder,
-    segment_id: UUID,
-    segment_name: SegmentName,
-) -> Plan | None:
-    """Set a new name for the segment matching the given ID if possible, else return None."""
-    log = logger.bind(
-        name=otu.name,
-        taxid=otu.taxid,
-        segment_id=str(segment_id),
-        segment_name=str(segment_name),
-    )
-
-    modified_plan = otu.plan.model_copy()
-
-    for segment in modified_plan.segments:
-        if segment.id == segment_id:
-            segment.name = segment_name
-
-            return set_plan(repo, otu, modified_plan)
-
-    log.error("Segment with requested ID not found.")
-
-    return None
 
 
 def replace_sequence_in_otu(

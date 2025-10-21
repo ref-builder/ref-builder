@@ -1,4 +1,4 @@
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import pytest
 from pydantic import ValidationError
@@ -11,7 +11,6 @@ from ref_builder.otu.modify import (
     allow_accessions_into_otu,
     delete_isolate_from_otu,
     exclude_accessions_from_otu,
-    rename_plan_segment,
     replace_sequence_in_otu,
     set_plan,
     set_plan_length_tolerances,
@@ -118,79 +117,10 @@ class TestSetPlan:
         assert type(new_plan) is Plan
 
         otu_after = scratch_repo.get_otu(otu_before.id)
-        assert otu_after is not None
 
+        assert otu_after is not None
         assert len(otu_after.plan.segments) == len(otu_before.plan.segments) + 2
-
         assert otu_after.plan == new_plan
-
-    def test_rename_segment_ok(self, scratch_repo: Repo, mock_ncbi_client):
-        """Test that a given plan segment can be renamed."""
-        otu_before = scratch_repo.get_otu_by_taxid(
-            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
-        )
-        assert otu_before is not None
-
-        first_segment_id = otu_before.plan.segments[0].id
-
-        new_name = SegmentName(prefix="RNA", key="TestName")
-
-        segment_before = otu_before.plan.get_segment_by_id(first_segment_id)
-        assert segment_before is not None
-        assert segment_before.name != new_name
-
-        with scratch_repo.lock():
-            rename_plan_segment(
-                scratch_repo,
-                otu_before,
-                segment_id=first_segment_id,
-                segment_name=SegmentName(prefix="RNA", key="TestName"),
-            )
-
-        otu_after = scratch_repo.get_otu_by_taxid(
-            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
-        )
-        assert otu_after is not None
-
-        segment_after = otu_after.plan.get_segment_by_id(first_segment_id)
-        assert segment_after is not None
-        assert segment_after.name == new_name
-
-    def test_rename_segment_fail(self, scratch_repo: Repo, mock_ncbi_client):
-        """Test that an attempt to rename a nonexistent segment does not change the OTU."""
-        otu_before = scratch_repo.get_otu_by_taxid(
-            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
-        )
-        assert otu_before is not None
-
-        first_segment = otu_before.plan.segments[0]
-
-        new_name = SegmentName(prefix="RNA", key="TestName")
-
-        segment_before = otu_before.plan.get_segment_by_id(first_segment.id)
-        assert segment_before is not None
-        assert segment_before.name != new_name
-
-        assert (
-            rename_plan_segment(
-                scratch_repo,
-                otu_before,
-                segment_id=uuid4(),
-                segment_name=SegmentName(prefix="RNA", key="TestName"),
-            )
-            is None
-        )
-
-        otu_after = scratch_repo.get_otu_by_taxid(
-            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
-        )
-        assert otu_after is not None
-
-        assert otu_after.plan.model_dump_json() == otu_before.plan.model_dump_json()
-
-        segment_after = otu_after.plan.get_segment_by_id(first_segment.id)
-        assert segment_after is not None
-        assert segment_after.name == first_segment.name
 
     @pytest.mark.parametrize(
         ("initial_accessions", "new_accessions"),

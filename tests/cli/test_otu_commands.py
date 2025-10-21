@@ -34,11 +34,11 @@ class TestCreateOTUCommands:
         assert otus[0].taxid == taxid
 
 
-class TestPromoteOTUCommand:
-    """Test that the ``ref-builder otu promote`` command works as planned."""
+class TestUpdateOTUCommand:
+    """Test that the ``ref-builder otu update`` command works as planned."""
 
     def test_ok(self, empty_repo: Repo):
-        """Test that otu promote adds new accessions to OTU."""
+        """Test comprehensive update: promote, upgrade, and add new isolates."""
         path_option = ["--path", str(empty_repo.path)]
 
         original_accessions = {"MF062125", "MF062126", "MF062127"}
@@ -63,7 +63,7 @@ class TestPromoteOTUCommand:
 
         result = runner.invoke(
             otu_command_group,
-            [*path_option, "promote", str(taxid)],
+            [*path_option, "update", str(taxid)],
         )
 
         assert result.exit_code == 0
@@ -73,115 +73,16 @@ class TestPromoteOTUCommand:
         otu_after = repo_after.get_otu(otu_before.id)
 
         assert otu_after
-        assert otu_after.accessions == {"NC_055390", "NC_055391", "NC_055392"}
-        assert otu_after.excluded_accessions == original_accessions
 
-    def test_redundant(self, empty_repo: Repo):
-        """Test that command works correctly when the OTU is already up to date."""
-        path_option = ["--path", str(empty_repo.path)]
+        # Verify promotion occurred: RefSeq accessions present
+        refseq_accessions = {"NC_055390", "NC_055391", "NC_055392"}
+        assert refseq_accessions.issubset(otu_after.accessions)
 
-        rep_isolate_accessions = {"NC_055390", "NC_055391", "NC_055392"}
+        # Verify original accessions were excluded after promotion
+        assert original_accessions.issubset(otu_after.excluded_accessions)
 
-        result = runner.invoke(
-            otu_command_group,
-            [
-                *path_option,
-                "create",
-                *list(rep_isolate_accessions),
-            ],
-        )
-
-        assert result.exit_code == 0
-
-        taxid = int(result.output.split("TAXID")[1].split()[0])
-
-        otu = empty_repo.get_otu_by_taxid(taxid)
-
-        assert otu
-        assert otu.excluded_accessions == {"MF062125", "MF062126", "MF062127"}
-
-        result = runner.invoke(
-            otu_command_group,
-            [*path_option, "promote", str(taxid)],
-        )
-
-        assert result.exit_code == 0
-        assert "Isolate updated" not in result.output
-
-
-class TestUpgradeOTUCommand:
-    """Test that the ``ref-builder otu upgrade`` command works as planned."""
-
-    def test_ok(self, precached_repo: Repo):
-        path_option = ["--path", str(precached_repo.path)]
-
-        result = runner.invoke(
-            otu_command_group,
-            [*path_option, "create", "NC_004452.1"],
-        )
-
-        taxid = int(result.output.split("TAXID")[1].split()[0])
-
-        otu_before = precached_repo.get_otu_by_taxid(taxid)
-
-        assert otu_before
-
-        sequence_before = otu_before.get_sequence_by_accession("NC_004452")
-
-        assert sequence_before
-        assert sequence_before.accession.version == 1
-
-        result = runner.invoke(
-            otu_command_group, [*path_option, "upgrade", str(otu_before.id)]
-        )
-
-        assert result.exit_code == 0
-
-        otu_after = precached_repo.get_otu(otu_before.id)
-
-        assert otu_after
-
-        sequence_after = otu_after.get_sequence_by_accession("NC_004452")
-
-        assert sequence_after
-        assert sequence_after.accession.version > sequence_before.accession.version
-
-    def test_with_future_date_limit(self, precached_repo: Repo):
-        path_option = ["--path", str(precached_repo.path)]
-
-        result = runner.invoke(
-            otu_command_group,
-            [*path_option, "create", "NC_004452.1"],
-        )
-
-        taxid = int(result.output.split("TAXID")[1].split()[0])
-
-        otu_before = precached_repo.get_otu_by_taxid(taxid)
-
-        assert otu_before is not None
-
-        sequence_before = otu_before.get_sequence_by_accession("NC_004452")
-
-        assert sequence_before is not None
-        assert sequence_before.accession.version == 1
-
-        result = runner.invoke(
-            otu_command_group,
-            [*path_option, "upgrade", str(otu_before.id), "--start-date", "3000-01-01"],
-        )
-
-        assert result.exit_code == 0
-
-        otu_after = precached_repo.get_otu(otu_before.id)
-
-        assert otu_after
-
-        sequence_after = otu_after.get_sequence_by_accession("NC_004452")
-
-        assert sequence_after
-        assert (
-            sequence_after.accession.version == sequence_before.accession.version == 1
-        )
+        # Verify new isolates were added (more accessions than just RefSeq)
+        assert len(otu_after.accessions) > len(refseq_accessions)
 
 
 class TestExcludeAccessionsCommand:

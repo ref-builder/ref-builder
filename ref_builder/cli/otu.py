@@ -1,7 +1,6 @@
 import datetime
 import sys
 from pathlib import Path
-from uuid import UUID
 
 import click
 import structlog
@@ -20,17 +19,12 @@ from ref_builder.otu.modify import (
     add_segments_to_plan,
     allow_accessions_into_otu,
     exclude_accessions_from_otu,
-    rename_plan_segment,
-)
-from ref_builder.otu.promote import (
-    promote_otu_accessions,
-    upgrade_outdated_sequences_in_otu,
 )
 from ref_builder.otu.update import (
-    auto_update_otu,
     batch_update_repo,
+    comprehensive_update_otu,
 )
-from ref_builder.plan import SegmentName, SegmentRule
+from ref_builder.plan import SegmentRule
 from ref_builder.repo import Repo, locked_repo
 from ref_builder.services.otu import OTUService
 
@@ -139,74 +133,42 @@ def otu_event_logs(repo: Repo, identifier: str) -> None:
 
 
 @otu.command(name="batch-update")
-@click.option("--precache", is_flag=True, help="Precache all NCBI Nucleotide records.")
-@click.option(
-    "--precache-batch-size",
-    type=int,
-    default=250,
-    help="Change precache batch size (default 250).",
-)
 @click.option(
     "--start-date",
     type=click.DateTime(["%Y-%m-%d", "%Y/%m/%d"]),
     help="Exclude records edited before this date",
 )
-@click.option(
-    "--fetch-index-path",
-    type=click.Path(
-        exists=True,
-        file_okay=True,
-        path_type=Path,
-    ),
-    help="Input a file path to a fetch index file.",
-)
 @ignore_cache_option
 @pass_repo
 def otu_batch_auto_update(
     repo: Repo,
-    precache_batch_size: int,
-    precache: bool,
     ignore_cache: bool,
     start_date: datetime.date | None,
-    fetch_index_path: Path | None,
 ) -> None:
     """Update all OTUs with the latest data from NCBI."""
     batch_update_repo(
         repo,
         start_date=start_date,
-        fetch_index_path=fetch_index_path,
-        chunk_size=precache_batch_size,
-        precache_records=precache,
         ignore_cache=ignore_cache,
     )
 
 
 @otu.command(name="update")
 @click.argument("IDENTIFIER", type=str)
-@click.option(
-    "--start-date",
-    type=click.DateTime(["%Y-%m-%d", "%Y/%m/%d"]),
-    help="Exclude records edited before this date",
-)
-@click.option(
-    "--fetch-index-path",
-    type=click.Path(
-        exists=True,
-        file_okay=True,
-        path_type=Path,
-    ),
-    help="Input a file path to a fetch index file.",
-)
 @ignore_cache_option
 @pass_repo
 def otu_auto_update(
     repo: Repo,
     identifier: str,
-    start_date: datetime.date | None,
-    fetch_index_path: Path | None,
     ignore_cache: bool,
 ) -> None:
-    """Update an OTU with the latest data from NCBI."""
+    """Comprehensively update an OTU with the latest data from NCBI.
+
+    This command performs three operations:
+    1. Promotes GenBank accessions to RefSeq equivalents where available
+    2. Upgrades outdated sequence versions (e.g., v1 → v2)
+    3. Adds new isolates from newly available accessions
+    """
     otu_service = OTUService(repo, NCBIClient(ignore_cache))
     otu_ = otu_service.get_otu(identifier)
 
@@ -214,57 +176,9 @@ def otu_auto_update(
         click.echo("OTU not found.", err=True)
         sys.exit(1)
 
-    auto_update_otu(
+    comprehensive_update_otu(
         repo,
         otu_,
-        fetch_index_path=fetch_index_path,
-        start_date=start_date,
-        ignore_cache=ignore_cache,
-    )
-
-
-@otu.command(name="promote")
-@click.argument("IDENTIFIER", type=str)
-@ignore_cache_option
-@pass_repo
-def otu_promote_accessions(repo: Repo, identifier: str, ignore_cache: bool) -> None:
-    """Promote all RefSeq accessions within an OTU."""
-    otu_service = OTUService(repo, NCBIClient(ignore_cache))
-    otu_ = otu_service.get_otu(identifier)
-
-    if otu_ is None:
-        click.echo("OTU not found.", err=True)
-        sys.exit(1)
-
-    promote_otu_accessions(repo, otu_, ignore_cache)
-
-
-@otu.command(name="upgrade")
-@click.argument("IDENTIFIER", type=str)
-@click.option(
-    "--start-date",
-    type=click.DateTime(["%Y-%m-%d", "%Y/%m/%d"]),
-    help="Exclude records modified before this date",
-)
-@ignore_cache_option
-@pass_repo
-def otu_upgrade_accessions(
-    repo: Repo, identifier: str, start_date: datetime.date | None, ignore_cache: bool
-) -> None:
-    """Upgrade all outdated sequences within an OTU."""
-    otu_service = OTUService(repo, NCBIClient(ignore_cache))
-    otu_ = otu_service.get_otu(identifier)
-
-    if otu_ is None:
-        click.echo("OTU not found.", err=True)
-        sys.exit(1)
-
-    upgrade_outdated_sequences_in_otu(
-        repo,
-        otu_,
-        modification_date_start=datetime.datetime.combine(start_date, datetime.time.min)
-        if start_date
-        else None,
         ignore_cache=ignore_cache,
     )
 
@@ -375,49 +289,3 @@ def plan_extend_segment_list(
         ignore_cache=ignore_cache,
     ):
         sys.exit(1)
-
-
-@otu.command(name="rename-plan-segment")
-@click.argument("IDENTIFIER", type=str)
-@click.option(
-    "--segment-id",
-    "segment_id_",
-    type=str,
-    required=True,
-    help="The ID of the segment.",
-)
-@click.option(
-    "--segment-name",
-    "--name",
-    "segment_name_",
-    type=(str, str),
-    required=True,
-    help="A segment name, e.g. 'RNA B'",
-)
-@pass_repo
-def plan_rename_segment(
-    repo: Repo,
-    segment_id_: str,
-    segment_name_: tuple[str, str],
-    identifier: str,
-) -> None:
-    """Give an unnamed segment a name.
-
-    IDENTIFIER is a taxonomy ID or unique OTU ID (>8 characters)
-    """
-    otu_service = OTUService(repo, NCBIClient(False))
-    otu_ = otu_service.get_otu(identifier)
-
-    if otu_ is None:
-        click.echo("OTU not found.", err=True)
-        sys.exit(1)
-
-    try:
-        rename_plan_segment(
-            repo,
-            otu_,
-            segment_id=UUID(segment_id_),
-            segment_name=SegmentName(segment_name_[0], segment_name_[1]),
-        )
-    except ValueError as e:
-        click.echo(e, err=True)

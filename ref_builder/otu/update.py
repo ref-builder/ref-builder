@@ -16,7 +16,11 @@ from ref_builder.otu.isolate import (
     assign_records_to_segments,
     create_isolate,
 )
-from ref_builder.otu.promote import promote_otu_accessions_from_records
+from ref_builder.otu.promote import (
+    promote_otu_accessions,
+    promote_otu_accessions_from_records,
+    upgrade_outdated_sequences_in_otu,
+)
 from ref_builder.otu.utils import (
     DeleteRationale,
     get_segments_max_length,
@@ -50,50 +54,61 @@ class BaseBatchRecordGetter(ABC):
         return NotImplemented
 
 
-def auto_update_otu(
+def comprehensive_update_otu(
     repo: Repo,
     otu: OTUBuilder,
-    fetch_index_path: Path | None = None,
-    start_date: datetime.date | None = None,
     ignore_cache: bool = False,
 ) -> OTUBuilder:
-    """Fetch new accessions for the OTU and create isolates as possible."""
-    ncbi = NCBIClient(False)
+    """Comprehensively update an OTU by promoting, upgrading, and adding new isolates.
 
+    This function performs three operations in sequence:
+    1. Promote GenBank accessions to RefSeq equivalents where available
+    2. Upgrade outdated sequence versions (e.g., v1 → v2)
+    3. Add new isolates from newly available accessions
+    """
     log = logger.bind(taxid=otu.taxid, otu_id=str(otu.id), name=otu.name)
 
-    fetch_set = set()
+    log.info("Starting comprehensive OTU update.")
 
-    if isinstance(fetch_index_path, Path):
-        log.info("Loading fetch index...", fetch_index_path=str(fetch_index_path))
+    # Step 1: Promote GenBank accessions to RefSeq
+    promoted_accessions = promote_otu_accessions(repo, otu, ignore_cache)
+    if promoted_accessions:
+        log.info("Promoted sequences", count=len(promoted_accessions))
+        otu = repo.get_otu(otu.id)
 
-        fetch_index = _load_fetch_index(fetch_index_path)
+    # Step 2: Upgrade outdated sequence versions
+    upgraded_sequence_ids = upgrade_outdated_sequences_in_otu(
+        repo,
+        otu,
+        modification_date_start=None,
+        ignore_cache=ignore_cache,
+    )
+    if upgraded_sequence_ids:
+        log.info("Upgraded sequences", count=len(upgraded_sequence_ids))
+        otu = repo.get_otu(otu.id)
 
-        fetch_set = fetch_index.get(otu.taxid, fetch_set)
+    # Step 3: Add new isolates
+    ncbi = NCBIClient(False)
+    accessions = ncbi.filter_accessions(
+        ncbi.fetch_accessions_by_taxid(
+            otu.taxid,
+            sequence_min_length=get_segments_min_length(otu.plan.segments),
+            sequence_max_length=get_segments_max_length(otu.plan.segments),
+        ),
+    )
 
-    if not fetch_set:
-        accessions = ncbi.filter_accessions(
-            ncbi.fetch_accessions_by_taxid(
-                otu.taxid,
-                sequence_min_length=get_segments_min_length(otu.plan.segments),
-                sequence_max_length=get_segments_max_length(otu.plan.segments),
-                modification_date_start=start_date,
-            ),
-        )
-
-        fetch_set = {accession.key for accession in accessions} - otu.blocked_accessions
+    fetch_set = {accession.key for accession in accessions} - otu.blocked_accessions
 
     if fetch_set:
-        log.info("Syncing OTU with Genbank.")
+        log.info("Adding new isolates from NCBI.")
         new_isolate_ids = update_otu_with_accessions(repo, otu, fetch_set, ignore_cache)
 
         if new_isolate_ids:
-            log.info("Added new isolates", isolate_ids=new_isolate_ids)
-
-    else:
-        log.info("OTU is up to date.")
+            log.info("Added new isolates", count=len(new_isolate_ids))
 
     repo.write_otu_update_history_entry(otu.id)
+
+    log.info("Comprehensive OTU update complete.")
 
     return repo.get_otu(otu.id)
 
@@ -143,9 +158,6 @@ class RecordFetcher(BaseBatchRecordGetter):
 def batch_update_repo(
     repo: Repo,
     start_date: datetime.date | None = None,
-    chunk_size: int = RECORD_FETCH_CHUNK_SIZE,
-    fetch_index_path: Path | None = None,
-    precache_records: bool = False,
     skip_recently_updated: bool = True,
     ignore_cache: bool = False,
 ) -> set[UUID]:
@@ -156,45 +168,34 @@ def batch_update_repo(
 
     repo_logger = logger.bind(
         path=str(repo.path),
-        precache_records=precache_records,
     )
     if start_date is not None:
         repo_logger = repo_logger.bind(start_date.isoformat())
 
     repo_logger.info("Starting batch update...")
 
-    if fetch_index_path is None:
-        if skip_recently_updated:
-            otu_iterator = (
-                otu
-                for otu in repo.iter_otus()
-                if _otu_is_cooled(
-                    repo,
-                    otu.id,
-                    timestamp_current=operation_run_timestamp,
-                )
+    if skip_recently_updated:
+        otu_iterator = (
+            otu
+            for otu in repo.iter_otus()
+            if _otu_is_cooled(
+                repo,
+                otu.id,
+                timestamp_current=operation_run_timestamp,
             )
-        else:
-            otu_iterator = repo.iter_otus()
-
-        batch_fetch_index = batch_fetch_new_accessions(
-            otu_iterator,
-            modification_date_start=start_date,
-            ignore_cache=ignore_cache,
         )
-
-        fetch_index_cache_path = _cache_fetch_index(
-            batch_fetch_index, repo.path / ".cache"
-        )
-
-        repo_logger.info("Fetch index cached", fetch_index_path=fetch_index_cache_path)
-
     else:
-        repo_logger.info(
-            "Loading fetch index...", fetch_index_path=str(fetch_index_path)
-        )
+        otu_iterator = repo.iter_otus()
 
-        batch_fetch_index = _load_fetch_index(fetch_index_path)
+    batch_fetch_index = batch_fetch_new_accessions(
+        otu_iterator,
+        modification_date_start=start_date,
+        ignore_cache=ignore_cache,
+    )
+
+    fetch_index_cache_path = _cache_fetch_index(batch_fetch_index, repo.path / ".cache")
+
+    repo_logger.info("Fetch index cached", fetch_index_path=fetch_index_cache_path)
 
     if not batch_fetch_index:
         logger.info("OTUs are up to date.")
@@ -206,31 +207,25 @@ def batch_update_repo(
         otu_count=len(batch_fetch_index),
     )
 
-    if precache_records:
-        fetch_set = {
-            accession
-            for otu_accessions in batch_fetch_index.values()
-            for accession in otu_accessions
-        }
+    fetch_set = {
+        accession
+        for otu_accessions in batch_fetch_index.values()
+        for accession in otu_accessions
+    }
 
-        logger.info("Precaching records...", accession_count=len(fetch_set))
+    logger.info("Precaching records...", accession_count=len(fetch_set))
 
-        record_index_by_accession = batch_fetch_new_records(
-            fetch_set,
-            chunk_size=chunk_size,
-            ignore_cache=ignore_cache,
-        )
+    record_index_by_accession = batch_fetch_new_records(
+        fetch_set,
+        chunk_size=RECORD_FETCH_CHUNK_SIZE,
+        ignore_cache=ignore_cache,
+    )
 
-        if not record_index_by_accession:
-            logger.info("No valid accessions found.")
-            return updated_otu_ids
+    if not record_index_by_accession:
+        logger.info("No valid accessions found.")
+        return updated_otu_ids
 
-        record_getter = PrecachedRecordStore(
-            batch_fetch_index, record_index_by_accession
-        )
-
-    else:
-        record_getter = RecordFetcher(batch_fetch_index)
+    record_getter = PrecachedRecordStore(batch_fetch_index, record_index_by_accession)
 
     for taxid, accessions in batch_fetch_index.items():
         if (otu_id := repo.get_otu_id_by_taxid(taxid)) is None:
@@ -545,23 +540,6 @@ def _cache_fetch_index(
 
     if fetch_index_path.exists():
         return fetch_index_path
-
-    return None
-
-
-def _load_fetch_index(path: Path) -> dict[int, set[str]] | None:
-    """Load a batch fetch index from file."""
-    if not path.exists():
-        return None
-
-    if path.suffix != ".json":
-        return None
-
-    with open(path, "rb") as f:
-        fetch_index = BatchFetchIndex.model_validate_json(f.read())
-
-    if fetch_index:
-        return fetch_index.model_dump()
 
     return None
 

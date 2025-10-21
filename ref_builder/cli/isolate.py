@@ -21,7 +21,7 @@ def isolate(ctx: click.Context, path: Path) -> None:
     ctx.obj = ctx.with_resource(locked_repo(path))
 
 
-@isolate.command(name="create")  # type: ignore
+@isolate.command(name="create")
 @click.argument(
     "accessions_",
     callback=validate_no_duplicate_accessions,
@@ -56,7 +56,7 @@ def isolate_create(
     )
 
 
-@isolate.command(name="delete")  # type: ignore
+@isolate.command(name="delete")
 @click.argument("IDENTIFIER", type=str)
 @pass_repo
 def isolate_delete(repo: Repo, identifier: str) -> None:
