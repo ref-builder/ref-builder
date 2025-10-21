@@ -38,56 +38,6 @@ class TestIsolateCreateCommand:
 
         assert "Isolate created" in result.output
 
-    def test_overwrite_name_option_ok(self, precached_repo):
-        """Test that --name option exits smoothly"""
-        path_option_list = ["--path", str(precached_repo.path)]
-
-        result = runner.invoke(
-            otu_command_group,
-            [*path_option_list, "create", "DQ178610", "DQ178611"],
-        )
-
-        assert result.exit_code == 0
-
-        taxid = result.output.split("TAXID")[1].split()[0]
-
-        result = runner.invoke(
-            isolate_command_group,
-            path_option_list
-            + ["create", "--taxid", str(taxid)]
-            + ["--name", "isolate", "dummy"]
-            + ["DQ178613", "DQ178614"],
-        )
-
-        assert result.exit_code == 0
-
-        assert "Isolate created" and "Isolate dummy" in result.output
-
-    def test_unnamed_option_ok(self, precached_repo):
-        """Test that --unnamed option exits smoothly."""
-        path_option_list = ["--path", str(precached_repo.path)]
-
-        result = runner.invoke(
-            otu_command_group,
-            [*path_option_list, "create", "DQ178610", "DQ178611"],
-        )
-
-        assert result.exit_code == 0
-
-        taxid = result.output.split("TAXID")[1].split()[0]
-
-        result = runner.invoke(
-            isolate_command_group,
-            path_option_list
-            + ["create", "--taxid", str(taxid)]
-            + ["--unnamed"]
-            + ["DQ178613", "DQ178614"],
-        )
-
-        assert result.exit_code == 0
-
-        assert "Isolate created" and "Unnamed" in result.output
-
     def test_duplicate_accessions_error(self, scratch_repo):
         """Test that an error is raised when duplicate accessions are provided."""
         result = runner.invoke(

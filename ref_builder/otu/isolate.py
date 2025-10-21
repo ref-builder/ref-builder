@@ -97,66 +97,6 @@ def add_genbank_isolate(
     return None
 
 
-def add_unnamed_isolate(
-    repo: Repo,
-    otu: OTUBuilder,
-    accessions: list[str],
-    ncbi_client: "NCBIClient",
-) -> IsolateBuilder | None:
-    """Create an unnamed isolate from a list of accessions.
-
-    Download the GenBank records and pass the isolate name and records to the add
-    method.
-    """
-    records = fetch_records_from_accessions(
-        accessions, otu.blocked_accessions, ncbi_client
-    )
-
-    if not records:
-        return None
-
-    with repo.use_transaction() as transaction:
-        isolate = create_isolate(repo, otu, None, records)
-
-        if isolate:
-            return isolate
-
-        transaction.abort()
-
-    return None
-
-
-def add_and_name_isolate(
-    repo: Repo,
-    otu: OTUBuilder,
-    accessions: list[str],
-    isolate_name: IsolateName,
-    ncbi_client: "NCBIClient",
-) -> IsolateBuilder | None:
-    """Take a list of accessions that make up a new isolate and a preferred
-    isolate name, then add a new isolate to the OTU.
-
-    Download the GenBank records and pass the isolate name and records to
-    the add method.
-    """
-    records = fetch_records_from_accessions(
-        accessions, otu.blocked_accessions, ncbi_client
-    )
-
-    if not records:
-        return None
-
-    with repo.use_transaction() as transaction:
-        isolate = create_isolate(repo, otu, isolate_name, records)
-
-        if isolate:
-            return isolate
-
-        transaction.abort()
-
-    return None
-
-
 def create_isolate(
     repo: Repo,
     otu: OTUBuilder,
