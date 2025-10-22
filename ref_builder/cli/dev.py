@@ -128,7 +128,7 @@ def refresh(output_dir: Path) -> None:
         }
 
         json_path = output_path / f"{attr_name}.json"
-        json_path.write_text(json.dumps(json_data, indent=2))
+        json_path.write_text(json.dumps(json_data))
         click.echo(f"  Wrote {json_path}")
 
         generated_count += 1

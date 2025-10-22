@@ -101,12 +101,6 @@ entry.add_command(dev)
 
 @entry.command()
 @click.option(
-    "-i",
-    "--indent",
-    is_flag=True,
-    help="Indent the output JSON file",
-)
-@click.option(
     "-V",
     "--version",
     default="",
@@ -121,6 +115,6 @@ entry.add_command(dev)
     help="The path to write the reference.json file to",
 )
 @path_option
-def build(indent: bool, path: Path, target_path: Path, version: str) -> None:
+def build(path: Path, target_path: Path, version: str) -> None:
     """Build a Virtool reference.json file from the reference repository."""
-    build_json(indent, target_path, path, version)
+    build_json(target_path, path, version)

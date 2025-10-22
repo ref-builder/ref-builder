@@ -152,7 +152,7 @@ class TestEvents:
 
 
 class TestGetIDByPartial:
-    """Test the `get_id_by_partial` method of the Snapshotter class."""
+    """Test `Index.get_id_by_partial`."""
 
     def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
         """Test that the correct OTU ID is retrieved by a truncated partial."""
@@ -165,7 +165,7 @@ class TestGetIDByPartial:
 
 
 class TestGetIDByAcronym:
-    """Test the `get_id_by_acronym` method of the Index class."""
+    """Test `Index.get_id_by_acronym`."""
 
     def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
         """Test that the correct OTU ID is retrieved by acronym."""
@@ -184,7 +184,7 @@ class TestGetIDByAcronym:
 
 
 class TestGetIDByName:
-    """Test the `get_id_by_name` method of the Snapshotter class."""
+    """Test `Index.get_id_by_name`."""
 
     def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
         """Test that the correct OTU ID is retrieved by name."""
@@ -197,7 +197,7 @@ class TestGetIDByName:
 
 
 class TestGetIDByTaxid:
-    """Test the `get_id_by_taxid` method of the Snapshotter class."""
+    """Test `Index.get_id_by_taxid`."""
 
     def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
         """Test that the correct OTU ID is retrieved by taxid."""
@@ -209,20 +209,20 @@ class TestGetIDByTaxid:
         assert index.get_id_by_taxid(999999999999999) is None
 
 
-def test_get_id_by_isolate_id(index: Index, indexable_otus: list[OTUBuilder]):
-    """Test the `get_id_by_isolate_id` method of the Index class."""
-    for otu in indexable_otus:
-        first_isolate = next(iter(otu.isolate_ids))
+class TestGetIDByIsolateID:
+    def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
+        """Test the `get_id_by_isolate_id` method of the Index class."""
+        for otu in indexable_otus:
+            first_isolate = next(iter(otu.isolate_ids))
 
-        assert index.get_id_by_isolate_id(first_isolate) == otu.id
+            assert index.get_id_by_isolate_id(first_isolate) == otu.id
 
+    def test_partial(self, index: Index, indexable_otus: list[OTUBuilder]):
+        """Test the `get_isolate_id_by_partial` method of the Index class."""
+        for otu in indexable_otus:
+            first_isolate_id = next(iter(otu.isolate_ids))
 
-def test_get_isolate_id_by_partial(index: Index, indexable_otus: list[OTUBuilder]):
-    """Test the `get_isolate_id_by_partial` method of the Index class."""
-    for otu in indexable_otus:
-        first_isolate_id = next(iter(otu.isolate_ids))
-
-        assert (
-            index.get_isolate_id_by_partial(str(first_isolate_id)[:8])
-            == first_isolate_id
-        )
+            assert (
+                index.get_isolate_id_by_partial(str(first_isolate_id)[:8])
+                == first_isolate_id
+            )
