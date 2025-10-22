@@ -1,7 +1,7 @@
 from pydantic import UUID4
 
 from ref_builder.events.base import Event, EventData, RepoQuery
-from ref_builder.resources import RepoSettings
+from ref_builder.models.repo import RepoSettings
 
 
 class CreateRepoData(EventData):

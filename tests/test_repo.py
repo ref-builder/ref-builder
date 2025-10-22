@@ -7,19 +7,17 @@ import pytest
 from structlog.testing import capture_logs
 
 from ref_builder.errors import InvalidInputError
-from ref_builder.enums import Molecule, MolType, Strandedness, Topology
+from ref_builder.isolate import IsolateNameType
+from ref_builder.models.accession import Accession
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.molecule import Molecule, MoleculeType, Strandedness, Topology
+from ref_builder.models.plan import Plan, Segment, SegmentRule
+from ref_builder.models.repo import DataType
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
-from ref_builder.plan import Plan, Segment, SegmentRule
 from ref_builder.repo import GITIGNORE_CONTENTS, Repo
-from ref_builder.utils import (
-    Accession,
-    DataType,
-    IsolateName,
-    IsolateNameType,
-    OTUDeletedWarning,
-)
+from ref_builder.warnings import OTUDeletedWarning
 
 SEGMENT_LENGTH = 15
 
@@ -88,7 +86,7 @@ def initialized_repo(tmp_path: Path):
             acronym="TMV",
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
-                type=MolType.RNA,
+                type=MoleculeType.RNA,
                 topology=Topology.LINEAR,
             ),
             name="Tobacco mosaic virus",
@@ -132,7 +130,7 @@ def init_otu(repo: Repo) -> OTUBuilder:
         acronym="TMV",
         molecule=Molecule(
             strandedness=Strandedness.SINGLE,
-            type=MolType.RNA,
+            type=MoleculeType.RNA,
             topology=Topology.LINEAR,
         ),
         name="Tobacco mosaic virus",
@@ -203,7 +201,7 @@ class TestCreateOTU:
                 acronym="TMV",
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
-                    type=MolType.RNA,
+                    type=MoleculeType.RNA,
                     topology=Topology.LINEAR,
                 ),
                 name="Tobacco mosaic virus",
@@ -218,7 +216,7 @@ class TestCreateOTU:
                 excluded_accessions=set(),
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
-                    type=MolType.RNA,
+                    type=MoleculeType.RNA,
                     topology=Topology.LINEAR,
                 ),
                 name="Tobacco mosaic virus",
@@ -285,7 +283,7 @@ class TestCreateOTU:
                 acronym="TMV",
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
-                    type=MolType.RNA,
+                    type=MoleculeType.RNA,
                     topology=Topology.LINEAR,
                 ),
                 name="Tobacco mosaic virus",
@@ -309,7 +307,7 @@ class TestCreateOTU:
                     acronym="TMV",
                     molecule=Molecule(
                         strandedness=Strandedness.SINGLE,
-                        type=MolType.RNA,
+                        type=MoleculeType.RNA,
                         topology=Topology.LINEAR,
                     ),
                     name="Tobacco mosaic virus",
@@ -349,7 +347,7 @@ class TestCreateOTU:
                 acronym="TMV",
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
-                    type=MolType.RNA,
+                    type=MoleculeType.RNA,
                     topology=Topology.LINEAR,
                 ),
                 name="Tobacco mosaic virus",
@@ -515,7 +513,7 @@ class TestGetOTU:
                     acronym="TMV",
                     molecule=Molecule(
                         strandedness=Strandedness.SINGLE,
-                        type=MolType.RNA,
+                        type=MoleculeType.RNA,
                         topology=Topology.LINEAR,
                     ),
                     name="Tobacco mosaic virus",
@@ -600,7 +598,7 @@ class TestGetOTU:
                 excluded_accessions=set(),
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
-                    type=MolType.RNA,
+                    type=MoleculeType.RNA,
                     topology=Topology.LINEAR,
                 ),
                 name="Tobacco mosaic virus",

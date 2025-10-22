@@ -10,7 +10,7 @@ from uuid import UUID
 
 from ref_builder.errors import PartialIDConflictError
 from ref_builder.events.base import EventMetadata
-from ref_builder.enums import OTUMinimal
+from ref_builder.models.otu import OTUMinimal
 from ref_builder.otu.builders.otu import OTUBuilder
 
 

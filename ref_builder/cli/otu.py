@@ -14,6 +14,7 @@ from ref_builder.console import (
     print_otu_event_log,
     print_otu_list,
 )
+from ref_builder.models.plan import SegmentRule
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.modify import (
     add_segments_to_plan,
@@ -24,7 +25,6 @@ from ref_builder.otu.update import (
     batch_update_repo,
     comprehensive_update_otu,
 )
-from ref_builder.plan import SegmentRule
 from ref_builder.repo import Repo, locked_repo
 from ref_builder.services.otu import OTUService
 

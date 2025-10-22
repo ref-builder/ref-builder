@@ -71,23 +71,23 @@ from ref_builder.events.sequence import (
 )
 from ref_builder.index import Index
 from ref_builder.lock import Lock
-from ref_builder.enums import Molecule, OTUMinimal
+from ref_builder.models.accession import Accession
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.molecule import Molecule
+from ref_builder.models.otu import OTUMinimal
+from ref_builder.models.plan import Plan
+from ref_builder.models.repo import DataType, RepoMeta, RepoSettings
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.validate import check_otu_is_valid
-from ref_builder.plan import Plan
-from ref_builder.resources import RepoMeta, RepoSettings
 from ref_builder.store import EventStore
 from ref_builder.transaction import AbortTransactionError, Transaction
 from ref_builder.utils import (
-    Accession,
-    DataType,
     ExcludedAccessionAction,
-    IsolateName,
-    OTUDeletedWarning,
     get_accession_key,
 )
+from ref_builder.warnings import OTUDeletedWarning
 
 GITIGNORE_CONTENTS = [".cache", "lock"]
 

@@ -3,6 +3,8 @@ from uuid import UUID
 
 from structlog import get_logger
 
+from ref_builder.models.accession import Accession
+from ref_builder.models.plan import Plan
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.otu.builders.otu import OTUBuilder
@@ -13,9 +15,8 @@ from ref_builder.otu.utils import (
     get_segments_min_length,
     parse_refseq_comment,
 )
-from ref_builder.plan import Plan, extract_segment_name_from_record_with_plan
+from ref_builder.plan import extract_segment_name_from_record_with_plan
 from ref_builder.repo import Repo
-from ref_builder.utils import Accession
 
 logger = get_logger("otu.promote")
 

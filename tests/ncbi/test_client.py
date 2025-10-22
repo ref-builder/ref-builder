@@ -3,8 +3,8 @@ import datetime
 import pytest
 from syrupy import SnapshotAssertion
 
+from ref_builder.models.accession import Accession
 from ref_builder.ncbi.client import NCBIClient, TaxonLevelError
-from ref_builder.utils import Accession
 
 
 class TestFetchGenbank:

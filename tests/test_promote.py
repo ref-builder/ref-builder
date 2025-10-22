@@ -3,6 +3,7 @@ import datetime
 import arrow
 from structlog.testing import capture_logs
 
+from ref_builder.models.accession import Accession
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.promote import (
@@ -12,7 +13,6 @@ from ref_builder.otu.promote import (
 )
 from ref_builder.repo import Repo
 from ref_builder.services.otu import OTUService
-from ref_builder.utils import Accession
 from tests.fixtures.factories import IsolateFactory
 
 

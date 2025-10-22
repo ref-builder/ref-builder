@@ -7,7 +7,7 @@ import arrow
 import pytest
 
 from ref_builder.index import EventIndexItem, Index
-from ref_builder.enums import OTUMinimal
+from ref_builder.models.otu import OTUMinimal
 from ref_builder.otu.builders.otu import OTUBuilder
 
 SNAPSHOT_AT_EVENT = (

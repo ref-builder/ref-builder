@@ -14,12 +14,12 @@ from pydantic import (
     field_validator,
 )
 
-from ref_builder.enums import Molecule, Strandedness
+from ref_builder.models.molecule import Molecule, Strandedness
+from ref_builder.models.plan import Plan, Segment, SegmentName, SegmentRule
 from ref_builder.otu.validate import get_validated_otu
 from ref_builder.otu.validators.isolate import Isolate
 from ref_builder.otu.validators.otu import OTU
 from ref_builder.otu.validators.sequence import Sequence
-from ref_builder.plan import Plan, Segment, SegmentName, SegmentRule
 from ref_builder.repo import Repo
 
 

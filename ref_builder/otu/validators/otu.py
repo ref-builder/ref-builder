@@ -12,11 +12,12 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
-from ref_builder.enums import Molecule
-from ref_builder.otu.models import OTUModel
+from ref_builder.models.molecule import Molecule
+from ref_builder.models.otu import OTUModel
+from ref_builder.models.plan import Plan
 from ref_builder.otu.validators.isolate import Isolate, IsolateBase
 from ref_builder.otu.validators.sequence import Sequence, SequenceBase
-from ref_builder.plan import Plan, PlanWarning
+from ref_builder.warnings import PlanWarning
 
 
 class OTUBase(OTUModel):

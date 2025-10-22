@@ -2,10 +2,11 @@ from uuid import uuid4
 
 from pytest_mock import MockerFixture
 
+from ref_builder.isolate import IsolateNameType
+from ref_builder.models.isolate import IsolateName
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.repo import Repo
 from ref_builder.services.cls import Services
-from ref_builder.utils import IsolateName, IsolateNameType
 from tests.fixtures.factories import NCBIGenbankFactory, NCBISourceFactory
 from tests.fixtures.mock_ncbi_client import MockNCBIClient
 

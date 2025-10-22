@@ -12,7 +12,6 @@ from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.services.isolate import IsolateService
 from ref_builder.otu.promote import (
     promote_otu_accessions,
     promote_otu_accessions_from_records,
@@ -26,6 +25,7 @@ from ref_builder.otu.utils import (
     parse_refseq_comment,
 )
 from ref_builder.repo import Repo
+from ref_builder.services.isolate import IsolateService
 
 logger = get_logger("otu.update")
 

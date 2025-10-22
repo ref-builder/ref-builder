@@ -10,12 +10,15 @@ from ref_builder.console import (
     print_otu_as_json,
     print_otu_list,
 )
-from ref_builder.enums import Molecule, MolType, OTUMinimal, Strandedness, Topology
+from ref_builder.isolate import IsolateNameType
+from ref_builder.models.accession import Accession
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.molecule import Molecule, MoleculeType, Strandedness, Topology
+from ref_builder.models.otu import OTUMinimal
+from ref_builder.models.plan import Plan, Segment, SegmentName, SegmentRule
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
-from ref_builder.plan import Plan, Segment, SegmentName, SegmentRule
-from ref_builder.utils import Accession, IsolateName, IsolateNameType
 from tests.fixtures.factories import IsolateFactory, OTUMinimalFactory
 from tests.fixtures.providers import AccessionProvider, SequenceProvider
 
@@ -143,7 +146,7 @@ class TestPrintOTU:
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
                 topology=Topology.LINEAR,
-                type=MolType.RNA,
+                type=MoleculeType.RNA,
             ),
             name="Babuvirus abacae",
             plan=Plan.new(
@@ -214,7 +217,7 @@ class TestPrintOTU:
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
                 topology=Topology.LINEAR,
-                type=MolType.RNA,
+                type=MoleculeType.RNA,
             ),
             name="Babuvirus abacae",
             plan=Plan(

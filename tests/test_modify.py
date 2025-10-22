@@ -1,10 +1,12 @@
 from uuid import UUID
 
 import pytest
-from pydantic import ValidationError
 from syrupy.assertion import SnapshotAssertion
 from syrupy.filters import props
 
+from ref_builder.isolate import IsolateNameType
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.plan import Plan, Segment, SegmentName, SegmentRule
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.modify import (
     add_segments_to_plan,
@@ -13,16 +15,8 @@ from ref_builder.otu.modify import (
     exclude_accessions_from_otu,
     set_plan,
 )
-from ref_builder.plan import (
-    Plan,
-    Segment,
-    SegmentName,
-    SegmentRule,
-)
 from ref_builder.repo import Repo
 from ref_builder.services.otu import OTUService
-from ref_builder.utils import IsolateName, IsolateNameType
-from tests.fixtures.factories import IsolateFactory
 
 
 def test_exclude_accessions(scratch_repo: Repo, mock_ncbi_client):

@@ -1,19 +1,14 @@
 from collections.abc import Collection
 from uuid import UUID
 
-from pydantic import ValidationError
 from structlog import get_logger
 
+from ref_builder.models.plan import Plan, SegmentRule
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.utils import (
     DeleteRationale,
     create_segments_from_records,
-)
-from ref_builder.plan import (
-    Plan,
-    SegmentRule,
 )
 from ref_builder.repo import Repo
 

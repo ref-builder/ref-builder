@@ -3,12 +3,12 @@ from syrupy.assertion import SnapshotAssertion
 
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.promote import promote_otu_accessions
-from ref_builder.services.isolate import IsolateService
 from ref_builder.otu.update import (
     batch_update_repo,
     comprehensive_update_otu,
 )
 from ref_builder.repo import Repo
+from ref_builder.services.isolate import IsolateService
 from ref_builder.services.otu import OTUService
 
 

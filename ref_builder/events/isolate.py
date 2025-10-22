@@ -5,9 +5,9 @@ from ref_builder.events.base import (
     EventData,
     IsolateQuery,
 )
+from ref_builder.models.isolate import IsolateName
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.utils import IsolateName
 
 
 class CreateIsolateData(EventData):

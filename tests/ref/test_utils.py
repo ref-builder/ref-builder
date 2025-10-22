@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 
 from ref_builder.otu.utils import parse_refseq_comment

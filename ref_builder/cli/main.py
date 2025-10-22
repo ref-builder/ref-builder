@@ -16,8 +16,8 @@ from ref_builder.cli.options import (
 from ref_builder.cli.otu import otu
 from ref_builder.console import console
 from ref_builder.logs import configure_logger
+from ref_builder.models.repo import DataType
 from ref_builder.repo import Repo
-from ref_builder.utils import DataType
 
 logger = structlog.get_logger()
 

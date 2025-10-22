@@ -6,20 +6,16 @@ from uuid import UUID
 
 import structlog
 
-from ref_builder.ncbi.client import NCBIClient
+from ref_builder.errors import PlanConformationError
+from ref_builder.isolate import IsolateNameType
+from ref_builder.models.accession import Accession
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.plan import Plan, Segment, SegmentRule
 from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.plan import (
-    Plan,
-    PlanConformationError,
-    Segment,
-    SegmentRule,
-    extract_segment_name_from_record,
     extract_segment_name_from_record_with_plan,
 )
 from ref_builder.utils import (
-    Accession,
-    IsolateName,
-    IsolateNameType,
     generate_natural_sort_key,
 )
 

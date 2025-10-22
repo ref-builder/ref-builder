@@ -2,10 +2,11 @@ import pytest
 from faker import Faker
 from pydantic import ValidationError
 
+from ref_builder.isolate import IsolateNameType
+from ref_builder.models.isolate import IsolateName
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.utils import IsolateName, IsolateNameType
 from ref_builder.repo import Repo
 from ref_builder.services.isolate import IsolateService
 from tests.fixtures.factories import NCBIGenbankFactory, NCBISourceFactory

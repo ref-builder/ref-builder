@@ -3,14 +3,14 @@ from pathlib import Path
 
 import click
 
-from ref_builder.cli.options import ignore_cache_option, path_option
+from ref_builder.cli.options import path_option
 from ref_builder.cli.utils import get_otu_isolate_ids_from_identifier, pass_repo
 from ref_builder.cli.validate import validate_no_duplicate_accessions
 from ref_builder.console import print_isolate, print_isolate_as_json
 from ref_builder.ncbi.client import NCBIClient
-from ref_builder.services.isolate import IsolateService
 from ref_builder.otu.modify import delete_isolate_from_otu
 from ref_builder.repo import Repo, locked_repo
+from ref_builder.services.isolate import IsolateService
 
 
 @click.group(name="isolate")

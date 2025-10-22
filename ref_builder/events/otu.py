@@ -1,9 +1,9 @@
 from pydantic import UUID4, ConfigDict, field_serializer
 
 from ref_builder.events.base import ApplicableEvent, Event, EventData, OTUQuery
-from ref_builder.enums import Molecule
+from ref_builder.models.molecule import Molecule
+from ref_builder.models.plan import Plan
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.plan import Plan
 from ref_builder.utils import ExcludedAccessionAction
 
 

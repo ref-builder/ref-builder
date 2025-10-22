@@ -1,8 +1,8 @@
 import pytest
 from syrupy import SnapshotAssertion
 
+from ref_builder.models.accession import Accession
 from ref_builder.ncbi.cache import NCBICache
-from ref_builder.utils import Accession
 
 
 def test_clear(scratch_ncbi_cache: NCBICache):

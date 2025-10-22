@@ -5,7 +5,14 @@ from uuid import UUID
 import structlog
 
 from ref_builder.errors import InvalidInputError, PartialIDConflictError
-from ref_builder.enums import Molecule
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.molecule import Molecule
+from ref_builder.models.plan import (
+    Plan,
+    Segment,
+    SegmentRule,
+    extract_segment_name_from_record,
+)
 from ref_builder.ncbi.models import NCBIGenbank, NCBIRank, NCBITaxonomy
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.isolate import create_sequence_from_record
@@ -15,14 +22,7 @@ from ref_builder.otu.utils import (
     group_genbank_records_by_isolate,
     parse_refseq_comment,
 )
-from ref_builder.plan import (
-    Plan,
-    Segment,
-    SegmentRule,
-    extract_segment_name_from_record,
-)
 from ref_builder.services import Service
-from ref_builder.utils import IsolateName
 
 logger = structlog.get_logger("services.otu")
 

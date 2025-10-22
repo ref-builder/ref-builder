@@ -4,6 +4,8 @@ from uuid import UUID
 
 import structlog
 
+from ref_builder.errors import PlanConformationError
+from ref_builder.models.isolate import IsolateName
 from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
@@ -15,9 +17,7 @@ from ref_builder.otu.utils import (
     group_genbank_records_by_isolate,
     parse_refseq_comment,
 )
-from ref_builder.plan import PlanConformationError
 from ref_builder.services import Service
-from ref_builder.utils import IsolateName
 
 logger = structlog.get_logger("services.isolate")
 
