@@ -1,9 +1,7 @@
 import re
 from dataclasses import dataclass
 from enum import StrEnum
-from pathlib import Path
 
-import orjson
 
 ZERO_PADDING_MAX = 99999999
 """The maximum number that can be padded with zeroes in event IDs and filenames."""
@@ -141,18 +139,6 @@ class IsolateName:
     def __str__(self) -> str:
         """Return the isolate name as a formatted string."""
         return f"{self.type.capitalize()} {self.value}"
-
-
-def format_json(path: Path) -> None:
-    """Format the JSON file at ``path`` in place.
-
-    :param path: the path to the JSON file to format
-    """
-    with path.open("rb") as f:
-        data = orjson.loads(f.read())
-
-    with path.open("wb") as f:
-        f.write(orjson.dumps(data, option=orjson.OPT_INDENT_2))
 
 
 def is_accession_key_valid(accession_key: str) -> bool:
