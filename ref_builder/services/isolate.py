@@ -7,7 +7,7 @@ import structlog
 from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.builders.sequence import SequenceBuilder
+from ref_builder.otu.isolate import create_sequence_from_record
 from ref_builder.otu.promote import promote_otu_accessions_from_records
 from ref_builder.otu.utils import (
     DeleteRationale,
@@ -221,7 +221,9 @@ class IsolateService(Service):
 
         for segment_id, record in assigned.items():
             if (sequence := otu.get_sequence_by_accession(record.accession)) is None:
-                sequence = self._create_sequence_from_record(otu, record, segment_id)
+                sequence = create_sequence_from_record(
+                    self._repo, otu, record, segment_id
+                )
 
             self._repo.link_sequence(otu.id, isolate.id, sequence.id)
 
@@ -236,24 +238,3 @@ class IsolateService(Service):
         log.info("Isolate created", id=str(isolate.id))
 
         return self._repo.get_isolate(isolate.id)
-
-    def _create_sequence_from_record(
-        self,
-        otu: OTUBuilder,
-        record: NCBIGenbank,
-        segment_id: UUID,
-    ) -> SequenceBuilder:
-        """Create a new sequence from a GenBank record.
-
-        :param otu: the OTU to add the sequence to
-        :param record: the GenBank record
-        :param segment_id: the segment ID
-        :return: the created sequence
-        """
-        return self._repo.create_sequence(
-            otu.id,
-            accession=record.accession_version,
-            definition=record.definition,
-            segment=segment_id,
-            sequence=record.sequence,
-        )
