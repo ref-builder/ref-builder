@@ -4,10 +4,11 @@ from syrupy.filters import props
 
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBISourceMolType
-from ref_builder.otu.utils import assign_records_to_segments, create_plan_from_records
+from ref_builder.otu.utils import assign_records_to_segments
 from ref_builder.plan import (
     Plan,
 )
+from ref_builder.services.otu import create_plan_from_records
 from ref_builder.repo import Repo
 from tests.fixtures.factories import NCBIGenbankFactory, NCBISourceFactory
 from tests.fixtures.utils import uuid_matcher

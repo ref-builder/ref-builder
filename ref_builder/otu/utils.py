@@ -6,7 +6,6 @@ from uuid import UUID
 
 import structlog
 
-from ref_builder.models import Molecule
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.plan import (
@@ -62,71 +61,6 @@ def create_segments_from_records(
     ]
 
     return sorted(segments, key=lambda s: generate_natural_sort_key(str(s.name)))
-
-
-def create_plan_from_records(
-    records: list[NCBIGenbank],
-    length_tolerance: float,
-    segments: list[Segment] | None = None,
-) -> Plan | None:
-    """Return a plan from a list of records representing an isolate."""
-    if len(records) == 1:
-        record = records[0]
-
-        return Plan.new(
-            segments=[
-                Segment.new(
-                    length=len(record.sequence),
-                    length_tolerance=length_tolerance,
-                    name=extract_segment_name_from_record(record),
-                    rule=SegmentRule.REQUIRED,
-                )
-            ]
-        )
-
-    if len(group_genbank_records_by_isolate(records)) > 1:
-        logger.warning("More than one isolate found. Cannot create plan.")
-        return None
-
-    if segments is None:
-        segments = create_segments_from_records(
-            records,
-            rule=SegmentRule.REQUIRED,
-            length_tolerance=length_tolerance,
-        )
-
-    if segments is not None:
-        return Plan.new(segments=segments)
-
-    return None
-
-
-def get_molecule_from_records(records: list[NCBIGenbank]) -> Molecule:
-    """Return relevant molecule metadata from one or more records.
-    Molecule metadata is retrieved from the first RefSeq record in the list.
-    If no RefSeq record is found in the list, molecule metadata is retrieved
-    from record[0].
-    """
-    if not records:
-        raise ValueError("No records given")
-
-    # Assign first record as benchmark to start
-    representative_record = records[0]
-
-    if not representative_record.refseq:
-        for record in records:
-            if record.refseq:
-                # Replace representative record with first RefSeq record found
-                representative_record = record
-                break
-
-    return Molecule.model_validate(
-        {
-            "strandedness": representative_record.strandedness.value,
-            "type": representative_record.moltype.value,
-            "topology": representative_record.topology.value,
-        },
-    )
 
 
 def group_genbank_records_by_isolate(
