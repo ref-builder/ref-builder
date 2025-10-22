@@ -12,7 +12,6 @@ from ref_builder.otu.promote import promote_otu_accessions_from_records
 from ref_builder.otu.utils import (
     DeleteRationale,
     assign_records_to_segments,
-    fetch_records_from_accessions,
     group_genbank_records_by_isolate,
     parse_refseq_comment,
 )
@@ -30,7 +29,6 @@ class IsolateService(Service):
         self,
         otu_id: UUID,
         accessions: list[str],
-        ignore_cache: bool = False,
     ) -> IsolateBuilder | None:
         """Create a new isolate from a list of accessions.
 
@@ -50,9 +48,7 @@ class IsolateService(Service):
 
         otu_logger = logger.bind(taxid=otu.taxid, otu_id=str(otu.id), name=otu.name)
 
-        records = fetch_records_from_accessions(
-            accessions, otu.blocked_accessions, self.ncbi
-        )
+        records = _fetch_records(accessions, otu.blocked_accessions, self.ncbi)
 
         if not records:
             return None
@@ -238,3 +234,36 @@ class IsolateService(Service):
         log.info("Isolate created", id=str(isolate.id))
 
         return self._repo.get_isolate(isolate.id)
+
+
+def _fetch_records(
+    accessions: list | set,
+    blocked_accessions: set,
+    ncbi_client,
+) -> list[NCBIGenbank]:
+    """Fetch GenBank records from a list of accessions.
+
+    Don't fetch accessions in ``blocked_accessions``.
+
+    :param accessions: A list of accessions to fetch.
+    :param blocked_accessions: A set of accessions to ignore.
+    :param ncbi_client: NCBI client to use for fetching records.
+    """
+    log = logger.bind(
+        requested=sorted(accessions),
+        blocked=sorted(blocked_accessions),
+    )
+
+    eligible = set(accessions) - blocked_accessions
+
+    if not eligible:
+        log.error("None of the requested accessions were eligible for inclusion.")
+        return []
+
+    log.debug(
+        "Fetching accessions.",
+        accessions=sorted(eligible),
+        count=len(eligible),
+    )
+
+    return ncbi_client.fetch_genbank_records(eligible)

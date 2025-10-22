@@ -31,12 +31,10 @@ def isolate(ctx: click.Context, path: Path) -> None:
     required=True,
 )
 @click.option("--taxid", type=int, required=True)
-@ignore_cache_option
 @pass_repo
 def isolate_create(
     repo: Repo,
     accessions_: list[str],
-    ignore_cache: bool,
     taxid: int,
 ) -> None:
     """Create a new isolate using the given accessions."""
@@ -46,10 +44,10 @@ def isolate_create(
         click.echo(f"OTU {taxid} not found.", err=True)
         sys.exit(1)
 
-    ncbi_client = NCBIClient(ignore_cache=ignore_cache)
+    ncbi_client = NCBIClient(False)
 
     isolate_service = IsolateService(repo, ncbi_client)
-    isolate_service.create(otu_.id, accessions_, ignore_cache=ignore_cache)
+    isolate_service.create(otu_.id, accessions_)
 
 
 @isolate.command(name="delete")

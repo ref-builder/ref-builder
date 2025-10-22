@@ -101,39 +101,6 @@ def create_plan_from_records(
     return None
 
 
-def fetch_records_from_accessions(
-    accessions: list | set,
-    blocked_accessions: set,
-    ncbi_client: NCBIClient,
-) -> list[NCBIGenbank]:
-    """Fetch Genbank records from a list of accessions.
-
-    Don't fetch accessions in ``blocked_accessions``.
-
-    :param accessions: A list of accessions to fetch.
-    :param blocked_accessions: A set of accessions to ignore.
-    :param ncbi_client: NCBI client to use for fetching records.
-    """
-    log = logger.bind(
-        requested=sorted(accessions),
-        blocked=sorted(blocked_accessions),
-    )
-
-    eligible = set(accessions) - blocked_accessions
-
-    if not eligible:
-        log.error("None of the requested accessions were eligible for inclusion.")
-        return []
-
-    log.debug(
-        "Fetching accessions.",
-        accessions=sorted(eligible),
-        count=len(eligible),
-    )
-
-    return ncbi_client.fetch_genbank_records(eligible)
-
-
 def get_molecule_from_records(records: list[NCBIGenbank]) -> Molecule:
     """Return relevant molecule metadata from one or more records.
     Molecule metadata is retrieved from the first RefSeq record in the list.

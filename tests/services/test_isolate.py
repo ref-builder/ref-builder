@@ -229,7 +229,7 @@ class TestIsolateServiceCreateValidation:
         record_2 = ncbi_genbank_factory.build(source=source_2, accession="AB123457")
 
         mocker.patch(
-            "ref_builder.services.isolate.fetch_records_from_accessions",
+            "ref_builder.services.isolate._fetch_records",
             return_value=[record_1, record_2],
         )
 
@@ -270,7 +270,7 @@ class TestIsolateServiceCreateValidation:
         )
 
         mocker.patch(
-            "ref_builder.services.isolate.fetch_records_from_accessions",
+            "ref_builder.services.isolate._fetch_records",
             return_value=[record],
         )
 
@@ -344,7 +344,7 @@ class TestIsolateServicePromotion:
         )
 
         mocker.patch(
-            "ref_builder.services.isolate.fetch_records_from_accessions",
+            "ref_builder.services.isolate._fetch_records",
             return_value=[refseq_record],
         )
 
