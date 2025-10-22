@@ -12,7 +12,6 @@ from pydantic import (
 from ref_builder.models.accession import Accession
 from ref_builder.models.isolate import IsolateModel, IsolateName
 from ref_builder.otu.validators.sequence import Sequence, SequenceBase
-from ref_builder.utils import is_refseq
 from ref_builder.warnings import IsolateInconsistencyWarning
 
 
@@ -32,7 +31,7 @@ class IsolateBase(IsolateModel):
     def refseq(self) -> bool:
         """Return True if this isolate was sourced from NCBI's RefSeq database."""
         if self.sequences:
-            return is_refseq(self.sequences[0].accession.key)
+            return self.sequences[0].accession.is_refseq
 
         return False
 

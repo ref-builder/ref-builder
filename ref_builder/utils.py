@@ -7,7 +7,14 @@ ZERO_PADDING_MAX = 99999999
 """The maximum number that can be padded with zeroes in event IDs and filenames."""
 
 GENBANK_ACCESSION_PATTERN = re.compile(pattern=r"^[A-Z]{1,2}[0-9]{5,6}$")
-REFSEQ_ACCESSION_PATTERN = re.compile(pattern=r"^NC_[0-9]{6}$")
+
+REFSEQ_ACCESSION_PATTERN = re.compile(pattern=r"^NC_[0-9A-Z]+$")
+"""RefSeq accession pattern for viral complete genomic molecules (NC_ prefix).
+
+The identifier following the underscore can be alphanumeric and of variable length.
+
+Examples: NC_003619, NC_010314, NC_ABC123
+"""
 
 
 class ExcludedAccessionAction(StrEnum):
@@ -59,11 +66,6 @@ def generate_natural_sort_key(string: str) -> list[int | str]:
         return int(string_) if string_.isdigit() else string_.lower()
 
     return [_convert(c) for c in re.split("([0-9]+)", string)]
-
-
-def is_refseq(accession_key: str) -> bool:
-    """Return True if accession is RefSeq."""
-    return re.match(REFSEQ_ACCESSION_PATTERN, accession_key) is not None
 
 
 def pad_zeroes(number: int) -> str:

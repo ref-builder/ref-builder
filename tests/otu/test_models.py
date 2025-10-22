@@ -10,7 +10,6 @@ from ref_builder.models.plan import SegmentRule
 from ref_builder.otu.validators.isolate import Isolate
 from ref_builder.otu.validators.otu import OTU, OTUBase
 from ref_builder.otu.validators.sequence import Sequence
-from ref_builder.utils import is_refseq
 from ref_builder.warnings import PlanWarning
 from tests.fixtures.factories import (
     IsolateFactory,
@@ -63,16 +62,13 @@ class TestIsolate:
         for isolate in (genbank_isolate, refseq_isolate):
             bad_isolate = isolate.model_copy()
 
-            if is_refseq(bad_isolate.sequences[0].accession.key):
+            if bad_isolate.sequences[0].accession.is_refseq:
                 bad_isolate.sequences[0].accession = Accession("BD000001", 1)
             else:
                 bad_isolate.sequences[0].accession = Accession("NC_000001", 1)
 
             assert not all(
-                [
-                    is_refseq(sequence.accession.key)
-                    for sequence in bad_isolate.sequences
-                ]
+                [sequence.accession.is_refseq for sequence in bad_isolate.sequences]
             )
 
             with warnings.catch_warnings(record=True) as warning_list:

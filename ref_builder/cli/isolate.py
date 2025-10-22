@@ -8,7 +8,6 @@ from ref_builder.cli.utils import get_otu_isolate_ids_from_identifier, pass_repo
 from ref_builder.cli.validate import validate_no_duplicate_accessions
 from ref_builder.console import print_isolate, print_isolate_as_json
 from ref_builder.ncbi.client import NCBIClient
-from ref_builder.otu.modify import delete_isolate_from_otu
 from ref_builder.repo import Repo, locked_repo
 from ref_builder.services.isolate import IsolateService
 
@@ -60,17 +59,11 @@ def isolate_delete(repo: Repo, identifier: str) -> None:
     """
     otu_id, isolate_id = get_otu_isolate_ids_from_identifier(repo, identifier)
 
-    if (otu_id := repo.get_otu_id_by_isolate_id(isolate_id)) is None:
-        click.echo("The containing OTU could not be found.", err=True)
-        sys.exit(1)
+    ncbi_client = NCBIClient(False)
+    isolate_service = IsolateService(repo, ncbi_client)
 
-    if (otu_ := repo.get_otu(otu_id)) is None:
-        click.echo("OTU not found.", err=True)
-        sys.exit(1)
-
-    if delete_isolate_from_otu(repo, otu_, isolate_id):
+    if isolate_service.delete(otu_id, isolate_id):
         click.echo("Isolate deleted.")
-
     else:
         sys.exit(1)
 

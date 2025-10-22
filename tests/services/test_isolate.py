@@ -72,9 +72,13 @@ class TestIsolateServiceCreate:
                 ],
             )
 
-        assert isolate is not None
+        assert isolate
         assert len(isolate.sequences) == 6
-        assert isolate.name.value == "Q1108"
+
+        name = isolate.name
+
+        assert name
+        assert name.value == "Q1108"
 
     def test_refseq_exclusion(
         self,
@@ -195,6 +199,7 @@ class TestIsolateServiceCreateValidation:
                     "NC_010319",
                 ],
             )
+
         with empty_repo.lock():
             isolate = services.isolate.create(
                 otu_id=otu.id,
@@ -216,6 +221,8 @@ class TestIsolateServiceCreateValidation:
         otu = scratch_repo.get_otu_by_taxid(
             mock_ncbi_client.otus.wasabi_mottle_virus.taxid
         )
+
+        assert otu
 
         source_1 = NCBISourceFactory.build(
             taxid=otu.taxid,
@@ -255,6 +262,8 @@ class TestIsolateServiceCreateValidation:
         otu = scratch_repo.get_otu_by_taxid(
             mock_ncbi_client.otus.wasabi_mottle_virus.taxid
         )
+
+        assert otu
 
         # Use an existing isolate name from scratch_repo
         existing_isolate = otu.isolates[0]
@@ -372,19 +381,24 @@ class TestIsolateServiceDelete:
         """Test successful isolate deletion."""
         services = Services(scratch_repo, mock_ncbi_client)
 
-        otu = scratch_repo.get_otu_by_taxid(
+        otu_before = scratch_repo.get_otu_by_taxid(
             mock_ncbi_client.otus.wasabi_mottle_virus.taxid
         )
-        isolate_id = next(iter(otu.isolate_ids))
+        isolate_id = next(iter(otu_before.isolate_ids))
+        isolate_before = otu_before.get_isolate(isolate_id)
 
         with scratch_repo.lock():
-            result = services.isolate.delete(otu_id=otu.id, isolate_id=isolate_id)
+            result = services.isolate.delete(
+                otu_id=otu_before.id, isolate_id=isolate_id
+            )
 
         assert result is True
 
-        # Verify isolate was deleted
-        otu = scratch_repo.get_otu(otu.id)
-        assert isolate_id not in otu.isolate_ids
+        otu_after = scratch_repo.get_otu(otu_before.id)
+        assert isolate_id not in otu_after.isolate_ids
+        assert otu_after.get_isolate(isolate_id) is None
+        assert isolate_before.accessions not in otu_after.accessions
+        assert len(otu_after.isolate_ids) == len(otu_before.isolate_ids) - 1
 
     def test_otu_not_found(
         self,
