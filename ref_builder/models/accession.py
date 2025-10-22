@@ -1,7 +1,16 @@
+import re
 from dataclasses import dataclass
 
+REFSEQ_ACCESSION_PATTERN = re.compile(pattern=r"^NC_[0-9A-Z]+$")
+"""RefSeq accession pattern for viral complete genomic molecules (NC_ prefix).
 
-@dataclass(frozen=True)
+The identifier following the underscore can be alphanumeric and of variable length.
+
+Examples: NC_003619, NC_010314, NC_ABC123
+"""
+
+
+@dataclass(frozen=True, order=True)
 class Accession:
     """A Genbank accession number."""
 
@@ -22,47 +31,44 @@ class Accession:
         """Create an Accession from a versioned accession string,
         e.g. "MN908947.3".
         """
-        try:
-            key, string_version = string.split(".")
-        except ValueError as e:
-            if "not enough values to unpack" in str(e):
-                raise ValueError(
-                    f'Given accession string "{string}" does not contain two parts'
-                    "delimited by a period."
-                ) from e
+        if not string or not string.strip():
+            raise ValueError("Accession string cannot be empty or whitespace.")
 
-            raise
+        parts = string.split(".")
 
-        if string_version.isdigit():
-            version = int(string_version)
-        else:
-            raise ValueError(f"Accession version ({string_version})is not an integer.")
+        if len(parts) < 2:
+            raise ValueError(
+                f'Accession string "{string}" does not contain two parts '
+                "delimited by a period. Expected format: KEY.VERSION (e.g., NC_123456.1)"
+            )
+
+        if len(parts) > 2:
+            raise ValueError(
+                f'Accession string "{string}" contains multiple periods. '
+                "Expected format: KEY.VERSION (e.g., NC_123456.1)"
+            )
+
+        key, string_version = parts
+
+        if not string_version.isdigit():
+            raise ValueError(
+                f"Accession version ({string_version}) is not an integer. "
+                "Expected format: KEY.VERSION (e.g., NC_123456.1)"
+            )
+
+        version = int(string_version)
 
         return Accession(key=key, version=version)
-
-    def __eq__(self, other: "Accession") -> bool:
-        if isinstance(other, Accession):
-            return self.key == other.key and self.version == other.version
-
-        raise ValueError(
-            f"Invalid comparison against invalid value {other} (type {type(other)})"
-        )
-
-    def __lt__(self, other: "Accession") -> bool:
-        if isinstance(other, Accession):
-            return self.key < other.key or self.version < other.version
-
-        raise ValueError(
-            f"Invalid comparison against invalid value {other} (type {type(other)})"
-        )
-
-    def __gt__(self, other: "Accession") -> bool:
-        if isinstance(other, Accession):
-            return self.key > other.key or self.version > other.version
-        raise ValueError(
-            f"Invalid comparison against invalid value {other} (type {type(other)})"
-        )
 
     def __str__(self) -> str:
         """Return the accession as a string."""
         return f"{self.key}.{self.version}"
+
+    def __repr__(self) -> str:
+        """Return the accession as a repr string."""
+        return f"Accession({self.key}, {self.version})"
+
+    @property
+    def is_refseq(self) -> bool:
+        """Return True if this accession is from NCBI's RefSeq database."""
+        return REFSEQ_ACCESSION_PATTERN.match(self.key) is not None

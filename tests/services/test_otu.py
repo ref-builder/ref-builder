@@ -346,3 +346,54 @@ class TestOTUServiceCreatePlan:
             otu = otu_service.create(accessions)
 
         assert otu is None
+
+
+class TestOTUServiceExcludeAccessions:
+    """Test accession exclusion."""
+
+    def test_ok(self, scratch_repo: Repo, mock_ncbi_client):
+        """Test accession exclusion."""
+        taxid = mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+
+        otu_before = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_before is not None
+
+        assert not otu_before.excluded_accessions
+
+        otu_service = OTUService(scratch_repo, mock_ncbi_client)
+
+        with scratch_repo.lock():
+            otu_service.exclude_accessions(otu_before.id, {"DQ178608", "DQ178609"})
+
+        otu_after = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_after is not None
+
+        assert otu_after.excluded_accessions == {"DQ178608", "DQ178609"}
+
+
+class TestOTUServiceAllowAccessions:
+    """Test allowing previously excluded accessions."""
+
+    def test_ok(self, scratch_repo: Repo, mock_ncbi_client):
+        taxid = mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+
+        otu_initial = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_initial is not None
+
+        otu_service = OTUService(scratch_repo, mock_ncbi_client)
+
+        with scratch_repo.lock():
+            otu_service.exclude_accessions(otu_initial.id, {"DQ178608", "DQ178609"})
+
+        otu_before = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_before is not None
+
+        assert otu_before.excluded_accessions == {"DQ178608", "DQ178609"}
+
+        with scratch_repo.lock():
+            otu_service.allow_accessions(otu_before.id, {"DQ178608"})
+
+        otu_after = scratch_repo.get_otu_by_taxid(taxid)
+        assert otu_after is not None
+
+        assert otu_after.excluded_accessions == {"DQ178609"}

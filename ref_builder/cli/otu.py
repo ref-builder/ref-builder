@@ -14,13 +14,7 @@ from ref_builder.console import (
     print_otu_event_log,
     print_otu_list,
 )
-from ref_builder.models.plan import SegmentRule
 from ref_builder.ncbi.client import NCBIClient
-from ref_builder.otu.modify import (
-    add_segments_to_plan,
-    allow_accessions_into_otu,
-    exclude_accessions_from_otu,
-)
 from ref_builder.otu.update import (
     batch_update_repo,
     comprehensive_update_otu,
@@ -212,7 +206,7 @@ def otu_exclude_accessions(
         click.echo("OTU not found.", err=True)
         sys.exit(1)
 
-    exclude_accessions_from_otu(repo, otu_, accessions_)
+    otu_service.exclude_accessions(otu_.id, set(accessions_))
 
 
 @otu.command(name="allow-accessions")  # type: ignore
@@ -244,48 +238,4 @@ def otu_allow_accessions(
         click.echo("OTU not found.", err=True)
         sys.exit(1)
 
-    allow_accessions_into_otu(repo, otu_, set(accessions_))
-
-
-@otu.command(name="extend-plan")
-@click.argument("IDENTIFIER", type=str)
-@click.argument(
-    "accessions_",
-    metavar="ACCESSIONS",
-    nargs=-1,
-    type=str,
-    required=True,
-)
-@click.option(
-    "--optional",
-    is_flag=True,
-    help="Set additional segments as fully optional",
-)
-@ignore_cache_option
-@pass_repo
-def plan_extend_segment_list(
-    repo: Repo,
-    accessions_: list[str],
-    ignore_cache: bool,
-    identifier: str,
-    optional: bool,
-) -> None:
-    """Add recommended or optional segments to the OTU plan.
-
-    IDENTIFIER is a taxonomy ID or unique OTU ID (>8 characters)
-    """
-    otu_service = OTUService(repo, NCBIClient(ignore_cache))
-    otu_ = otu_service.get_otu(identifier)
-
-    if otu_ is None:
-        click.echo("OTU not found.", err=True)
-        sys.exit(1)
-
-    if not add_segments_to_plan(
-        repo,
-        otu_,
-        rule=SegmentRule.OPTIONAL if optional else SegmentRule.RECOMMENDED,
-        accessions=accessions_,
-        ignore_cache=ignore_cache,
-    ):
-        sys.exit(1)
+    otu_service.allow_accessions(otu_.id, set(accessions_))

@@ -281,3 +281,75 @@ class OTUService(Service):
                     )
 
         return self._repo.get_otu(otu.id)
+
+    def exclude_accessions(
+        self,
+        otu_id: UUID,
+        accessions: set[str],
+    ) -> None:
+        """Exclude accessions from future addition to an OTU.
+
+        :param otu_id: the OTU ID
+        :param accessions: accessions to exclude
+        """
+        otu = self._repo.get_otu(otu_id)
+
+        if otu is None:
+            logger.error("OTU not found", otu_id=str(otu_id))
+            return
+
+        original_excluded_accessions = otu.excluded_accessions.copy()
+
+        with self._repo.use_transaction():
+            excluded_accessions = self._repo.exclude_accessions(
+                otu_id=otu.id, accessions=accessions
+            )
+
+        if excluded_accessions == original_excluded_accessions:
+            logger.info(
+                "Excluded accession list already up to date.",
+                excluded_accessions=excluded_accessions,
+            )
+        else:
+            logger.info(
+                "Updated excluded accession list.",
+                otu_id=str(otu.id),
+                excluded_accessions=sorted(excluded_accessions),
+            )
+
+    def allow_accessions(
+        self,
+        otu_id: UUID,
+        accessions: set[str],
+    ) -> None:
+        """Allow accessions for future addition to an OTU.
+
+        This reverses the effect of exclude_accessions.
+
+        :param otu_id: the OTU ID
+        :param accessions: accessions to allow
+        """
+        otu = self._repo.get_otu(otu_id)
+
+        if otu is None:
+            logger.error("OTU not found", otu_id=str(otu_id))
+            return
+
+        original_excluded_accessions = otu.excluded_accessions.copy()
+
+        with self._repo.use_transaction():
+            excluded_accessions = self._repo.allow_accessions(
+                otu_id=otu.id, accessions=accessions
+            )
+
+        if excluded_accessions == original_excluded_accessions:
+            logger.info(
+                "Excluded accession list already up to date.",
+                excluded_accessions=excluded_accessions,
+            )
+        else:
+            logger.info(
+                "Updated excluded accession list.",
+                otu_id=str(otu.id),
+                excluded_accessions=sorted(excluded_accessions),
+            )
