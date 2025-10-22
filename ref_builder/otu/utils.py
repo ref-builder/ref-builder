@@ -50,14 +50,6 @@ def get_segments_max_length(segments: list[Segment]) -> int:
     return math.ceil(longest_segment.length * (1.0 + longest_segment.length_tolerance))
 
 
-def check_sequence_length(sequence: str, segment_length: int, tolerance: float) -> bool:
-    """Check if the sequence length is within acceptable segment length tolerance."""
-    min_length = segment_length * (1.0 - tolerance)
-    max_length = segment_length * (1.0 + tolerance)
-
-    return min_length <= len(sequence) <= max_length
-
-
 def create_segments_from_records(
     records: list[NCBIGenbank], rule: SegmentRule, length_tolerance: float
 ) -> list[Segment]:
