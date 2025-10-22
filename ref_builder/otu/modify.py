@@ -108,7 +108,7 @@ def set_plan(
     otu: OTUBuilder,
     plan: Plan,
 ) -> Plan | None:
-    """Set an OTU's plan to the passed ``plan``."""
+    """Set an OTU's plan."""
     log = logger.bind(name=otu.name, taxid=otu.taxid, plan=plan.model_dump())
 
     try:
@@ -117,36 +117,6 @@ def set_plan(
     except ValueError:
         log.exception()
         return None
-
-    return repo.get_otu(otu.id).plan
-
-
-def set_plan_length_tolerances(
-    repo: Repo,
-    otu: OTUBuilder,
-    tolerance: float,
-) -> Plan | None:
-    """Sets a plan's length tolerances to a new float value."""
-    try:
-        new_plan = otu.plan.model_copy()
-        for segment in new_plan.segments:
-            segment.length_tolerance = tolerance
-    except ValidationError as exc:
-        for error in exc.errors():
-            logger.error(
-                "Length tolerance must be between 0.0 and 1.0.",
-                error_type=error["type"],
-                name=otu.name,
-                taxid=otu.taxid,
-                requested_tolerance=tolerance,
-            )
-        return None
-
-    with repo.use_transaction():
-        repo.set_plan(
-            otu.id,
-            plan=new_plan,
-        )
 
     return repo.get_otu(otu.id).plan
 

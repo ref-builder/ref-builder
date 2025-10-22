@@ -13,7 +13,6 @@ from ref_builder.otu.modify import (
     exclude_accessions_from_otu,
     replace_sequence_in_otu,
     set_plan,
-    set_plan_length_tolerances,
 )
 from ref_builder.plan import (
     Plan,
@@ -187,59 +186,6 @@ class TestSetPlan:
                 rule=SegmentRule.OPTIONAL,
                 accessions=["NC_010620"],
             )
-
-    @pytest.mark.parametrize("tolerance", [0.05, 0.5, 1.0])
-    def test_set_length_tolerances_ok(
-        self, scratch_repo: Repo, tolerance: float, mock_ncbi_client
-    ):
-        """Check that plan length tolerances can be modified by function."""
-        otu_before = scratch_repo.get_otu_by_taxid(
-            mock_ncbi_client.otus.okra_leaf_curl_alphasatellite.taxid
-        )
-        assert otu_before is not None
-
-        assert (
-            otu_before.plan.segments[0].length_tolerance
-            == scratch_repo.settings.default_segment_length_tolerance
-        )
-
-        with scratch_repo.lock():
-            set_plan_length_tolerances(scratch_repo, otu_before, tolerance)
-
-        otu_after = scratch_repo.get_otu(otu_before.id)
-        assert otu_after is not None
-
-        assert otu_after.plan.segments[0].length_tolerance == tolerance
-
-    @pytest.mark.parametrize("bad_tolerance", [-1.0, 1.1, 100.0])
-    def test_set_length_tolerances_fail(
-        self, scratch_repo: Repo, bad_tolerance: float, mock_ncbi_client
-    ):
-        """Check that plan length tolerances cannot be set to an invalid float value."""
-        otu_before = scratch_repo.get_otu_by_taxid(
-            mock_ncbi_client.otus.okra_leaf_curl_alphasatellite.taxid
-        )
-        assert otu_before is not None
-
-        assert (
-            otu_before.plan.segments[0].length_tolerance
-            == scratch_repo.settings.default_segment_length_tolerance
-        )
-
-        with scratch_repo.lock():
-            try:
-                set_plan_length_tolerances(scratch_repo, otu_before, bad_tolerance)
-            except ValidationError as exc:
-                for error in exc.errors():
-                    assert error["type"] in ("less_than_equal", "greater_than_equal")
-
-        otu_after = scratch_repo.get_otu(otu_before.id)
-        assert otu_after is not None
-
-        assert (
-            otu_after.plan.segments[0].length_tolerance
-            == otu_before.plan.segments[0].length_tolerance
-        )
 
 
 class TestDeleteIsolate:
