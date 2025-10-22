@@ -12,10 +12,6 @@ from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.isolate import (
-    assign_records_to_segments,
-    create_isolate,
-)
 from ref_builder.otu.promote import (
     promote_otu_accessions,
     promote_otu_accessions_from_records,
@@ -29,6 +25,7 @@ from ref_builder.otu.utils import (
     parse_refseq_comment,
 )
 from ref_builder.repo import Repo
+from ref_builder.services.isolate import IsolateService
 
 logger = get_logger("otu.update")
 
@@ -474,6 +471,7 @@ def update_otu_with_records(
     and add new sequences to the OTU.
     """
     new_isolate_ids = []
+    isolate_service = IsolateService(repo, NCBIClient(False))
 
     for divided_records in (
         [record for record in records if record.refseq],
@@ -484,21 +482,17 @@ def update_otu_with_records(
         for isolate_name, isolate_records in group_genbank_records_by_isolate(
             divided_records
         ).items():
-            with repo.use_transaction() as transaction:
-                try:
-                    isolate = create_isolate(
-                        repo, otu, isolate_name, list(isolate_records.values())
-                    )
-                except ValueError as e:
-                    logger.error(
-                        "Error encountered while creating sequence.",
-                        error_message=str(e),
-                    )
+            try:
+                isolate = isolate_service.create_from_records(
+                    otu.id, isolate_name, list(isolate_records.values())
+                )
+            except ValueError as e:
+                logger.error(
+                    "Error encountered while creating sequence.",
+                    error_message=str(e),
+                )
 
-                    isolate = None
-
-                if isolate is None:
-                    raise transaction.abort()
+                isolate = None
 
             if isolate:
                 new_isolate_ids.append(isolate.id)

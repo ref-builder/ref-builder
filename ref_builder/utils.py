@@ -1,9 +1,7 @@
 import re
-from dataclasses import dataclass
 from enum import StrEnum
-from pathlib import Path
 
-import orjson
+from ref_builder.models.accession import Accession
 
 ZERO_PADDING_MAX = 99999999
 """The maximum number that can be padded with zeroes in event IDs and filenames."""
@@ -12,147 +10,11 @@ GENBANK_ACCESSION_PATTERN = re.compile(pattern=r"^[A-Z]{1,2}[0-9]{5,6}$")
 REFSEQ_ACCESSION_PATTERN = re.compile(pattern=r"^NC_[0-9]{6}$")
 
 
-class OTUDeletedWarning(UserWarning):
-    """A warning raised when a previously deleted OTU is requested."""
-
-
-@dataclass(frozen=True)
-class Accession:
-    """A Genbank accession number."""
-
-    key: str
-    """The accession key.
-
-    In the accession "MN908947.3", the key is "MN908947".
-    """
-
-    version: int
-    """The version number.
-
-    In the accession "MN908947.3", the version is 3.
-    """
-
-    @classmethod
-    def from_string(cls, string: str) -> "Accession":
-        """Create an Accession from a versioned accession string,
-        e.g. "MN908947.3".
-        """
-        try:
-            key, string_version = string.split(".")
-        except ValueError as e:
-            if "not enough values to unpack" in str(e):
-                raise ValueError(
-                    f'Given accession string "{string}" does not contain two parts'
-                    "delimited by a period."
-                ) from e
-
-            raise
-
-        if string_version.isdigit():
-            version = int(string_version)
-        else:
-            raise ValueError(f"Accession version ({string_version})is not an integer.")
-
-        return Accession(key=key, version=version)
-
-    def __eq__(self, other: "Accession") -> bool:
-        if isinstance(other, Accession):
-            return self.key == other.key and self.version == other.version
-
-        raise ValueError(
-            f"Invalid comparison against invalid value {other} (type {type(other)})"
-        )
-
-    def __lt__(self, other: "Accession") -> bool:
-        if isinstance(other, Accession):
-            return self.key < other.key or self.version < other.version
-
-        raise ValueError(
-            f"Invalid comparison against invalid value {other} (type {type(other)})"
-        )
-
-    def __gt__(self, other: "Accession") -> bool:
-        if isinstance(other, Accession):
-            return self.key > other.key or self.version > other.version
-        raise ValueError(
-            f"Invalid comparison against invalid value {other} (type {type(other)})"
-        )
-
-    def __str__(self) -> str:
-        """Return the accession as a string."""
-        return f"{self.key}.{self.version}"
-
-
 class ExcludedAccessionAction(StrEnum):
     """Possible actions that can be taken on the excluded/allowed status of an accession."""
 
     ALLOW = "allow"
     EXCLUDE = "exclude"
-
-
-class DataType(StrEnum):
-    """Possible data types for a reference repository."""
-
-    BARCODE = "barcode"
-    GENOME = "genome"
-
-
-class IsolateNameType(StrEnum):
-    """Possible types for isolate names.
-
-    **Ordered by priority**. Do not reorder attributes.
-
-    Isolate name types were previously called "source types". They are referred to this
-    way in Virtool.
-    """
-
-    ISOLATE = "isolate"
-    STRAIN = "strain"
-    CLONE = "clone"
-    VARIANT = "variant"
-    GENOTYPE = "genotype"
-    SEROTYPE = "serotype"
-
-
-@dataclass(frozen=True)
-class IsolateName:
-    """A name for an isolate.
-
-    The isolate name consists of a type and a value.
-
-    For example, in the isolate name "Isolate PPSMV2-Badnapur", the type is "isolate"
-    and the value is "PPSMV2-Badnapur.
-
-    In the Genbank record for a sequence that belongs to this isolate, the source table
-    contains:
-
-    .. code-block:: text
-
-        /isolate="PPSMV2-Badnapur"
-
-    """
-
-    type: IsolateNameType
-    """The type of sub-species categorization."""
-
-    value: str
-    """The name of this subcategory."""
-
-    def __str__(self) -> str:
-        """Return the isolate name as a formatted string."""
-        return f"{self.type.capitalize()} {self.value}"
-
-
-def format_json(path: Path) -> None:
-    """Format the JSON file at ``path`` in place.
-
-    :param path: the path to the JSON file to format
-    """
-    with path.open("rb") as f:
-        data = orjson.loads(f.read())
-
-    with path.open("wb") as f:
-        f.write(orjson.dumps(data, option=orjson.OPT_INDENT_2))
 
 
 def is_accession_key_valid(accession_key: str) -> bool:

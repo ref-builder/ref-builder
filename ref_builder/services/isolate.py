@@ -4,21 +4,20 @@ from uuid import UUID
 
 import structlog
 
+from ref_builder.errors import PlanConformationError
+from ref_builder.models.isolate import IsolateName
 from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.builders.sequence import SequenceBuilder
+from ref_builder.otu.isolate import create_sequence_from_record
 from ref_builder.otu.promote import promote_otu_accessions_from_records
 from ref_builder.otu.utils import (
     DeleteRationale,
     assign_records_to_segments,
-    fetch_records_from_accessions,
     group_genbank_records_by_isolate,
     parse_refseq_comment,
 )
-from ref_builder.plan import PlanConformationError
 from ref_builder.services import Service
-from ref_builder.utils import IsolateName
 
 logger = structlog.get_logger("services.isolate")
 
@@ -30,7 +29,6 @@ class IsolateService(Service):
         self,
         otu_id: UUID,
         accessions: list[str],
-        ignore_cache: bool = False,
     ) -> IsolateBuilder | None:
         """Create a new isolate from a list of accessions.
 
@@ -50,9 +48,7 @@ class IsolateService(Service):
 
         otu_logger = logger.bind(taxid=otu.taxid, otu_id=str(otu.id), name=otu.name)
 
-        records = fetch_records_from_accessions(
-            accessions, otu.blocked_accessions, self.ncbi
-        )
+        records = _fetch_records(accessions, otu.blocked_accessions, self.ncbi)
 
         if not records:
             return None
@@ -104,6 +100,38 @@ class IsolateService(Service):
             return None
 
         # Create the isolate
+        with self._repo.use_transaction() as transaction:
+            isolate = self._write_isolate(otu, isolate_name, records)
+
+            if isolate:
+                return isolate
+
+            transaction.abort()
+
+        return None
+
+    def create_from_records(
+        self,
+        otu_id: UUID,
+        isolate_name: IsolateName | None,
+        records: list[NCBIGenbank],
+    ) -> IsolateBuilder | None:
+        """Create a new isolate from pre-fetched GenBank records.
+
+        Use this method when records are already fetched (e.g., in batch operations).
+        For creating isolates from accessions, use create() instead.
+
+        :param otu_id: the OTU ID to add the isolate to
+        :param isolate_name: the isolate name (or None for unnamed)
+        :param records: the GenBank records
+        :return: the created isolate or None if creation failed
+        """
+        otu = self._repo.get_otu(otu_id)
+
+        if otu is None:
+            logger.error("OTU not found", otu_id=str(otu_id))
+            return None
+
         with self._repo.use_transaction() as transaction:
             isolate = self._write_isolate(otu, isolate_name, records)
 
@@ -189,7 +217,9 @@ class IsolateService(Service):
 
         for segment_id, record in assigned.items():
             if (sequence := otu.get_sequence_by_accession(record.accession)) is None:
-                sequence = self._create_sequence_from_record(otu, record, segment_id)
+                sequence = create_sequence_from_record(
+                    self._repo, otu, record, segment_id
+                )
 
             self._repo.link_sequence(otu.id, isolate.id, sequence.id)
 
@@ -205,23 +235,35 @@ class IsolateService(Service):
 
         return self._repo.get_isolate(isolate.id)
 
-    def _create_sequence_from_record(
-        self,
-        otu: OTUBuilder,
-        record: NCBIGenbank,
-        segment_id: UUID,
-    ) -> SequenceBuilder:
-        """Create a new sequence from a GenBank record.
 
-        :param otu: the OTU to add the sequence to
-        :param record: the GenBank record
-        :param segment_id: the segment ID
-        :return: the created sequence
-        """
-        return self._repo.create_sequence(
-            otu.id,
-            accession=record.accession_version,
-            definition=record.definition,
-            segment=segment_id,
-            sequence=record.sequence,
-        )
+def _fetch_records(
+    accessions: list | set,
+    blocked_accessions: set,
+    ncbi_client,
+) -> list[NCBIGenbank]:
+    """Fetch GenBank records from a list of accessions.
+
+    Don't fetch accessions in ``blocked_accessions``.
+
+    :param accessions: A list of accessions to fetch.
+    :param blocked_accessions: A set of accessions to ignore.
+    :param ncbi_client: NCBI client to use for fetching records.
+    """
+    log = logger.bind(
+        requested=sorted(accessions),
+        blocked=sorted(blocked_accessions),
+    )
+
+    eligible = set(accessions) - blocked_accessions
+
+    if not eligible:
+        log.error("None of the requested accessions were eligible for inclusion.")
+        return []
+
+    log.debug(
+        "Fetching accessions.",
+        accessions=sorted(eligible),
+        count=len(eligible),
+    )
+
+    return ncbi_client.fetch_genbank_records(eligible)

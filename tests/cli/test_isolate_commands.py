@@ -2,7 +2,8 @@ from click.testing import CliRunner
 
 from ref_builder.cli.isolate import isolate as isolate_command_group
 from ref_builder.cli.otu import otu as otu_command_group
-from ref_builder.utils import IsolateName, IsolateNameType
+from ref_builder.isolate import IsolateNameType
+from ref_builder.models.isolate import IsolateName
 
 runner = CliRunner()
 

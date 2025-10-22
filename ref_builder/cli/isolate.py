@@ -3,14 +3,14 @@ from pathlib import Path
 
 import click
 
-from ref_builder.cli.options import ignore_cache_option, path_option
+from ref_builder.cli.options import path_option
 from ref_builder.cli.utils import get_otu_isolate_ids_from_identifier, pass_repo
 from ref_builder.cli.validate import validate_no_duplicate_accessions
 from ref_builder.console import print_isolate, print_isolate_as_json
 from ref_builder.ncbi.client import NCBIClient
-from ref_builder.otu.isolate import add_genbank_isolate
 from ref_builder.otu.modify import delete_isolate_from_otu
 from ref_builder.repo import Repo, locked_repo
+from ref_builder.services.isolate import IsolateService
 
 
 @click.group(name="isolate")
@@ -31,12 +31,10 @@ def isolate(ctx: click.Context, path: Path) -> None:
     required=True,
 )
 @click.option("--taxid", type=int, required=True)
-@ignore_cache_option
 @pass_repo
 def isolate_create(
     repo: Repo,
     accessions_: list[str],
-    ignore_cache: bool,
     taxid: int,
 ) -> None:
     """Create a new isolate using the given accessions."""
@@ -46,14 +44,10 @@ def isolate_create(
         click.echo(f"OTU {taxid} not found.", err=True)
         sys.exit(1)
 
-    ncbi_client = NCBIClient(ignore_cache=ignore_cache)
+    ncbi_client = NCBIClient(False)
 
-    add_genbank_isolate(
-        repo,
-        otu_,
-        accessions_,
-        ncbi_client,
-    )
+    isolate_service = IsolateService(repo, ncbi_client)
+    isolate_service.create(otu_.id, accessions_)
 
 
 @isolate.command(name="delete")

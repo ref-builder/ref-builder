@@ -50,3 +50,9 @@ class OTUDeletedError(Exception):
 
     def __init__(self, otu_id: UUID):
         super().__init__(f"OTU {otu_id} has been marked for deletion.")
+
+
+class PlanConformationError(ValueError):
+    """Raised when potential new sequences do not pass validation against
+    the OTU plan.
+    """

@@ -5,22 +5,94 @@ from uuid import UUID
 import structlog
 
 from ref_builder.errors import InvalidInputError, PartialIDConflictError
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.molecule import Molecule
+from ref_builder.models.plan import (
+    Plan,
+    Segment,
+    SegmentRule,
+    extract_segment_name_from_record,
+)
 from ref_builder.ncbi.models import NCBIGenbank, NCBIRank, NCBITaxonomy
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.isolate import create_sequence_from_record
 from ref_builder.otu.utils import (
     assign_records_to_segments,
-    create_plan_from_records,
-    get_molecule_from_records,
+    create_segments_from_records,
     group_genbank_records_by_isolate,
     parse_refseq_comment,
 )
 from ref_builder.services import Service
-from ref_builder.utils import IsolateName
 
 logger = structlog.get_logger("services.otu")
 
 UUID_STRING_LENGTH = 36
+
+
+def create_plan_from_records(
+    records: list[NCBIGenbank],
+    length_tolerance: float,
+    segments: list[Segment] | None = None,
+) -> Plan | None:
+    """Return a plan from a list of records representing an isolate."""
+    if len(records) == 1:
+        record = records[0]
+
+        return Plan.new(
+            segments=[
+                Segment.new(
+                    length=len(record.sequence),
+                    length_tolerance=length_tolerance,
+                    name=extract_segment_name_from_record(record),
+                    rule=SegmentRule.REQUIRED,
+                )
+            ]
+        )
+
+    if len(group_genbank_records_by_isolate(records)) > 1:
+        logger.warning("More than one isolate found. Cannot create plan.")
+        return None
+
+    if segments is None:
+        segments = create_segments_from_records(
+            records,
+            rule=SegmentRule.REQUIRED,
+            length_tolerance=length_tolerance,
+        )
+
+    if segments is not None:
+        return Plan.new(segments=segments)
+
+    return None
+
+
+def get_molecule_from_records(records: list[NCBIGenbank]) -> Molecule:
+    """Return relevant molecule metadata from one or more records.
+
+    Molecule metadata is retrieved from the first RefSeq record in the list.
+    If no RefSeq record is found in the list, molecule metadata is retrieved
+    from record[0].
+    """
+    if not records:
+        raise ValueError("No records given")
+
+    # Assign first record as benchmark to start
+    representative_record = records[0]
+
+    if not representative_record.refseq:
+        for record in records:
+            if record.refseq:
+                # Replace representative record with first RefSeq record found
+                representative_record = record
+                break
+
+    return Molecule.model_validate(
+        {
+            "strandedness": representative_record.strandedness.value,
+            "type": representative_record.moltype.value,
+            "topology": representative_record.topology.value,
+        },
+    )
 
 
 class OTUService(Service):

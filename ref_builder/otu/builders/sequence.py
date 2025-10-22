@@ -1,6 +1,6 @@
 from pydantic import UUID4
 
-from ref_builder.otu.models import SequenceModel
+from ref_builder.models.otu import SequenceModel
 
 
 class SequenceBuilder(SequenceModel):

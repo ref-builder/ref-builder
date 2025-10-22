@@ -6,12 +6,12 @@ from pathlib import Path
 
 from structlog import get_logger
 
+from ref_builder.models.accession import Accession
 from ref_builder.ncbi.models import (
     NCBIGenbank,
     NCBIRank,
     NCBITaxonomy,
 )
-from ref_builder.utils import Accession
 from tests.fixtures.ncbi.models import OTURegistry
 
 logger = get_logger("tests.mock_ncbi_client")

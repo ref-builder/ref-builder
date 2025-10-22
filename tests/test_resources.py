@@ -1,11 +1,12 @@
 from uuid import uuid4
 
-from ref_builder.models import Molecule, MolType, Strandedness, Topology
+from ref_builder.isolate import IsolateNameType
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.molecule import Molecule, MoleculeType, Strandedness, Topology
+from ref_builder.models.plan import Plan, Segment
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.plan import Plan, Segment
 from ref_builder.repo import Repo
-from ref_builder.utils import IsolateName, IsolateNameType
 from tests.fixtures.factories import IsolateFactory, OTUFactory
 
 
@@ -64,7 +65,7 @@ class TestOTU:
             isolates=[],
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
-                type=MolType.RNA,
+                type=MoleculeType.RNA,
                 topology=Topology.LINEAR,
             ),
             name="Tobacco mosaic virus",

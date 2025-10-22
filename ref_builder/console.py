@@ -5,10 +5,10 @@ from rich.table import Table
 from rich.text import Text
 
 from ref_builder.events.base import Event, EventMetadata
-from ref_builder.models import OTUMinimal
+from ref_builder.models.otu import OTUMinimal
+from ref_builder.models.plan import Plan, SegmentRule
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.plan import Plan, SegmentRule
 
 
 def _render_taxonomy_id_link(taxid: int) -> str:

@@ -7,7 +7,12 @@ from polyfactory import PostGenerated, Use
 from polyfactory.decorators import post_generated
 from polyfactory.factories.pydantic_factory import ModelFactory
 
-from ref_builder.models import Molecule, MolType, OTUMinimal
+from ref_builder.isolate import IsolateNameType
+from ref_builder.models.accession import Accession
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.molecule import Molecule, MoleculeType
+from ref_builder.models.otu import OTUMinimal
+from ref_builder.models.plan import Plan, Segment, SegmentName, SegmentRule
 from ref_builder.ncbi.models import (
     NCBIGenbank,
     NCBILineage,
@@ -21,13 +26,6 @@ from ref_builder.otu.utils import get_segments_max_length, get_segments_min_leng
 from ref_builder.otu.validators.isolate import IsolateBase
 from ref_builder.otu.validators.otu import OTUBase
 from ref_builder.otu.validators.sequence import SequenceBase
-from ref_builder.plan import (
-    Plan,
-    Segment,
-    SegmentName,
-    SegmentRule,
-)
-from ref_builder.utils import Accession, IsolateName, IsolateNameType
 from tests.fixtures.providers import (
     AccessionProvider,
     OrganismProvider,
@@ -161,19 +159,19 @@ class NCBIGenbankFactory(ModelFactory[NCBIGenbank]):
 
     @post_generated
     @classmethod
-    def moltype(cls, source: NCBISource) -> MolType:
+    def moltype(cls, source: NCBISource) -> MoleculeType:
         """Map moltype field to source.moltype equivalent."""
         if source.mol_type in DNA_MOLTYPES:
-            return MolType.DNA
+            return MoleculeType.DNA
 
         try:
             return {
-                NCBISourceMolType.GENOMIC_RNA: MolType.RNA,
-                NCBISourceMolType.MRNA: MolType.MRNA,
-                NCBISourceMolType.TRANSCRIBED_RNA: MolType.RNA,
-                NCBISourceMolType.VIRAL_CRNA: MolType.CRNA,
-                NCBISourceMolType.TRNA: MolType.TRNA,
-                NCBISourceMolType.OTHER_RNA: MolType.RNA,
+                NCBISourceMolType.GENOMIC_RNA: MoleculeType.RNA,
+                NCBISourceMolType.MRNA: MoleculeType.MRNA,
+                NCBISourceMolType.TRANSCRIBED_RNA: MoleculeType.RNA,
+                NCBISourceMolType.VIRAL_CRNA: MoleculeType.CRNA,
+                NCBISourceMolType.TRNA: MoleculeType.TRNA,
+                NCBISourceMolType.OTHER_RNA: MoleculeType.RNA,
             }[source.mol_type]
         except KeyError as err:
             raise ValueError(

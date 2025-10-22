@@ -2,10 +2,11 @@ from uuid import uuid4
 
 from pytest_mock import MockerFixture
 
+from ref_builder.isolate import IsolateNameType
+from ref_builder.models.isolate import IsolateName
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.repo import Repo
 from ref_builder.services.cls import Services
-from ref_builder.utils import IsolateName, IsolateNameType
 from tests.fixtures.factories import NCBIGenbankFactory, NCBISourceFactory
 from tests.fixtures.mock_ncbi_client import MockNCBIClient
 
@@ -229,7 +230,7 @@ class TestIsolateServiceCreateValidation:
         record_2 = ncbi_genbank_factory.build(source=source_2, accession="AB123457")
 
         mocker.patch(
-            "ref_builder.services.isolate.fetch_records_from_accessions",
+            "ref_builder.services.isolate._fetch_records",
             return_value=[record_1, record_2],
         )
 
@@ -270,7 +271,7 @@ class TestIsolateServiceCreateValidation:
         )
 
         mocker.patch(
-            "ref_builder.services.isolate.fetch_records_from_accessions",
+            "ref_builder.services.isolate._fetch_records",
             return_value=[record],
         )
 
@@ -281,6 +282,32 @@ class TestIsolateServiceCreateValidation:
             )
 
         assert isolate is None
+
+    def test_plan_mismatch(
+        self,
+        scratch_repo: Repo,
+        mock_ncbi_client: MockNCBIClient,
+    ):
+        """Test that isolate cannot be added if it doesn't match OTU plan."""
+        services = Services(scratch_repo, mock_ncbi_client)
+
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        )
+
+        assert otu
+
+        with scratch_repo.lock():
+            isolate = services.isolate.create(
+                otu_id=otu.id,
+                accessions=["NC_003355"],
+            )
+
+        assert isolate is None
+
+        otu_after = scratch_repo.get_otu(otu.id)
+        assert otu_after
+        assert "NC_003355" not in otu_after.accessions
 
 
 class TestIsolateServicePromotion:
@@ -318,7 +345,7 @@ class TestIsolateServicePromotion:
         )
 
         mocker.patch(
-            "ref_builder.services.isolate.fetch_records_from_accessions",
+            "ref_builder.services.isolate._fetch_records",
             return_value=[refseq_record],
         )
 

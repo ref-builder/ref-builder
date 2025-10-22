@@ -1,19 +1,9 @@
 from enum import StrEnum
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
 
-class OTUMinimal(BaseModel):
-    """A minimal representation of an OTU."""
-
-    acronym: str
-    id: UUID
-    name: str
-    taxid: int
-
-
-class MolType(StrEnum):
+class MoleculeType(StrEnum):
     """The in vivo molecule type of a sequence.
 
     Corresponds to Genbank's moltype field
@@ -47,4 +37,4 @@ class Molecule(BaseModel):
 
     strandedness: Strandedness
     topology: Topology
-    type: MolType
+    type: MoleculeType

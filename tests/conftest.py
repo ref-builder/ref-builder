@@ -6,13 +6,13 @@ from polyfactory.factories.pydantic_factory import ModelFactory
 from pytest_mock import MockerFixture
 
 from ref_builder.logs import configure_logger
+from ref_builder.models.repo import DataType
 from ref_builder.ncbi.cache import NCBICache
 from ref_builder.ncbi.client import NCBIClient, NCBIClientProtocol
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.repo import Repo
 from ref_builder.services.isolate import IsolateService
 from ref_builder.services.otu import OTUService
-from ref_builder.utils import DataType
 from tests.fixtures.factories import (
     IsolateFactory,
     NCBIGenbankFactory,

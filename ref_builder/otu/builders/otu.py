@@ -2,10 +2,11 @@ from uuid import UUID
 
 from pydantic import UUID4
 
+from ref_builder.models.accession import Accession
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.otu import OTUModel
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
-from ref_builder.otu.models import OTUModel
-from ref_builder.utils import Accession, IsolateName
 
 
 class OTUBuilder(OTUModel):
@@ -14,10 +15,10 @@ class OTUBuilder(OTUModel):
     isolates: list[IsolateBuilder]
     """Isolates contained in this OTU."""
 
-    _isolates_by_id: dict[UUID4:IsolateBuilder]
+    _isolates_by_id: dict[UUID4, IsolateBuilder]
     """A dictionary of isolates indexed by isolate UUID"""
 
-    _sequences_by_id: dict[UUID4:SequenceBuilder]
+    _sequences_by_id: dict[UUID4, SequenceBuilder]
     """A dictionary of sequences indexed by sequence UUID"""
 
     def __init__(self, **data) -> None:
@@ -25,8 +26,10 @@ class OTUBuilder(OTUModel):
 
         self._sequences_by_id = {}
         self._isolates_by_id = {}
+
         for isolate in self.isolates:
             self._isolates_by_id[isolate.id] = isolate
+
             for sequence in isolate.sequences:
                 self._sequences_by_id[sequence.id] = sequence
 

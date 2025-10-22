@@ -1,30 +1,22 @@
 from uuid import UUID
 
 import pytest
-from pydantic import ValidationError
 from syrupy.assertion import SnapshotAssertion
 from syrupy.filters import props
 
+from ref_builder.isolate import IsolateNameType
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.plan import Plan, Segment, SegmentName, SegmentRule
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.modify import (
     add_segments_to_plan,
     allow_accessions_into_otu,
     delete_isolate_from_otu,
     exclude_accessions_from_otu,
-    replace_sequence_in_otu,
     set_plan,
-    set_plan_length_tolerances,
-)
-from ref_builder.plan import (
-    Plan,
-    Segment,
-    SegmentName,
-    SegmentRule,
 )
 from ref_builder.repo import Repo
 from ref_builder.services.otu import OTUService
-from ref_builder.utils import IsolateName, IsolateNameType
-from tests.fixtures.factories import IsolateFactory
 
 
 def test_exclude_accessions(scratch_repo: Repo, mock_ncbi_client):
@@ -188,59 +180,6 @@ class TestSetPlan:
                 accessions=["NC_010620"],
             )
 
-    @pytest.mark.parametrize("tolerance", [0.05, 0.5, 1.0])
-    def test_set_length_tolerances_ok(
-        self, scratch_repo: Repo, tolerance: float, mock_ncbi_client
-    ):
-        """Check that plan length tolerances can be modified by function."""
-        otu_before = scratch_repo.get_otu_by_taxid(
-            mock_ncbi_client.otus.okra_leaf_curl_alphasatellite.taxid
-        )
-        assert otu_before is not None
-
-        assert (
-            otu_before.plan.segments[0].length_tolerance
-            == scratch_repo.settings.default_segment_length_tolerance
-        )
-
-        with scratch_repo.lock():
-            set_plan_length_tolerances(scratch_repo, otu_before, tolerance)
-
-        otu_after = scratch_repo.get_otu(otu_before.id)
-        assert otu_after is not None
-
-        assert otu_after.plan.segments[0].length_tolerance == tolerance
-
-    @pytest.mark.parametrize("bad_tolerance", [-1.0, 1.1, 100.0])
-    def test_set_length_tolerances_fail(
-        self, scratch_repo: Repo, bad_tolerance: float, mock_ncbi_client
-    ):
-        """Check that plan length tolerances cannot be set to an invalid float value."""
-        otu_before = scratch_repo.get_otu_by_taxid(
-            mock_ncbi_client.otus.okra_leaf_curl_alphasatellite.taxid
-        )
-        assert otu_before is not None
-
-        assert (
-            otu_before.plan.segments[0].length_tolerance
-            == scratch_repo.settings.default_segment_length_tolerance
-        )
-
-        with scratch_repo.lock():
-            try:
-                set_plan_length_tolerances(scratch_repo, otu_before, bad_tolerance)
-            except ValidationError as exc:
-                for error in exc.errors():
-                    assert error["type"] in ("less_than_equal", "greater_than_equal")
-
-        otu_after = scratch_repo.get_otu(otu_before.id)
-        assert otu_after is not None
-
-        assert (
-            otu_after.plan.segments[0].length_tolerance
-            == otu_before.plan.segments[0].length_tolerance
-        )
-
 
 class TestDeleteIsolate:
     """Test isolate deletion behaviour."""
@@ -273,102 +212,3 @@ class TestDeleteIsolate:
         assert isolate_before.accessions not in otu_after.accessions
 
         assert len(otu_after.isolate_ids) == len(otu_before.isolate_ids) - 1
-
-
-class TestReplaceSequence:
-    def test_ok(self, precached_repo: Repo):
-        """Test sequence replacement and deletion."""
-        otu_service = OTUService(precached_repo, NCBIClient(False))
-
-        with precached_repo.lock():
-            otu_before = otu_service.create(["MK431779"])
-
-        assert otu_before
-
-        sequence_before = otu_before.get_sequence_by_accession("MK431779")
-
-        assert sequence_before
-
-        isolate_id = next(
-            iter(otu_before.get_isolate_ids_containing_sequence_id(sequence_before.id))
-        )
-
-        with precached_repo.lock():
-            new_sequence = replace_sequence_in_otu(
-                repo=precached_repo,
-                otu=otu_before,
-                new_accession="NC_003355",
-                replaced_accession="MK431779",
-            )
-
-        assert new_sequence
-
-        otu_after = precached_repo.get_otu(otu_before.id)
-
-        assert otu_after
-
-        isolate_after = otu_after.get_isolate(isolate_id)
-
-        assert isolate_after is not None
-        assert otu_after.accessions == isolate_after.accessions == {"NC_003355"}
-
-    def test_multiple_links(self, precached_repo: Repo):
-        otu_service = OTUService(precached_repo, NCBIClient(False))
-
-        with precached_repo.lock():
-            otu_before = otu_service.create(["DQ178608", "DQ178609"])
-
-        assert otu_before
-        assert otu_before == precached_repo.get_otu(otu_before.id)
-
-        mock_isolate = IsolateFactory.build_on_plan(otu_before.plan)
-        mock_sequence = mock_isolate.sequences[1]
-
-        with precached_repo.lock(), precached_repo.use_transaction():
-            sequence = precached_repo.create_sequence(
-                otu_id=otu_before.id,
-                accession=str(mock_sequence.accession),
-                definition=mock_sequence.definition,
-                segment=mock_sequence.segment,
-                sequence=mock_sequence.sequence,
-            )
-
-            assert sequence
-
-            isolate_before = precached_repo.create_isolate(
-                otu_id=otu_before.id,
-                name=mock_isolate.name,
-            )
-
-            assert isolate_before
-
-            first_isolate = otu_before.isolates[0]
-
-            precached_repo.link_sequence(
-                otu_id=otu_before.id,
-                isolate_id=isolate_before.id,
-                sequence_id=first_isolate.sequences[0].id,
-            )
-
-            precached_repo.link_sequence(
-                otu_id=otu_before.id,
-                isolate_id=isolate_before.id,
-                sequence_id=sequence.id,
-            )
-
-        otu_after = precached_repo.get_otu(otu_before.id)
-
-        assert otu_after
-        assert otu_after.accessions == {
-            "DQ178608",
-            "DQ178609",
-            sequence.accession.key,
-        }
-
-        with precached_repo.lock():
-            replace_sequence_in_otu(
-                precached_repo,
-                otu_after,
-                new_accession="NC_038792",
-                replaced_accession="DQ178608",
-            )

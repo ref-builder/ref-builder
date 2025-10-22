@@ -2,9 +2,9 @@ from uuid import UUID
 
 from pydantic import field_serializer, field_validator
 
+from ref_builder.models.accession import Accession
+from ref_builder.models.isolate import IsolateModel, IsolateName
 from ref_builder.otu.builders.sequence import SequenceBuilder
-from ref_builder.otu.models import IsolateModel
-from ref_builder.utils import Accession, IsolateName
 
 
 class IsolateBuilder(IsolateModel):

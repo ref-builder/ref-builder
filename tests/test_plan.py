@@ -5,15 +5,15 @@ import pytest
 from pydantic import ValidationError
 from syrupy import SnapshotAssertion
 
-from ref_builder.ncbi.models import NCBISourceMolType
-from ref_builder.plan import (
+from ref_builder.models.plan import (
     Plan,
     Segment,
     SegmentName,
     SegmentRule,
     extract_segment_name_from_record,
-    extract_segment_name_from_record_with_plan,
 )
+from ref_builder.ncbi.models import NCBISourceMolType
+from ref_builder.plan import extract_segment_name_from_record_with_plan
 from tests.fixtures.factories import NCBIGenbankFactory, NCBISourceFactory
 from tests.fixtures.utils import uuid_matcher
 

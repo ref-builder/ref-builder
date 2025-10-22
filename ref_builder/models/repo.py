@@ -1,8 +1,14 @@
 import datetime
+from enum import StrEnum
 
 from pydantic import UUID4, BaseModel, Field
 
-from ref_builder.utils import DataType
+
+class DataType(StrEnum):
+    """Possible data types for a reference repository."""
+
+    BARCODE = "barcode"
+    GENOME = "genome"
 
 
 class RepoMeta(BaseModel):

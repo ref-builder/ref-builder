@@ -1,20 +1,14 @@
 from collections.abc import Collection
 from uuid import UUID
 
-from pydantic import ValidationError
 from structlog import get_logger
 
+from ref_builder.models.plan import Plan, SegmentRule
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.utils import (
     DeleteRationale,
-    assign_segment_id_to_record,
     create_segments_from_records,
-)
-from ref_builder.plan import (
-    Plan,
-    SegmentRule,
 )
 from ref_builder.repo import Repo
 
@@ -108,7 +102,7 @@ def set_plan(
     otu: OTUBuilder,
     plan: Plan,
 ) -> Plan | None:
-    """Set an OTU's plan to the passed ``plan``."""
+    """Set an OTU's plan."""
     log = logger.bind(name=otu.name, taxid=otu.taxid, plan=plan.model_dump())
 
     try:
@@ -117,36 +111,6 @@ def set_plan(
     except ValueError:
         log.exception()
         return None
-
-    return repo.get_otu(otu.id).plan
-
-
-def set_plan_length_tolerances(
-    repo: Repo,
-    otu: OTUBuilder,
-    tolerance: float,
-) -> Plan | None:
-    """Sets a plan's length tolerances to a new float value."""
-    try:
-        new_plan = otu.plan.model_copy()
-        for segment in new_plan.segments:
-            segment.length_tolerance = tolerance
-    except ValidationError as exc:
-        for error in exc.errors():
-            logger.error(
-                "Length tolerance must be between 0.0 and 1.0.",
-                error_type=error["type"],
-                name=otu.name,
-                taxid=otu.taxid,
-                requested_tolerance=tolerance,
-            )
-        return None
-
-    with repo.use_transaction():
-        repo.set_plan(
-            otu.id,
-            plan=new_plan,
-        )
 
     return repo.get_otu(otu.id).plan
 
@@ -212,66 +176,3 @@ def add_segments_to_plan(
     log.info("Added new segments", ids=[str(segment.id) for segment in new_segments])
 
     return {segment.id for segment in new_segments}
-
-
-def replace_sequence_in_otu(
-    repo: Repo,
-    otu: OTUBuilder,
-    new_accession: str,
-    replaced_accession: str,
-    ignore_cache: bool = False,
-) -> SequenceBuilder | None:
-    """Replace a sequence in an OTU."""
-    ncbi = NCBIClient(ignore_cache)
-
-    replaced_sequence = otu.get_sequence_by_accession(replaced_accession)
-
-    if replaced_sequence is None:
-        logger.error(
-            "This accession does not exist in this OTU.", accession=replaced_accession
-        )
-        return None
-
-    affected_isolate_ids = otu.get_isolate_ids_containing_sequence_id(
-        replaced_sequence.id
-    )
-    if not affected_isolate_ids:
-        logger.warning(
-            "This sequence is not linked to any isolates.",
-            accession=str(replaced_sequence.accession),
-            sequence_id=replaced_sequence.id,
-        )
-        return None
-
-    record = ncbi.fetch_genbank_records([new_accession])[0]
-
-    segment_id = assign_segment_id_to_record(record, otu.plan)
-    if segment_id is None:
-        logger.error("This segment does not match the plan.")
-
-    with repo.use_transaction():
-        new_sequence = repo.create_sequence(
-            otu.id,
-            accession=record.accession_version,
-            definition=record.definition,
-            segment=segment_id,
-            sequence=record.sequence,
-        )
-
-        for isolate_id in affected_isolate_ids:
-            repo.replace_sequence(
-                otu.id,
-                isolate_id=isolate_id,
-                sequence_id=new_sequence.id,
-                replaced_sequence_id=replaced_sequence.id,
-                rationale="Requested by user",
-            )
-
-    if new_sequence is not None:
-        logger.info(
-            f"{replaced_accession} replaced by {new_sequence.accession}.",
-            new_sequence_id=new_sequence.id,
-        )
-        return new_sequence
-
-    logger.error(f"{replaced_accession} could not be replaced.")

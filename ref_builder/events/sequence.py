@@ -5,9 +5,9 @@ from ref_builder.events.base import (
     EventData,
     SequenceQuery,
 )
+from ref_builder.models.accession import Accession
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
-from ref_builder.utils import Accession
 
 
 class CreateSequenceData(EventData):

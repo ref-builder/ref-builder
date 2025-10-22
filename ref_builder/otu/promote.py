@@ -3,21 +3,39 @@ from uuid import UUID
 
 from structlog import get_logger
 
+from ref_builder.models.accession import Accession
+from ref_builder.models.plan import Plan
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.utils import (
     DeleteRationale,
-    assign_segment_id_to_record,
     get_segments_max_length,
     get_segments_min_length,
     parse_refseq_comment,
 )
+from ref_builder.plan import extract_segment_name_from_record_with_plan
 from ref_builder.repo import Repo
-from ref_builder.utils import Accession
 
 logger = get_logger("otu.promote")
+
+
+def assign_segment_id_to_record(
+    record: NCBIGenbank,
+    plan: Plan,
+) -> UUID | None:
+    """Assign a segment ID to a record based on the plan."""
+    segment_name = extract_segment_name_from_record_with_plan(record, plan)
+
+    if segment_name is None and plan.monopartite:
+        return plan.segments[0].id
+
+    for segment in plan.segments:
+        if segment_name == segment.name:
+            return segment.id
+
+    return None
 
 
 def promote_otu_accessions(

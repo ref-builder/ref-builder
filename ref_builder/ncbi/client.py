@@ -8,20 +8,18 @@ from enum import StrEnum
 from http import HTTPStatus
 from typing import Protocol
 from urllib.error import HTTPError
-from urllib.parse import quote_plus
 
 from Bio import Entrez
 from pydantic import ValidationError
 from structlog import get_logger
 
+from ref_builder.models.accession import Accession
 from ref_builder.ncbi.cache import NCBICache
 from ref_builder.ncbi.models import (
     NCBIDatabase,
     NCBIGenbank,
-    NCBIRank,
     NCBITaxonomy,
 )
-from ref_builder.utils import Accession
 
 if email := os.environ.get("NCBI_EMAIL"):
     Entrez.email = email
@@ -156,7 +154,7 @@ class NCBIClient:
 
         if records:
             return sorted(
-                NCBIClient.validate_genbank_records(records),
+                NCBIClient._validate_genbank_records(records),
                 key=lambda r: r.accession,
             )
 
@@ -297,7 +295,7 @@ class NCBIClient:
         return accessions
 
     @staticmethod
-    def validate_genbank_records(records: list[dict]) -> list[NCBIGenbank]:
+    def _validate_genbank_records(records: list[dict]) -> list[NCBIGenbank]:
         """Process a list of raw Genbank dicts into validated NCBIGenbank records.
         Logs an error if there is an issue with validation or parsing,
         but does not fail out.
@@ -375,106 +373,6 @@ class NCBIClient:
 
                 if error["type"] == "taxon_rank_too_high":
                     raise TaxonLevelError(error["msg"])
-
-        return None
-
-    @staticmethod
-    def _fetch_taxonomy_rank(taxid: int) -> NCBIRank | None:
-        """Fetch the rank for a given NCBI Taxonomy ID.
-
-        If no rank is found in the record, ``None`` is returned.
-
-        :param taxid: an NCBI Taxonomy ID
-        :return: the rank if possible
-        """
-        logger = base_logger.bind(taxid=taxid)
-
-        try:
-            with log_http_error():
-                handle = Entrez.efetch(
-                    db=NCBIDatabase.TAXONOMY,
-                    id=taxid,
-                    rettype="docsum",
-                    retmode="xml",
-                )
-        except HTTPError:
-            return None
-
-        try:
-            docsum_record = Entrez.read(handle)
-        except RuntimeError:
-            logger.exception("NCBI returned unparseable data")
-            return None
-
-        try:
-            rank = NCBIRank(docsum_record[0]["Rank"])
-        except ValueError:
-            logger.debug("Found rank for this taxid, but it did not pass validation.")
-            return None
-
-        logger.debug("Found valid rank", rank=rank)
-
-        return rank
-
-    @staticmethod
-    def fetch_taxonomy_id_by_name(name: str) -> int | None:
-        """Fetch a best-guess taxonomy ID for a given OTU name.
-
-        Searches the NCBI taxonomy database for a given OTU name, then fetches and
-        returns its taxonomy ID.
-
-        Returns ``None`` if no matching taxonomy is found.
-
-        :param name: The name of an otu
-        :return: The NCBI Taxonomy UID for the given otu name
-        """
-        logger = base_logger.bind(name=name)
-        try:
-            with log_http_error():
-                handle = Entrez.esearch(db=NCBIDatabase.TAXONOMY, term=name)
-        except HTTPError:
-            return None
-
-        try:
-            record = Entrez.read(handle)
-        except RuntimeError:
-            logger.exception("NCBI returned unparseable data.")
-            return None
-
-        try:
-            return int(record["IdList"][0])
-        except IndexError:
-            return None
-
-    @staticmethod
-    def fetch_spelling(
-        name: str,
-        db: NCBIDatabase = NCBIDatabase.TAXONOMY,
-    ) -> str | None:
-        """Fetch alternative spellings for a given OTU name.
-
-        :param name: The OTU name that requires correcting
-        :param db: Database to check against. Defaults to ``taxonomy``.
-        :return: String containing NCBI-suggested spelling changes, None if HTTPError
-        """
-        logger = base_logger.bind(query=name)
-
-        try:
-            with log_http_error():
-                handle = Entrez.espell(db=db, term=quote_plus(name))
-        except HTTPError:
-            return None
-
-        try:
-            record = Entrez.read(handle)
-        except RuntimeError:
-            logger.exception("NCBI returned unparseable data.")
-            return None
-
-        if "CorrectedQuery" in record:
-            return record["CorrectedQuery"]
-
-        logger.warning("Suggested spelling not found.")
 
         return None
 

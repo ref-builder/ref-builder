@@ -6,21 +6,16 @@ from uuid import UUID
 
 import structlog
 
-from ref_builder.models import Molecule
-from ref_builder.ncbi.client import NCBIClient
+from ref_builder.errors import PlanConformationError
+from ref_builder.isolate import IsolateNameType
+from ref_builder.models.accession import Accession
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.plan import Plan, Segment, SegmentRule
 from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.plan import (
-    Plan,
-    PlanConformationError,
-    Segment,
-    SegmentRule,
-    extract_segment_name_from_record,
     extract_segment_name_from_record_with_plan,
 )
 from ref_builder.utils import (
-    Accession,
-    IsolateName,
-    IsolateNameType,
     generate_natural_sort_key,
 )
 
@@ -50,14 +45,6 @@ def get_segments_max_length(segments: list[Segment]) -> int:
     return math.ceil(longest_segment.length * (1.0 + longest_segment.length_tolerance))
 
 
-def check_sequence_length(sequence: str, segment_length: int, tolerance: float) -> bool:
-    """Check if the sequence length is within acceptable segment length tolerance."""
-    min_length = segment_length * (1.0 - tolerance)
-    max_length = segment_length * (1.0 + tolerance)
-
-    return min_length <= len(sequence) <= max_length
-
-
 def create_segments_from_records(
     records: list[NCBIGenbank], rule: SegmentRule, length_tolerance: float
 ) -> list[Segment]:
@@ -70,104 +57,6 @@ def create_segments_from_records(
     ]
 
     return sorted(segments, key=lambda s: generate_natural_sort_key(str(s.name)))
-
-
-def create_plan_from_records(
-    records: list[NCBIGenbank],
-    length_tolerance: float,
-    segments: list[Segment] | None = None,
-) -> Plan | None:
-    """Return a plan from a list of records representing an isolate."""
-    if len(records) == 1:
-        record = records[0]
-
-        return Plan.new(
-            segments=[
-                Segment.new(
-                    length=len(record.sequence),
-                    length_tolerance=length_tolerance,
-                    name=extract_segment_name_from_record(record),
-                    rule=SegmentRule.REQUIRED,
-                )
-            ]
-        )
-
-    if len(group_genbank_records_by_isolate(records)) > 1:
-        logger.warning("More than one isolate found. Cannot create plan.")
-        return None
-
-    if segments is None:
-        segments = create_segments_from_records(
-            records,
-            rule=SegmentRule.REQUIRED,
-            length_tolerance=length_tolerance,
-        )
-
-    if segments is not None:
-        return Plan.new(segments=segments)
-
-    return None
-
-
-def fetch_records_from_accessions(
-    accessions: list | set,
-    blocked_accessions: set,
-    ncbi_client: NCBIClient,
-) -> list[NCBIGenbank]:
-    """Fetch Genbank records from a list of accessions.
-
-    Don't fetch accessions in ``blocked_accessions``.
-
-    :param accessions: A list of accessions to fetch.
-    :param blocked_accessions: A set of accessions to ignore.
-    :param ncbi_client: NCBI client to use for fetching records.
-    """
-    log = logger.bind(
-        requested=sorted(accessions),
-        blocked=sorted(blocked_accessions),
-    )
-
-    eligible = set(accessions) - blocked_accessions
-
-    if not eligible:
-        log.error("None of the requested accessions were eligible for inclusion.")
-        return []
-
-    log.debug(
-        "Fetching accessions.",
-        accessions=sorted(eligible),
-        count=len(eligible),
-    )
-
-    return ncbi_client.fetch_genbank_records(eligible)
-
-
-def get_molecule_from_records(records: list[NCBIGenbank]) -> Molecule:
-    """Return relevant molecule metadata from one or more records.
-    Molecule metadata is retrieved from the first RefSeq record in the list.
-    If no RefSeq record is found in the list, molecule metadata is retrieved
-    from record[0].
-    """
-    if not records:
-        raise ValueError("No records given")
-
-    # Assign first record as benchmark to start
-    representative_record = records[0]
-
-    if not representative_record.refseq:
-        for record in records:
-            if record.refseq:
-                # Replace representative record with first RefSeq record found
-                representative_record = record
-                break
-
-    return Molecule.model_validate(
-        {
-            "strandedness": representative_record.strandedness.value,
-            "type": representative_record.moltype.value,
-            "topology": representative_record.topology.value,
-        },
-    )
 
 
 def group_genbank_records_by_isolate(
@@ -206,22 +95,6 @@ def _extract_isolate_name_from_record(record: NCBIGenbank) -> IsolateName | None
     for source_type in IsolateNameType:
         if value := getattr(record.source, source_type, None):
             return IsolateName(type=source_type, value=value)
-    return None
-
-
-def assign_segment_id_to_record(
-    record: NCBIGenbank,
-    plan: Plan,
-) -> UUID | None:
-    segment_name = extract_segment_name_from_record_with_plan(record, plan)
-
-    if segment_name is None and plan.monopartite:
-        return plan.segments[0].id
-
-    for segment in plan.segments:
-        if segment_name == segment.name:
-            return segment.id
-
     return None
 
 

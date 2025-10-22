@@ -14,7 +14,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
-from ref_builder.models import Molecule, MolType, Strandedness, Topology
+from ref_builder.models.molecule import Molecule, MoleculeType, Strandedness, Topology
 
 
 class NCBIDatabase(StrEnum):
@@ -58,15 +58,15 @@ class NCBISourceMolType(StrEnum):
     def from_molecule(cls: type, molecule: Molecule) -> "NCBISourceMolType":
         """Return a NCBI moltype value that matches the passed ref-builder molecule."""
         match molecule.type:
-            case MolType.DNA:
+            case MoleculeType.DNA:
                 return NCBISourceMolType.GENOMIC_DNA
-            case MolType.RNA:
+            case MoleculeType.RNA:
                 return NCBISourceMolType.GENOMIC_RNA
-            case MolType.CRNA:
+            case MoleculeType.CRNA:
                 return NCBISourceMolType.VIRAL_CRNA
-            case MolType.MRNA:
+            case MoleculeType.MRNA:
                 return NCBISourceMolType.MRNA
-            case MolType.TRNA:
+            case MoleculeType.TRNA:
                 return NCBISourceMolType.TRANSCRIBED_RNA
             case _:
                 raise ValueError(
@@ -120,7 +120,7 @@ class NCBIGenbank(BaseModel):
         Strandedness,
         Field(validation_alias="GBSeq_strandedness"),
     ]
-    moltype: Annotated[MolType, Field(validation_alias="GBSeq_moltype")]
+    moltype: Annotated[MoleculeType, Field(validation_alias="GBSeq_moltype")]
     topology: Annotated[Topology, Field(validation_alias="GBSeq_topology")]
     definition: Annotated[str, Field(validation_alias="GBSeq_definition")]
     organism: Annotated[str, Field(validation_alias="GBSeq_organism")]
