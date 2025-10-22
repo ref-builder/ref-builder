@@ -114,6 +114,38 @@ class IsolateService(Service):
 
         return None
 
+    def create_from_records(
+        self,
+        otu_id: UUID,
+        isolate_name: IsolateName | None,
+        records: list[NCBIGenbank],
+    ) -> IsolateBuilder | None:
+        """Create a new isolate from pre-fetched GenBank records.
+
+        Use this method when records are already fetched (e.g., in batch operations).
+        For creating isolates from accessions, use create() instead.
+
+        :param otu_id: the OTU ID to add the isolate to
+        :param isolate_name: the isolate name (or None for unnamed)
+        :param records: the GenBank records
+        :return: the created isolate or None if creation failed
+        """
+        otu = self._repo.get_otu(otu_id)
+
+        if otu is None:
+            logger.error("OTU not found", otu_id=str(otu_id))
+            return None
+
+        with self._repo.use_transaction() as transaction:
+            isolate = self._write_isolate(otu, isolate_name, records)
+
+            if isolate:
+                return isolate
+
+            transaction.abort()
+
+        return None
+
     def delete(self, otu_id: UUID, isolate_id: UUID) -> bool:
         """Delete an isolate from an OTU.
 

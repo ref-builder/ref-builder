@@ -282,6 +282,32 @@ class TestIsolateServiceCreateValidation:
 
         assert isolate is None
 
+    def test_plan_mismatch(
+        self,
+        scratch_repo: Repo,
+        mock_ncbi_client: MockNCBIClient,
+    ):
+        """Test that isolate cannot be added if it doesn't match OTU plan."""
+        services = Services(scratch_repo, mock_ncbi_client)
+
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        )
+
+        assert otu
+
+        with scratch_repo.lock():
+            isolate = services.isolate.create(
+                otu_id=otu.id,
+                accessions=["NC_003355"],
+            )
+
+        assert isolate is None
+
+        otu_after = scratch_repo.get_otu(otu.id)
+        assert otu_after
+        assert "NC_003355" not in otu_after.accessions
+
 
 class TestIsolateServicePromotion:
     """Test RefSeq promotion logic."""

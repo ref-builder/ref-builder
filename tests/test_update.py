@@ -2,8 +2,8 @@ import pytest
 from syrupy.assertion import SnapshotAssertion
 
 from ref_builder.ncbi.client import NCBIClient
-from ref_builder.otu.isolate import add_genbank_isolate
 from ref_builder.otu.promote import promote_otu_accessions
+from ref_builder.services.isolate import IsolateService
 from ref_builder.otu.update import (
     batch_update_repo,
     comprehensive_update_otu,
@@ -25,8 +25,9 @@ class TestPromoteOTU:
 
             assert otu
 
-            isolate = add_genbank_isolate(
-                empty_repo, otu, ["MF062125", "MF062126", "MF062127"], ncbi_client
+            isolate_service = IsolateService(empty_repo, ncbi_client)
+            isolate = isolate_service.create(
+                otu.id, ["MF062125", "MF062126", "MF062127"]
             )
 
             assert isolate

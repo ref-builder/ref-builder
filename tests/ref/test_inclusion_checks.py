@@ -2,11 +2,12 @@ import pytest
 from faker import Faker
 from pydantic import ValidationError
 
+from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.isolate import create_isolate
 from ref_builder.otu.utils import IsolateName, IsolateNameType, check_sequence_length
 from ref_builder.repo import Repo
+from ref_builder.services.isolate import IsolateService
 from tests.fixtures.factories import NCBIGenbankFactory, NCBISourceFactory
 from tests.fixtures.providers import AccessionProvider, SequenceProvider
 
@@ -119,10 +120,10 @@ class TestAddMultipartiteIsolate:
             sequence_length_multiplier,
         )
 
-        with scratch_repo.lock(), scratch_repo.use_transaction():
-            isolate = create_isolate(
-                scratch_repo,
-                otu_before,
+        with scratch_repo.lock():
+            isolate_service = IsolateService(scratch_repo, NCBIClient(False))
+            isolate = isolate_service.create_from_records(
+                otu_before.id,
                 IsolateName(type=IsolateNameType.ISOLATE, value="mock"),
                 records,
             )
@@ -144,11 +145,11 @@ class TestAddMultipartiteIsolate:
             sequence_length_multiplier,
         )
 
-        with scratch_repo.lock(), scratch_repo.use_transaction():
+        with scratch_repo.lock():
+            isolate_service = IsolateService(scratch_repo, NCBIClient(False))
             try:
-                create_isolate(
-                    scratch_repo,
-                    otu_before,
+                isolate_service.create_from_records(
+                    otu_before.id,
                     IsolateName(type=IsolateNameType.ISOLATE, value="mock"),
                     records,
                 )

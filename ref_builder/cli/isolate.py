@@ -8,7 +8,7 @@ from ref_builder.cli.utils import get_otu_isolate_ids_from_identifier, pass_repo
 from ref_builder.cli.validate import validate_no_duplicate_accessions
 from ref_builder.console import print_isolate, print_isolate_as_json
 from ref_builder.ncbi.client import NCBIClient
-from ref_builder.otu.isolate import add_genbank_isolate
+from ref_builder.services.isolate import IsolateService
 from ref_builder.otu.modify import delete_isolate_from_otu
 from ref_builder.repo import Repo, locked_repo
 
@@ -48,12 +48,8 @@ def isolate_create(
 
     ncbi_client = NCBIClient(ignore_cache=ignore_cache)
 
-    add_genbank_isolate(
-        repo,
-        otu_,
-        accessions_,
-        ncbi_client,
-    )
+    isolate_service = IsolateService(repo, ncbi_client)
+    isolate_service.create(otu_.id, accessions_, ignore_cache=ignore_cache)
 
 
 @isolate.command(name="delete")
