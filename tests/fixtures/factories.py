@@ -7,7 +7,7 @@ from polyfactory import PostGenerated, Use
 from polyfactory.decorators import post_generated
 from polyfactory.factories.pydantic_factory import ModelFactory
 
-from ref_builder.models import Molecule, MolType, OTUMinimal
+from ref_builder.enums import Molecule, MolType, OTUMinimal
 from ref_builder.ncbi.models import (
     NCBIGenbank,
     NCBILineage,

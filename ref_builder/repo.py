@@ -71,7 +71,7 @@ from ref_builder.events.sequence import (
 )
 from ref_builder.index import Index
 from ref_builder.lock import Lock
-from ref_builder.models import Molecule, OTUMinimal
+from ref_builder.enums import Molecule, OTUMinimal
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder

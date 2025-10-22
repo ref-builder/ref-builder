@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from ref_builder.models import Molecule, MolType, Strandedness, Topology
+from ref_builder.enums import Molecule, MolType, Strandedness, Topology
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.plan import Plan, Segment

@@ -14,7 +14,7 @@ from pydantic import (
     field_validator,
 )
 
-from ref_builder.models import Molecule, Strandedness
+from ref_builder.enums import Molecule, Strandedness
 from ref_builder.otu.validate import get_validated_otu
 from ref_builder.otu.validators.isolate import Isolate
 from ref_builder.otu.validators.otu import OTU

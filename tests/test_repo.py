@@ -7,7 +7,7 @@ import pytest
 from structlog.testing import capture_logs
 
 from ref_builder.errors import InvalidInputError
-from ref_builder.models import Molecule, MolType, Strandedness, Topology
+from ref_builder.enums import Molecule, MolType, Strandedness, Topology
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder

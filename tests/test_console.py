@@ -10,7 +10,7 @@ from ref_builder.console import (
     print_otu_as_json,
     print_otu_list,
 )
-from ref_builder.models import Molecule, MolType, OTUMinimal, Strandedness, Topology
+from ref_builder.enums import Molecule, MolType, OTUMinimal, Strandedness, Topology
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder

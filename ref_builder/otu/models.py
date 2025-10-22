@@ -1,6 +1,6 @@
 from pydantic import UUID4, BaseModel, field_serializer, field_validator
 
-from ref_builder.models import Molecule
+from ref_builder.enums import Molecule
 from ref_builder.plan import Plan
 from ref_builder.utils import (
     Accession,

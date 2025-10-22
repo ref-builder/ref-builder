@@ -5,7 +5,7 @@ from uuid import UUID
 import structlog
 
 from ref_builder.errors import InvalidInputError, PartialIDConflictError
-from ref_builder.models import Molecule
+from ref_builder.enums import Molecule
 from ref_builder.ncbi.models import NCBIGenbank, NCBIRank, NCBITaxonomy
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.isolate import create_sequence_from_record

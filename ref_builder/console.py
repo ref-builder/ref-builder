@@ -5,7 +5,7 @@ from rich.table import Table
 from rich.text import Text
 
 from ref_builder.events.base import Event, EventMetadata
-from ref_builder.models import OTUMinimal
+from ref_builder.enums import OTUMinimal
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.plan import Plan, SegmentRule

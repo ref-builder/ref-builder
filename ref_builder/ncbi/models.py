@@ -14,7 +14,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
-from ref_builder.models import Molecule, MolType, Strandedness, Topology
+from ref_builder.enums import Molecule, MolType, Strandedness, Topology
 
 
 class NCBIDatabase(StrEnum):
