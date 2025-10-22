@@ -261,11 +261,9 @@ class ProductionReference(BaseModel):
         return v
 
 
-def build_json(indent: bool, output_path: Path, path: Path, version: str) -> Path:
+def build_json(output_path: Path, path: Path, version: str) -> Path:
     """Build a Virtool reference JSON file from a data directory.
 
-    :param indent: whether to indent the JSON output
-    :param output_path: The path to write the output JSON file to
     :param path: The path to a reference repository
     :param version: the version string to include in the reference.json file
     """
@@ -293,7 +291,6 @@ def build_json(indent: bool, output_path: Path, path: Path, version: str) -> Pat
         f.write(
             orjson.dumps(
                 production_reference.model_dump(mode="json"),
-                option=orjson.OPT_INDENT_2 if indent else 0,
             ),
         )
 
