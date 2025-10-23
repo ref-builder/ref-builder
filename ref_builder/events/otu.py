@@ -50,17 +50,6 @@ class CreatePlan(ApplicableEvent[CreatePlanData, OTUQuery]):
         return otu
 
 
-class DeleteOTUData(EventData):
-    """The data for a :class:`DeleteOTU` event."""
-
-    rationale: str
-    replacement_otu_id: UUID4 | None
-
-
-class DeleteOTU(Event[DeleteOTUData, OTUQuery]):
-    """An event that deletes an OTU from Repo indexes."""
-
-
 class UpdateExcludedAccessionsData(EventData):
     """The data for an UpdateAllowedAccessions event."""
 

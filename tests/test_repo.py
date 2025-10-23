@@ -12,7 +12,6 @@ from ref_builder.models.accession import Accession
 from ref_builder.models.isolate import IsolateName
 from ref_builder.models.molecule import Molecule, MoleculeType, Strandedness, Topology
 from ref_builder.models.plan import Plan, Segment, SegmentRule
-from ref_builder.models.repo import DataType
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
@@ -75,7 +74,6 @@ def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
 def initialized_repo(tmp_path: Path):
     """Return a pre-initialized mock Repo."""
     repo = Repo.new(
-        DataType.GENOME,
         "Generic Viruses",
         tmp_path / "initialized_repo",
         "virus",
@@ -157,7 +155,6 @@ class TestNew:
         assert empty_repo.path == tmp_path / "test_repo"
         assert empty_repo.last_id == 1
 
-        assert empty_repo.meta.data_type == DataType.GENOME
         assert empty_repo.meta.name == "Generic Viruses"
         assert empty_repo.meta.organism == "virus"
 
@@ -171,7 +168,6 @@ class TestNew:
     def test_alternate_settings(self, tmp_path: Path):
         """Test retrieval of non-default settings."""
         repo = Repo.new(
-            DataType.GENOME,
             "Generic Viruses",
             tmp_path / "alt_setting_repo",
             "virus",
@@ -725,89 +721,6 @@ def test_get_otu_id_from_isolate_id(initialized_repo: Repo):
     isolate = otu.isolates[0]
 
     assert initialized_repo.get_otu_id_by_isolate_id(isolate.id) == otu.id
-
-
-class TestDeleteOTU:
-    """Test OTU deletion."""
-
-    def test_ok(self, initialized_repo: Repo):
-        """Test that .delete_otu() returns True if OTU can be deleted."""
-        otu_before = next(initialized_repo.iter_otus())
-
-        assert isinstance(otu_before, OTUBuilder)
-
-        with initialized_repo.lock(), initialized_repo.use_transaction():
-            assert initialized_repo.delete_otu(
-                otu_before.id,
-                rationale="Testing OTU deletion",
-                replacement_otu_id=None,
-            )
-
-        assert initialized_repo.get_otu_id_by_taxid(otu_before.taxid) is None
-
-        with warnings.catch_warnings(record=True) as warning_list:
-            assert initialized_repo.get_otu(otu_before.id) is None
-
-            for warning_msg in warning_list:
-                assert warning_msg.category.__name__ == "OTUDeletedWarning"
-
-        assert list(initialized_repo.iter_otus()) == []
-
-    def test_not_found(self, initialized_repo: Repo):
-        """Test that .delete_otu() returns False if OTU didn't exist to begin with."""
-        dummy_otu_id = uuid4()
-
-        with initialized_repo.lock(), initialized_repo.use_transaction():
-            assert not initialized_repo.delete_otu(
-                dummy_otu_id,
-                rationale="Testing OTU deletion",
-                replacement_otu_id=None,
-            )
-
-        with warnings.catch_warnings(record=True) as warning_list:
-            assert initialized_repo.get_otu(dummy_otu_id) is None
-
-        assert not warning_list
-
-    def test_already_deleted(self, initialized_repo: Repo):
-        """Test that .delete_otu() returns False and warns if an already-deleted OTU
-        is marked for deletion a second time.
-        """
-        otu_before = next(initialized_repo.iter_otus())
-
-        assert isinstance(otu_before, OTUBuilder)
-
-        with initialized_repo.lock(), initialized_repo.use_transaction():
-            assert initialized_repo.delete_otu(
-                otu_before.id,
-                rationale="Testing OTU deletion of nonexistent OTU",
-                replacement_otu_id=None,
-            )
-
-        assert list(initialized_repo.iter_otus()) == []
-
-        with initialized_repo.lock(), initialized_repo.use_transaction():
-            result = initialized_repo.delete_otu(
-                otu_before.id,
-                rationale="Testing OTU deletion of already-deleted OTU",
-                replacement_otu_id=None,
-            )
-
-            assert result is False
-
-        with warnings.catch_warnings(
-            category=OTUDeletedWarning, record=True
-        ) as warning_messages:
-            assert initialized_repo.get_otu(otu_before.id) is None
-
-        assert len(warning_messages) == 1
-        warning_message = warning_messages[0]
-
-        assert (
-            str(warning_message.message)
-            == f"OTU {otu_before.id} has already been deleted."
-        )
-        assert warning_message.category == OTUDeletedWarning
 
 
 class TestGetIsolate:

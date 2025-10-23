@@ -8,7 +8,6 @@ class CreateRepoData(EventData):
     """The data for a :class:`CreateRepo` event."""
 
     id: UUID4
-    data_type: str
     name: str
     organism: str
     settings: RepoSettings

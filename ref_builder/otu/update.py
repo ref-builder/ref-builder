@@ -344,69 +344,6 @@ def batch_fetch_new_records(
     return {}
 
 
-def update_isolate_from_records(
-    repo: Repo,
-    otu: OTUBuilder,
-    isolate_id: UUID,
-    records: list[NCBIGenbank],
-) -> IsolateBuilder | None:
-    """Take a list of GenBank records and replace the existing sequences,
-    adding the previous sequence accessions to the excluded accessions list.
-    """
-    isolate = otu.get_isolate(isolate_id)
-
-    if len(records) == 1:
-        assigned = {otu.plan.segments[0].id: records[0]}
-    else:
-        try:
-            assigned = assign_records_to_segments(records, otu.plan)
-        except ValueError as e:
-            logger.debug(e)
-            return None
-
-    for segment_id, record in assigned.items():
-        _, accession = parse_refseq_comment(record.comment)
-
-        if accession in isolate.accessions:
-            old_sequence = isolate.get_sequence_by_accession(accession)
-
-            # Use one transaction per sequence
-            with repo.use_transaction():
-                new_sequence = repo.create_sequence(
-                    otu.id,
-                    accession=record.accession_version,
-                    definition=record.definition,
-                    segment=segment_id,
-                    sequence=record.sequence,
-                )
-
-                if new_sequence is None:
-                    logger.error("Isolate update failed when creating new sequence.")
-                    return None
-
-                repo.replace_sequence(
-                    otu.id,
-                    isolate.id,
-                    new_sequence.id,
-                    replaced_sequence_id=old_sequence.id,
-                    rationale=DeleteRationale.REFSEQ,
-                )
-
-                repo.exclude_accession(otu.id, old_sequence.accession.key)
-
-    otu = repo.get_otu(otu.id)
-    isolate = otu.get_isolate(isolate_id)
-
-    logger.info(
-        "Isolate updated",
-        name=str(isolate.name),
-        id=str(isolate.id),
-        accessions=sorted([str(accession) for accession in isolate.accessions]),
-    )
-
-    return isolate
-
-
 def promote_and_update_otu_from_records(
     repo: Repo,
     otu: OTUBuilder,

@@ -6,7 +6,6 @@ from polyfactory.factories.pydantic_factory import ModelFactory
 from pytest_mock import MockerFixture
 
 from ref_builder.logs import configure_logger
-from ref_builder.models.repo import DataType
 from ref_builder.ncbi.cache import NCBICache
 from ref_builder.ncbi.client import NCBIClient, NCBIClientProtocol
 from ref_builder.otu.builders.otu import OTUBuilder
@@ -61,7 +60,6 @@ def files_path():
 def empty_repo(tmp_path: Path) -> Repo:
     """An empty reference repository."""
     return Repo.new(
-        DataType.GENOME,
         "Generic Viruses",
         tmp_path / "test_repo",
         "virus",
@@ -80,7 +78,7 @@ def precached_repo(
         return_value=scratch_user_cache_path,
     )
 
-    return Repo.new(DataType.GENOME, "Empty", tmp_path / "precached_repo", "virus")
+    return Repo.new("Empty", tmp_path / "precached_repo", "virus")
 
 
 @pytest.fixture
@@ -118,7 +116,6 @@ def scratch_path(scratch_repo: Repo) -> Path:
 def scratch_repo(tmp_path: Path, mock_ncbi_client: NCBIClientProtocol) -> Repo:
     """A prepared scratch repository built from mock data."""
     repo = Repo.new(
-        data_type=DataType.GENOME,
         name="test",
         path=tmp_path / "scratch_repo",
         organism="viruses",

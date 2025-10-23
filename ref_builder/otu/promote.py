@@ -241,7 +241,7 @@ def replace_otu_sequence_from_record(
                 return None
 
         if exclude_accession:
-            repo.exclude_accession(otu.id, predecessor_sequence.accession.key)
+            repo.exclude_accessions(otu.id, [predecessor_sequence.accession.key])
 
     return repo.get_otu(otu.id).get_sequence_by_id(replacement_sequence.id)
 

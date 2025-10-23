@@ -54,8 +54,6 @@ from ref_builder.events.otu import (
     CreateOTUData,
     CreatePlan,
     CreatePlanData,
-    DeleteOTU,
-    DeleteOTUData,
     UpdateExcludedAccessions,
     UpdateExcludedAccessionsData,
 )
@@ -76,7 +74,7 @@ from ref_builder.models.isolate import IsolateName
 from ref_builder.models.molecule import Molecule
 from ref_builder.models.otu import OTUMinimal
 from ref_builder.models.plan import Plan
-from ref_builder.models.repo import DataType, RepoMeta, RepoSettings
+from ref_builder.models.repo import RepoMeta, RepoSettings
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
@@ -133,7 +131,6 @@ class Repo:
     @classmethod
     def new(
         cls,
-        data_type: DataType,
         name: str,
         path: Path,
         organism: str,
@@ -165,7 +162,6 @@ class Repo:
                 id=1,
                 data=CreateRepoData(
                     id=repo_id,
-                    data_type=data_type,
                     name=name,
                     organism=organism,
                     settings=RepoSettings(
@@ -351,11 +347,7 @@ class Repo:
 
         for event in self._event_store.iter_events():
             if hasattr(event.query, "otu_id"):
-                if isinstance(event, DeleteOTU):
-                    event_ids_by_otu.pop(event.query.otu_id)
-
-                else:
-                    event_ids_by_otu[event.query.otu_id].append(event.id)
+                event_ids_by_otu[event.query.otu_id].append(event.id)
 
         for otu_id in event_ids_by_otu:
             try:
@@ -400,46 +392,6 @@ class Repo:
         )
 
         return self.get_otu(otu_id)
-
-    def delete_otu(
-        self,
-        otu_id: uuid.UUID,
-        rationale: str,
-        replacement_otu_id: uuid.UUID | None,
-    ) -> bool:
-        """Delete an OTU from the repository. Return True if successful."""
-        with warnings.catch_warnings(category=OTUDeletedWarning):
-            warnings.simplefilter("ignore", OTUDeletedWarning)
-
-            otu_ = self.get_otu(otu_id)
-
-        if otu_ is None:
-            logger.error("Requested OTU id does not exist.", otu_id=str(otu_id))
-
-            return False
-
-        logger.info(
-            "Deleting OTU...",
-            otu_id=str(otu_id),
-            rationale=rationale,
-            replacement_otu_id=str(replacement_otu_id),
-        )
-
-        self._write_event(
-            DeleteOTU,
-            DeleteOTUData(
-                rationale=rationale,
-                replacement_otu_id=replacement_otu_id,
-            ),
-            OTUQuery(otu_id=otu_id),
-        )
-
-        self._index.delete_otu(otu_id)
-
-        with warnings.catch_warnings(category=OTUDeletedWarning):
-            warnings.simplefilter("ignore", OTUDeletedWarning)
-
-            return self.get_otu(otu_id) is None
 
     def create_isolate(
         self,
@@ -656,43 +608,6 @@ class Repo:
         return (
             self.get_otu(otu_id).get_isolate(isolate_id).get_sequence_by_id(sequence_id)
         )
-
-    def exclude_accession(self, otu_id: uuid.UUID, accession: str) -> set:
-        """Exclude an accession for an OTU.
-
-        This accession will not be allowed in the repository in the future.
-
-        :param otu_id: the id of the OTU
-        :param accession: the accession to exclude
-
-        """
-        otu = self.get_otu(otu_id)
-
-        try:
-            accession_key = get_accession_key(accession)
-
-        except ValueError as e:
-            if "Invalid accession key" in str(e):
-                logger.warning(
-                    "Invalid accession included in set. "
-                    "No changes were made to excluded accessions.",
-                    accession=accession,
-                )
-            return otu.excluded_accessions
-
-        if accession_key in otu.excluded_accessions:
-            logger.debug("Accession is already excluded.", accession=accession_key)
-        else:
-            self._write_event(
-                UpdateExcludedAccessions,
-                UpdateExcludedAccessionsData(
-                    accessions={accession_key},
-                    action=ExcludedAccessionAction.EXCLUDE,
-                ),
-                OTUQuery(otu_id=otu_id),
-            )
-
-        return self.get_otu(otu_id).excluded_accessions
 
     def exclude_accessions(
         self,
@@ -996,9 +911,6 @@ class Repo:
                 )
 
             for event in events:
-                if isinstance(event, DeleteOTU):
-                    raise OTUDeletedError(otu_id=event.query.otu_id)
-
                 if not isinstance(event, ApplicableEvent):
                     raise TypeError(
                         f"Event {event.id} {event.type} is not an applicable event."
