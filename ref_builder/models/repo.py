@@ -4,13 +4,6 @@ from enum import StrEnum
 from pydantic import UUID4, BaseModel, Field
 
 
-class DataType(StrEnum):
-    """Possible data types for a reference repository."""
-
-    BARCODE = "barcode"
-    GENOME = "genome"
-
-
 class RepoMeta(BaseModel):
     """Represents the metadata for a Virtool reference repository."""
 
@@ -19,9 +12,6 @@ class RepoMeta(BaseModel):
 
     created_at: datetime.datetime
     """The date and time the repository was created."""
-
-    data_type: DataType
-    """The repository data type."""
 
     name: str
     """The repository name."""

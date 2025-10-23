@@ -13,7 +13,6 @@ from ref_builder.events.isolate import (
 from ref_builder.events.otu import (
     CreateOTU,
     CreatePlan,
-    DeleteOTU,
     UpdateExcludedAccessions,
 )
 from ref_builder.events.repo import CreateRepo
@@ -127,7 +126,6 @@ class EventStore:
                     "LinkSequence": LinkSequence,
                     "UnlinkSequence": UnlinkSequence,
                     "DeleteIsolate": DeleteIsolate,
-                    "DeleteOTU": DeleteOTU,
                     "DeleteSequence": DeleteSequence,
                     "CreatePlan": CreatePlan,
                     "UpdateExcludedAccessions": UpdateExcludedAccessions,

@@ -12,7 +12,6 @@ from ref_builder.models.accession import Accession
 from ref_builder.models.isolate import IsolateName
 from ref_builder.models.molecule import Molecule, MoleculeType, Strandedness, Topology
 from ref_builder.models.plan import Plan, Segment, SegmentRule
-from ref_builder.models.repo import DataType
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
@@ -75,7 +74,6 @@ def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
 def initialized_repo(tmp_path: Path):
     """Return a pre-initialized mock Repo."""
     repo = Repo.new(
-        DataType.GENOME,
         "Generic Viruses",
         tmp_path / "initialized_repo",
         "virus",
@@ -157,7 +155,6 @@ class TestNew:
         assert empty_repo.path == tmp_path / "test_repo"
         assert empty_repo.last_id == 1
 
-        assert empty_repo.meta.data_type == DataType.GENOME
         assert empty_repo.meta.name == "Generic Viruses"
         assert empty_repo.meta.organism == "virus"
 
@@ -171,7 +168,6 @@ class TestNew:
     def test_alternate_settings(self, tmp_path: Path):
         """Test retrieval of non-default settings."""
         repo = Repo.new(
-            DataType.GENOME,
             "Generic Viruses",
             tmp_path / "alt_setting_repo",
             "virus",

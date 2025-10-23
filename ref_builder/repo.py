@@ -76,7 +76,7 @@ from ref_builder.models.isolate import IsolateName
 from ref_builder.models.molecule import Molecule
 from ref_builder.models.otu import OTUMinimal
 from ref_builder.models.plan import Plan
-from ref_builder.models.repo import DataType, RepoMeta, RepoSettings
+from ref_builder.models.repo import RepoMeta, RepoSettings
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
@@ -133,7 +133,6 @@ class Repo:
     @classmethod
     def new(
         cls,
-        data_type: DataType,
         name: str,
         path: Path,
         organism: str,
@@ -165,7 +164,6 @@ class Repo:
                 id=1,
                 data=CreateRepoData(
                     id=repo_id,
-                    data_type=data_type,
                     name=name,
                     organism=organism,
                     settings=RepoSettings(

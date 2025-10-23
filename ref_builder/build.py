@@ -242,7 +242,7 @@ class ProductionReference(BaseModel):
     """A production-ready reference."""
 
     created_at: datetime.datetime
-    data_type: str
+    data_type: str = "genome"
     name: str
     organism: str
     otus: list[ProductionOTU]
@@ -281,7 +281,6 @@ def build_json(output_path: Path, path: Path, version: str) -> Path:
 
     production_reference = ProductionReference(
         created_at=arrow.utcnow().datetime,
-        data_type=repo.meta.data_type,
         name=version,
         organism=repo.meta.organism,
         otus=otus,
