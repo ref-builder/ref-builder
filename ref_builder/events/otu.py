@@ -50,14 +50,6 @@ class CreatePlan(ApplicableEvent[CreatePlanData, OTUQuery]):
         return otu
 
 
-class UpdateLineageData(EventData):
-    lineage: [Taxon]
-
-
-class UpdateLineage(ApplicableEvent[UpdateLineageData, OTUQuery]):
-    def apply(self, otu_builder: OTUBuilder): ...
-
-
 class UpdateExcludedAccessionsData(EventData):
     """The data for an UpdateAllowedAccessions event."""
 

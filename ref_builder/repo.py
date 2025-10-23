@@ -609,43 +609,6 @@ class Repo:
             self.get_otu(otu_id).get_isolate(isolate_id).get_sequence_by_id(sequence_id)
         )
 
-    def exclude_accession(self, otu_id: uuid.UUID, accession: str) -> set:
-        """Exclude an accession for an OTU.
-
-        This accession will not be allowed in the repository in the future.
-
-        :param otu_id: the id of the OTU
-        :param accession: the accession to exclude
-
-        """
-        otu = self.get_otu(otu_id)
-
-        try:
-            accession_key = get_accession_key(accession)
-
-        except ValueError as e:
-            if "Invalid accession key" in str(e):
-                logger.warning(
-                    "Invalid accession included in set. "
-                    "No changes were made to excluded accessions.",
-                    accession=accession,
-                )
-            return otu.excluded_accessions
-
-        if accession_key in otu.excluded_accessions:
-            logger.debug("Accession is already excluded.", accession=accession_key)
-        else:
-            self._write_event(
-                UpdateExcludedAccessions,
-                UpdateExcludedAccessionsData(
-                    accessions={accession_key},
-                    action=ExcludedAccessionAction.EXCLUDE,
-                ),
-                OTUQuery(otu_id=otu_id),
-            )
-
-        return self.get_otu(otu_id).excluded_accessions
-
     def exclude_accessions(
         self,
         otu_id: uuid.UUID,

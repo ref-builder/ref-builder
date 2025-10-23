@@ -226,9 +226,9 @@ class IsolateService(Service):
             if record.refseq:
                 _, old_accession = parse_refseq_comment(record.comment)
 
-                self._repo.exclude_accession(
+                self._repo.exclude_accessions(
                     otu.id,
-                    old_accession,
+                    [old_accession],
                 )
 
         log.info("Isolate created", id=str(isolate.id))
