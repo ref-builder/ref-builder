@@ -54,8 +54,6 @@ from ref_builder.events.otu import (
     CreateOTUData,
     CreatePlan,
     CreatePlanData,
-    DeleteOTU,
-    DeleteOTUData,
     UpdateExcludedAccessions,
     UpdateExcludedAccessionsData,
 )
@@ -349,11 +347,7 @@ class Repo:
 
         for event in self._event_store.iter_events():
             if hasattr(event.query, "otu_id"):
-                if isinstance(event, DeleteOTU):
-                    event_ids_by_otu.pop(event.query.otu_id)
-
-                else:
-                    event_ids_by_otu[event.query.otu_id].append(event.id)
+                event_ids_by_otu[event.query.otu_id].append(event.id)
 
         for otu_id in event_ids_by_otu:
             try:
@@ -398,46 +392,6 @@ class Repo:
         )
 
         return self.get_otu(otu_id)
-
-    def delete_otu(
-        self,
-        otu_id: uuid.UUID,
-        rationale: str,
-        replacement_otu_id: uuid.UUID | None,
-    ) -> bool:
-        """Delete an OTU from the repository. Return True if successful."""
-        with warnings.catch_warnings(category=OTUDeletedWarning):
-            warnings.simplefilter("ignore", OTUDeletedWarning)
-
-            otu_ = self.get_otu(otu_id)
-
-        if otu_ is None:
-            logger.error("Requested OTU id does not exist.", otu_id=str(otu_id))
-
-            return False
-
-        logger.info(
-            "Deleting OTU...",
-            otu_id=str(otu_id),
-            rationale=rationale,
-            replacement_otu_id=str(replacement_otu_id),
-        )
-
-        self._write_event(
-            DeleteOTU,
-            DeleteOTUData(
-                rationale=rationale,
-                replacement_otu_id=replacement_otu_id,
-            ),
-            OTUQuery(otu_id=otu_id),
-        )
-
-        self._index.delete_otu(otu_id)
-
-        with warnings.catch_warnings(category=OTUDeletedWarning):
-            warnings.simplefilter("ignore", OTUDeletedWarning)
-
-            return self.get_otu(otu_id) is None
 
     def create_isolate(
         self,
@@ -994,9 +948,6 @@ class Repo:
                 )
 
             for event in events:
-                if isinstance(event, DeleteOTU):
-                    raise OTUDeletedError(otu_id=event.query.otu_id)
-
                 if not isinstance(event, ApplicableEvent):
                     raise TypeError(
                         f"Event {event.id} {event.type} is not an applicable event."
