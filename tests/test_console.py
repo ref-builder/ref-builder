@@ -1,4 +1,3 @@
-import json
 
 import pytest
 from faker import Faker
@@ -9,12 +8,8 @@ from ref_builder.console import (
     print_isolate,
     print_isolate_as_json,
     print_otu,
-    print_otu_as_json,
     print_otu_list,
 )
-from ref_builder.isolate import IsolateNameType
-from ref_builder.models.accession import Accession
-from ref_builder.models.isolate import IsolateName
 from ref_builder.models.otu import OTUMinimal
 from ref_builder.models.plan import Plan, Segment, SegmentName, SegmentRule
 from ref_builder.otu.builders.isolate import IsolateBuilder
