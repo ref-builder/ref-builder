@@ -42,7 +42,6 @@ def test_commit(empty_repo: Repo):
 
     with empty_repo.lock(), empty_repo.use_transaction():
         otu = empty_repo.create_otu(
-            acronym="TMV",
             lineage=TMV_LINEAGE,
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
@@ -95,7 +94,6 @@ def test_fail(empty_repo: Repo):
 
     with capture_logs() as cap_logs, empty_repo.lock(), empty_repo.use_transaction():
         empty_repo.create_otu(
-            acronym="TMV",
             lineage=TMV_LINEAGE,
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
@@ -128,7 +126,6 @@ def test_abort(empty_repo: Repo):
 
     with empty_repo.lock(), empty_repo.use_transaction() as transaction:
         empty_repo.create_otu(
-            acronym="TMV",
             lineage=TMV_LINEAGE,
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,

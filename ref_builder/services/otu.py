@@ -193,15 +193,10 @@ class OTUService(Service):
             )
             return None
 
-        acronym = ""
-        if taxonomy.other_names.acronym:
-            acronym = taxonomy.other_names.acronym[0]
-
         with self._repo.use_transaction():
             return self._write_otu(
                 taxonomy,
                 records,
-                acronym,
                 isolate_name=next(iter(binned_records.keys()))
                 if binned_records
                 else None,
@@ -211,14 +206,12 @@ class OTUService(Service):
         self,
         taxonomy: NCBITaxonomy,
         records: list[NCBIGenbank],
-        acronym: str,
         isolate_name: IsolateName | None,
     ) -> OTUBuilder | None:
         """Create a new OTU from an NCBI Taxonomy record and a list of Nucleotide records.
 
         :param taxonomy: the NCBI taxonomy record
         :param records: the GenBank records
-        :param acronym: the OTU acronym
         :param isolate_name: the isolate name
         :return: the created OTU or None if creation failed
         """
@@ -238,7 +231,6 @@ class OTUService(Service):
         lineage = self.ncbi.fetch_lineage(taxonomy.id)
 
         otu = self._repo.create_otu(
-            acronym=acronym,
             lineage=lineage,
             molecule=molecule,
             plan=plan,

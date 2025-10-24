@@ -67,6 +67,18 @@ class Lineage(BaseModel):
         return taxa
 
     @property
+    def acronym(self) -> str:
+        """Return first acronym found in lineage, searching from root to leaf.
+
+        Searches taxa from species (root at taxa[-1]) down to leaf (taxa[0]).
+        Returns empty string if no acronyms found.
+        """
+        for taxon in reversed(self.taxa):
+            if taxon.other_names.acronym:
+                return taxon.other_names.acronym[0]
+        return ""
+
+    @property
     def name(self) -> str:
         """Return the species name from the lineage.
 

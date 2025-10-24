@@ -46,7 +46,6 @@ def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
     assert isolate_to_copy
 
     otu_before = repo.create_otu(
-        acronym=otu.acronym,
         lineage=otu.lineage,
         molecule=otu.molecule,
         plan=otu.plan,
@@ -99,7 +98,6 @@ def initialized_repo(tmp_path: Path):
 
     with repo.lock(), repo.use_transaction():
         otu = repo.create_otu(
-            acronym="TMV",
             lineage=TMV_LINEAGE,
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
@@ -143,7 +141,6 @@ def initialized_repo(tmp_path: Path):
 def init_otu(repo: Repo) -> OTUBuilder:
     """Create an empty OTU."""
     result = repo.create_otu(
-        acronym="TMV",
         lineage=TMV_LINEAGE,
         molecule=Molecule(
             strandedness=Strandedness.SINGLE,
@@ -212,7 +209,6 @@ class TestCreateOTU:
 
         with empty_repo.lock(), empty_repo.use_transaction():
             otu = empty_repo.create_otu(
-                acronym="TMV",
                 lineage=TMV_LINEAGE,
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
@@ -226,7 +222,6 @@ class TestCreateOTU:
 
             assert otu == OTUBuilder(
                 id=otu.id,
-                acronym="TMV",
                 excluded_accessions=set(),
                 lineage=TMV_LINEAGE,
                 molecule=Molecule(
@@ -258,7 +253,6 @@ class TestCreateOTU:
             assert event == {
                 "data": {
                     "id": str(otu.id),
-                    "acronym": "TMV",
                     "lineage": {
                         "taxa": [
                             {
@@ -311,7 +305,6 @@ class TestCreateOTU:
         """
         with empty_repo.lock(), empty_repo.use_transaction():
             empty_repo.create_otu(
-                acronym="TMV",
                 lineage=TMV_LINEAGE,
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
@@ -335,7 +328,6 @@ class TestCreateOTU:
                 match="An OTU with the name 'Tobamovirus tabaci' already exists",
             ):
                 empty_repo.create_otu(
-                    acronym="TMV",
                     lineage=TMV_LINEAGE,
                     molecule=Molecule(
                         strandedness=Strandedness.SINGLE,
@@ -375,7 +367,6 @@ class TestCreateOTU:
             empty_repo.use_transaction(),
         ):
             otu = empty_repo.create_otu(
-                acronym="TMV",
                 lineage=TMV_LINEAGE,
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
@@ -541,7 +532,6 @@ class TestGetOTU:
         with empty_repo.lock():
             with empty_repo.use_transaction():
                 otu = empty_repo.create_otu(
-                    acronym="TMV",
                     lineage=TMV_LINEAGE,
                     molecule=Molecule(
                         strandedness=Strandedness.SINGLE,
@@ -625,7 +615,6 @@ class TestGetOTU:
             otu.model_dump()
             == OTUBuilder(
                 id=otu.id,
-                acronym="TMV",
                 excluded_accessions=set(),
                 lineage=TMV_LINEAGE,
                 molecule=Molecule(

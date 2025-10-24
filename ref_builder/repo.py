@@ -360,7 +360,6 @@ class Repo:
 
     def create_otu(
         self,
-        acronym: str,
         lineage: Lineage,
         molecule: Molecule,
         plan: Plan,
@@ -382,7 +381,6 @@ class Repo:
             CreateOTU,
             CreateOTUData(
                 id=otu_id,
-                acronym=acronym,
                 lineage=lineage,
                 molecule=molecule,
                 plan=plan,

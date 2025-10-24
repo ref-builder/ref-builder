@@ -23,9 +23,6 @@ class OTUModel(BaseModel):
     id: UUID4
     """The OTU id."""
 
-    acronym: str
-    """The OTU acronym (eg. TMV for Tobacco mosaic virus)."""
-
     excluded_accessions: set[str]
     """A set of accessions that should not be retrieved in future fetch operations."""
 
@@ -40,6 +37,11 @@ class OTUModel(BaseModel):
 
     taxid: int
     """The NCBI Taxonomy id for this OTU."""
+
+    @property
+    def acronym(self) -> str:
+        """The OTU acronym computed from the lineage."""
+        return self.lineage.acronym
 
     @property
     def name(self) -> str:
