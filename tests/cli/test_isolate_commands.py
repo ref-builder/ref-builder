@@ -98,25 +98,6 @@ class TestIsolateGetCommand:
 
             assert result.exit_code == 0
 
-    def test_partial_ok(self, scratch_repo, mock_ncbi_client):
-        """Test that a partial isolate ID can also be a valid identifier."""
-        otu_id = scratch_repo.get_otu_id_by_taxid(
-            mock_ncbi_client.otus.wasabi_mottle_virus.taxid
-        )
-
-        for isolate_id in scratch_repo.get_otu(otu_id).isolate_ids:
-            result = runner.invoke(
-                isolate_command_group,
-                [
-                    "--path",
-                    str(scratch_repo.path),
-                    "get",
-                    str(isolate_id)[:8],
-                ],
-            )
-
-            assert result.exit_code == 0
-
     def test_json_ok(self, scratch_repo, mock_ncbi_client):
         otu_id = scratch_repo.get_otu_id_by_taxid(
             mock_ncbi_client.otus.wasabi_mottle_virus.taxid
@@ -144,7 +125,7 @@ class TestIsolateGetCommand:
 
         assert result.exit_code == 1
 
-        assert "Partial ID segment must be at least 8 characters long" in result.output
+        assert "Invalid isolate ID format" in result.output
 
 
 class TestIsolateDeleteCommand:
@@ -165,34 +146,6 @@ class TestIsolateDeleteCommand:
         result = runner.invoke(
             isolate_command_group,
             ["--path", str(scratch_repo.path), "delete", str(isolate_id)],
-        )
-
-        assert result.exit_code == 0
-
-        assert "Isolate deleted" in result.output
-
-        assert (
-            isolate_id
-            not in scratch_repo.get_otu_by_taxid(
-                mock_ncbi_client.otus.wasabi_mottle_virus.taxid
-            ).isolate_ids
-        )
-
-    def test_with_partial_id_ok(self, scratch_repo, mock_ncbi_client):
-        """Test that a partial isolate ID can also be a valid identifier."""
-        otu = scratch_repo.get_otu_by_taxid(
-            mock_ncbi_client.otus.wasabi_mottle_virus.taxid
-        )
-
-        isolate_id = otu.get_isolate_id_by_name(
-            IsolateName(type=IsolateNameType.ISOLATE, value="WMoV-6.3"),
-        )
-
-        assert isolate_id in otu.isolate_ids
-
-        result = runner.invoke(
-            isolate_command_group,
-            ["--path", str(scratch_repo.path), "delete", str(isolate_id)[:8]],
         )
 
         assert result.exit_code == 0

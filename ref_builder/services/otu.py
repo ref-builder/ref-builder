@@ -4,7 +4,6 @@ from uuid import UUID
 
 import structlog
 
-from ref_builder.errors import InvalidInputError, PartialIDConflictError
 from ref_builder.models.isolate import IsolateName
 from ref_builder.models.molecule import Molecule
 from ref_builder.models.plan import (
@@ -108,11 +107,11 @@ class OTUService(Service):
     def get_otu(self, identifier: str) -> OTUBuilder | None:
         """Return an OTU from the repo if identifier matches a single OTU.
 
-        The identifier can either be a stringified UUIDv4, a truncated portion
-        of a UUID, a NCBI Taxonomy ID or an acronym associated with the OTU.
+        The identifier can either be a stringified UUIDv4, a NCBI Taxonomy ID,
+        or an acronym associated with the OTU.
 
         :param identifier: a non-UUID identifier.
-            Can be an integer Taxonomy ID, acronym or truncated partial UUID.
+            Can be an integer Taxonomy ID or acronym.
         :return: the OTU or None if not found
         """
         otu_id = None
@@ -131,12 +130,8 @@ class OTUService(Service):
             else:
                 otu_id = self._repo.get_otu_id_by_taxid(taxid)
 
-        elif (otu_id := self._repo.get_otu_id_by_acronym(identifier)) is None:
-            try:
-                otu_id = self._repo.get_otu_id_by_partial(identifier)
-
-            except (PartialIDConflictError, InvalidInputError):
-                return None
+        else:
+            otu_id = self._repo.get_otu_id_by_acronym(identifier)
 
         if otu_id is None:
             return None

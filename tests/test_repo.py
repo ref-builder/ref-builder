@@ -5,7 +5,6 @@ import orjson
 import pytest
 from structlog.testing import capture_logs
 
-from ref_builder.errors import InvalidInputError
 from ref_builder.isolate import IsolateNameType
 from ref_builder.models.accession import Accession
 from ref_builder.models.isolate import IsolateName
@@ -685,30 +684,6 @@ class TestGetOTU:
 
         assert any(["Bad input" in log["event"] for log in logs])
 
-    def test_partial_ok(self, initialized_repo: Repo):
-        """Test that getting an OTU ID starting with a truncated 8-character portion
-        returns an ID.
-        """
-        otu = next(initialized_repo.iter_otus())
-
-        partial_id = str(otu.id)[:8]
-
-        assert initialized_repo.get_otu_id_by_partial(partial_id) == otu.id
-
-    def test_partial_too_short(self, initialized_repo: Repo):
-        """Test that getting an OTU ID starting with a truncated 7-character portion
-        does not return an ID.
-        """
-        otu = next(initialized_repo.iter_otus())
-
-        partial_id = str(otu.id)[:7]
-
-        with pytest.raises(
-            InvalidInputError,
-            match="Partial ID segment must be at least 8 characters long",
-        ):
-            initialized_repo.get_otu_id_by_partial(partial_id)
-
     def test_retrieve_nonexistent_otu(self, initialized_repo: Repo):
         """Test that getting an OTU that does not exist returns ``None``."""
         assert initialized_repo.get_otu(uuid4()) is None
@@ -831,15 +806,6 @@ class TestGetIsolate:
         assert isolate_unnamed_after
         assert isolate_unnamed_after.name is None
         assert isolate_unnamed_after.accessions == {"NP000001"}
-
-
-def test_get_isolate_id_from_partial(initialized_repo: Repo):
-    """Test that an isolate id can be retrieved from a truncated ``partial`` string."""
-    otu = next(initialized_repo.iter_otus())
-
-    isolate = otu.isolates[0]
-
-    assert initialized_repo.get_isolate_id_by_partial(str(isolate.id)[:8]) == isolate.id
 
 
 class TestCreateOTUWithValidation:
