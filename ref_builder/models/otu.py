@@ -3,6 +3,7 @@ from uuid import UUID
 from pydantic import UUID4, BaseModel, field_serializer, field_validator
 
 from ref_builder.models.accession import Accession
+from ref_builder.models.lineage import Lineage
 from ref_builder.models.molecule import Molecule
 from ref_builder.models.plan import Plan
 
@@ -27,6 +28,9 @@ class OTUModel(BaseModel):
 
     excluded_accessions: set[str]
     """A set of accessions that should not be retrieved in future fetch operations."""
+
+    lineage: Lineage
+    """The taxonomic lineage from species down to the target taxon."""
 
     molecule: Molecule
     """The type of molecular information contained in this OTU."""

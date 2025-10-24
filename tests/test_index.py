@@ -151,38 +151,6 @@ class TestEvents:
         assert index.get_latest_timestamp_by_otu_id(otu.id) == second_timestamp
 
 
-class TestGetIDByPartial:
-    """Test `Index.get_id_by_partial`."""
-
-    def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
-        """Test that the correct OTU ID is retrieved by a truncated partial."""
-        for otu in indexable_otus:
-            assert otu.id == index.get_id_by_partial(str(otu.id)[:8])
-
-    def test_not_found(self, index: Index):
-        """Test that `None` is returned when no matching ID is not found."""
-        assert index.get_id_by_partial("00000000") is None
-
-
-class TestGetIDByAcronym:
-    """Test `Index.get_id_by_acronym`."""
-
-    def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
-        """Test that the correct OTU ID is retrieved by acronym."""
-        for otu in indexable_otus:
-            assert otu.id == index.get_id_by_acronym(otu.acronym)
-
-    def test_empty(self, index: Index, indexable_otus: list[OTUBuilder]):
-        with pytest.raises(
-            ValueError, match="Acronym must contain at least one character."
-        ):
-            index.get_id_by_acronym("")
-
-    def test_not_found(self, index: Index):
-        """Test that `None` is returned when the acronym is not found."""
-        assert index.get_id_by_acronym("paella") is None
-
-
 class TestGetIDByName:
     """Test `Index.get_id_by_name`."""
 
@@ -216,13 +184,3 @@ class TestGetIDByIsolateID:
             first_isolate = next(iter(otu.isolate_ids))
 
             assert index.get_id_by_isolate_id(first_isolate) == otu.id
-
-    def test_partial(self, index: Index, indexable_otus: list[OTUBuilder]):
-        """Test the `get_isolate_id_by_partial` method of the Index class."""
-        for otu in indexable_otus:
-            first_isolate_id = next(iter(otu.isolate_ids))
-
-            assert (
-                index.get_isolate_id_by_partial(str(first_isolate_id)[:8])
-                == first_isolate_id
-            )

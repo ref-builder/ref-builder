@@ -1,4 +1,3 @@
-import warnings
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -6,19 +5,38 @@ import orjson
 import pytest
 from structlog.testing import capture_logs
 
-from ref_builder.errors import InvalidInputError
 from ref_builder.isolate import IsolateNameType
 from ref_builder.models.accession import Accession
 from ref_builder.models.isolate import IsolateName
+from ref_builder.models.lineage import Lineage, Taxon, TaxonOtherNames
 from ref_builder.models.molecule import Molecule, MoleculeType, Strandedness, Topology
 from ref_builder.models.plan import Plan, Segment, SegmentRule
+from ref_builder.ncbi.models import NCBIRank
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.repo import GITIGNORE_CONTENTS, Repo
-from ref_builder.warnings import OTUDeletedWarning
 
 SEGMENT_LENGTH = 15
+
+TMV_LINEAGE = Lineage(
+    taxa=[
+        Taxon(
+            id=12242,
+            name="Tobacco mosaic virus",
+            parent=3432891,
+            rank=NCBIRank.NO_RANK,
+            other_names=TaxonOtherNames(acronym=["TMV"], synonyms=[]),
+        ),
+        Taxon(
+            id=3432891,
+            name="Tobamovirus tabaci",
+            parent=None,
+            rank=NCBIRank.SPECIES,
+            other_names=TaxonOtherNames(acronym=[], synonyms=[]),
+        ),
+    ]
+)
 
 
 def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
@@ -29,6 +47,7 @@ def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
 
     otu_before = repo.create_otu(
         acronym=otu.acronym,
+        lineage=otu.lineage,
         molecule=otu.molecule,
         name=otu.name,
         plan=otu.plan,
@@ -82,6 +101,7 @@ def initialized_repo(tmp_path: Path):
     with repo.lock(), repo.use_transaction():
         otu = repo.create_otu(
             acronym="TMV",
+            lineage=TMV_LINEAGE,
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
                 type=MoleculeType.RNA,
@@ -126,6 +146,7 @@ def init_otu(repo: Repo) -> OTUBuilder:
     """Create an empty OTU."""
     result = repo.create_otu(
         acronym="TMV",
+        lineage=TMV_LINEAGE,
         molecule=Molecule(
             strandedness=Strandedness.SINGLE,
             type=MoleculeType.RNA,
@@ -195,6 +216,7 @@ class TestCreateOTU:
         with empty_repo.lock(), empty_repo.use_transaction():
             otu = empty_repo.create_otu(
                 acronym="TMV",
+                lineage=TMV_LINEAGE,
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
                     type=MoleculeType.RNA,
@@ -210,6 +232,7 @@ class TestCreateOTU:
                 id=otu.id,
                 acronym="TMV",
                 excluded_accessions=set(),
+                lineage=TMV_LINEAGE,
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
                     type=MoleculeType.RNA,
@@ -241,6 +264,24 @@ class TestCreateOTU:
                 "data": {
                     "id": str(otu.id),
                     "acronym": "TMV",
+                    "lineage": {
+                        "taxa": [
+                            {
+                                "id": 12242,
+                                "name": "Tobacco mosaic virus",
+                                "parent": 3432891,
+                                "rank": "no rank",
+                                "other_names": {"acronym": ["TMV"], "synonyms": []},
+                            },
+                            {
+                                "id": 3432891,
+                                "name": "Tobamovirus tabaci",
+                                "parent": None,
+                                "rank": "species",
+                                "other_names": {"acronym": [], "synonyms": []},
+                            },
+                        ]
+                    },
                     "molecule": {
                         "strandedness": "single",
                         "type": "RNA",
@@ -277,6 +318,7 @@ class TestCreateOTU:
         with empty_repo.lock(), empty_repo.use_transaction():
             empty_repo.create_otu(
                 acronym="TMV",
+                lineage=TMV_LINEAGE,
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
                     type=MoleculeType.RNA,
@@ -301,6 +343,7 @@ class TestCreateOTU:
             ):
                 empty_repo.create_otu(
                     acronym="TMV",
+                    lineage=TMV_LINEAGE,
                     molecule=Molecule(
                         strandedness=Strandedness.SINGLE,
                         type=MoleculeType.RNA,
@@ -341,6 +384,7 @@ class TestCreateOTU:
         ):
             otu = empty_repo.create_otu(
                 acronym="TMV",
+                lineage=TMV_LINEAGE,
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
                     type=MoleculeType.RNA,
@@ -507,6 +551,7 @@ class TestGetOTU:
             with empty_repo.use_transaction():
                 otu = empty_repo.create_otu(
                     acronym="TMV",
+                    lineage=TMV_LINEAGE,
                     molecule=Molecule(
                         strandedness=Strandedness.SINGLE,
                         type=MoleculeType.RNA,
@@ -592,6 +637,7 @@ class TestGetOTU:
                 id=otu.id,
                 acronym="TMV",
                 excluded_accessions=set(),
+                lineage=TMV_LINEAGE,
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
                     type=MoleculeType.RNA,
@@ -637,30 +683,6 @@ class TestGetOTU:
             assert initialized_repo.get_otu_id_by_acronym("") is None
 
         assert any(["Bad input" in log["event"] for log in logs])
-
-    def test_partial_ok(self, initialized_repo: Repo):
-        """Test that getting an OTU ID starting with a truncated 8-character portion
-        returns an ID.
-        """
-        otu = next(initialized_repo.iter_otus())
-
-        partial_id = str(otu.id)[:8]
-
-        assert initialized_repo.get_otu_id_by_partial(partial_id) == otu.id
-
-    def test_partial_too_short(self, initialized_repo: Repo):
-        """Test that getting an OTU ID starting with a truncated 7-character portion
-        does not return an ID.
-        """
-        otu = next(initialized_repo.iter_otus())
-
-        partial_id = str(otu.id)[:7]
-
-        with pytest.raises(
-            InvalidInputError,
-            match="Partial ID segment must be at least 8 characters long",
-        ):
-            initialized_repo.get_otu_id_by_partial(partial_id)
 
     def test_retrieve_nonexistent_otu(self, initialized_repo: Repo):
         """Test that getting an OTU that does not exist returns ``None``."""
@@ -784,15 +806,6 @@ class TestGetIsolate:
         assert isolate_unnamed_after
         assert isolate_unnamed_after.name is None
         assert isolate_unnamed_after.accessions == {"NP000001"}
-
-
-def test_get_isolate_id_from_partial(initialized_repo: Repo):
-    """Test that an isolate id can be retrieved from a truncated ``partial`` string."""
-    otu = next(initialized_repo.iter_otus())
-
-    isolate = otu.isolates[0]
-
-    assert initialized_repo.get_isolate_id_by_partial(str(isolate.id)[:8]) == isolate.id
 
 
 class TestCreateOTUWithValidation:

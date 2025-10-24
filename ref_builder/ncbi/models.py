@@ -53,6 +53,7 @@ class NCBISourceMolType(StrEnum):
     TRANSCRIBED_RNA = "transcribed RNA"
     VIRAL_CRNA = "viral cRNA"
     OTHER_RNA = "other RNA"
+    UNASSIGNED_RNA = "unassigned RNA"  # Historical value for older NCBI records
 
     @classmethod
     def from_molecule(cls: type, molecule: Molecule) -> "NCBISourceMolType":

@@ -29,13 +29,6 @@ class TransactionRequiredError(Exception):
         super().__init__("Writing events requires a transaction and none was found.")
 
 
-class PartialIDConflictError(Exception):
-    """Raised when a partial ID used as a shortcode returns too many results."""
-
-    def __init__(self) -> None:
-        super().__init__("Found more than one result, may need longer partial.")
-
-
 class InvalidInputError(Exception):
     """Raised when a command input does not match expected paramters."""
 

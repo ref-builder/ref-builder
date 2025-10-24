@@ -24,7 +24,6 @@ from ref_builder.ncbi.models import (
 )
 from ref_builder.otu.utils import get_segments_max_length, get_segments_min_length
 from ref_builder.otu.validators.isolate import IsolateBase
-from ref_builder.otu.validators.otu import OTUBase
 from ref_builder.otu.validators.sequence import SequenceBase
 from tests.fixtures.providers import (
     AccessionProvider,
@@ -172,6 +171,7 @@ class NCBIGenbankFactory(ModelFactory[NCBIGenbank]):
                 NCBISourceMolType.VIRAL_CRNA: MoleculeType.CRNA,
                 NCBISourceMolType.TRNA: MoleculeType.TRNA,
                 NCBISourceMolType.OTHER_RNA: MoleculeType.RNA,
+                NCBISourceMolType.UNASSIGNED_RNA: MoleculeType.RNA,
             }[source.mol_type]
         except KeyError as err:
             raise ValueError(
@@ -557,49 +557,6 @@ class IsolateFactory(ModelFactory[IsolateBase]):
                 for counter in range(len(plan.segments))
             ]
         )
-
-
-class OTUFactory(ModelFactory[OTUBase]):
-    """OTU Factory with quasi-realistic data."""
-
-    ModelFactory.__faker__.add_provider(OrganismProvider)
-
-    acronym = PostGenerated(derive_acronym)
-    """Generate an acronym for the OTU derived from its name."""
-
-    @classmethod
-    def excluded_accessions(cls) -> set[str]:
-        """Generate a set of excluded accessions."""
-        return set()
-
-    @post_generated
-    @classmethod
-    def isolates(cls, plan: Plan) -> list[IsolateBase]:
-        """Derive a list of isolates from a plan."""
-        isolates = []
-
-        for _ in range(cls.__faker__.random_int(2, 5)):
-            isolates.append(IsolateFactory.build_on_plan(plan=plan))
-
-        return isolates
-
-    id = Use(ModelFactory.__faker__.uuid4, cast_to=None)
-    """Generate a UUID."""
-
-    name = Use(ModelFactory.__faker__.organism)
-    """Generate a realistic name for a plant virus."""
-
-    plan = Use(PlanFactory.build)
-    """Generate a quasi-realistic plan for the OTU."""
-
-    @post_generated
-    @classmethod
-    def sequences(cls, isolates: list[IsolateBase]) -> list[SequenceBase]:
-        """Derive a list of sequences from a list of isolates."""
-        return [sequence for isolate in isolates for sequence in isolate.sequences]
-
-    taxid = Use(ModelFactory.__faker__.random_int, min=1000, max=999999)
-    """A realistic taxonomy ID."""
 
 
 class OTUMinimalFactory(ModelFactory[OTUMinimal]):

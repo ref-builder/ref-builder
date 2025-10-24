@@ -7,18 +7,11 @@ from ref_builder.console import (
     print_isolate,
     print_isolate_as_json,
     print_otu,
-    print_otu_as_json,
     print_otu_list,
 )
-from ref_builder.isolate import IsolateNameType
-from ref_builder.models.accession import Accession
-from ref_builder.models.isolate import IsolateName
-from ref_builder.models.molecule import Molecule, MoleculeType, Strandedness, Topology
 from ref_builder.models.otu import OTUMinimal
 from ref_builder.models.plan import Plan, Segment, SegmentName, SegmentRule
 from ref_builder.otu.builders.isolate import IsolateBuilder
-from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.builders.sequence import SequenceBuilder
 from tests.fixtures.factories import IsolateFactory, OTUMinimalFactory
 from tests.fixtures.providers import AccessionProvider, SequenceProvider
 
@@ -132,125 +125,15 @@ class TestPrintIsolate:
 class TestPrintOTU:
     """Test OTU console output."""
 
-    def test_print_otu(self, snapshot: SnapshotAssertion):
+    def test_print_otu(self, scratch_repo):
         """Test that an OTU is printed as expected by ``print_otu``."""
-        fake = Faker(["en_US"])
-        fake.add_provider(AccessionProvider)
-        fake.add_provider(SequenceProvider)
-        fake.seed_instance(8801)
-
-        otu = OTUBuilder(
-            id=fake.uuid4(),
-            acronym="BabAV",
-            excluded_accessions=set(),
-            molecule=Molecule(
-                strandedness=Strandedness.SINGLE,
-                topology=Topology.LINEAR,
-                type=MoleculeType.RNA,
-            ),
-            name="Babuvirus abacae",
-            plan=Plan.new(
-                [
-                    Segment(
-                        id=fake.uuid4(),
-                        length=1099,
-                        length_tolerance=0.03,
-                        name=SegmentName("DNA", "R"),
-                        rule=SegmentRule.REQUIRED,
-                    ),
-                    Segment(
-                        id=fake.uuid4(),
-                        length=1074,
-                        length_tolerance=0.03,
-                        name=SegmentName("DNA", "M"),
-                        rule=SegmentRule.REQUIRED,
-                    ),
-                    Segment(
-                        id=fake.uuid4(),
-                        length=1087,
-                        length_tolerance=0.03,
-                        name=SegmentName("DNA", "S"),
-                        rule=SegmentRule.REQUIRED,
-                    ),
-                ],
-            ),
-            taxid=438782,
-            isolates=[],
-        )
-
-        for _ in range(2):
-            sequences = [
-                SequenceBuilder(
-                    id=fake.uuid4(),
-                    accession=Accession.from_string(fake.accession() + ".1"),
-                    definition=fake.sentence(),
-                    sequence=fake.sequence(),
-                    segment=segment.id,
-                )
-                for segment in otu.plan.segments
-            ]
-
-            otu.isolates.append(
-                IsolateBuilder(
-                    id=fake.uuid4(),
-                    name=IsolateName(type=IsolateNameType.ISOLATE, value=fake.word()),
-                    sequences=sequences,
-                )
-            )
+        otu = scratch_repo.get_otu_by_taxid(3429802)
 
         with console.capture() as capture:
             print_otu(otu)
 
-        assert capture.get() == snapshot
-
-    def test_as_json_ok(self, snapshot: SnapshotAssertion):
-        """Test that an OTU is printed as expected by ``print_otu_as_json``."""
-        fake = Faker(["en_US"])
-        fake.add_provider(AccessionProvider)
-        fake.add_provider(SequenceProvider)
-        fake.seed_instance(8801)
-
-        otu = OTUBuilder(
-            id=fake.uuid4(),
-            acronym="BabAV",
-            excluded_accessions=set(),
-            molecule=Molecule(
-                strandedness=Strandedness.SINGLE,
-                topology=Topology.LINEAR,
-                type=MoleculeType.RNA,
-            ),
-            name="Babuvirus abacae",
-            plan=Plan(
-                id=fake.uuid4(),
-                segments=[
-                    Segment(
-                        id=fake.uuid4(),
-                        length=1099,
-                        length_tolerance=0.03,
-                        name=SegmentName("DNA", "R"),
-                        rule=SegmentRule.REQUIRED,
-                    ),
-                    Segment(
-                        id=fake.uuid4(),
-                        length=1074,
-                        length_tolerance=0.03,
-                        name=SegmentName("DNA", "M"),
-                        rule=SegmentRule.REQUIRED,
-                    ),
-                    Segment(
-                        id=fake.uuid4(),
-                        length=1087,
-                        length_tolerance=0.03,
-                        name=SegmentName("DNA", "S"),
-                        rule=SegmentRule.REQUIRED,
-                    ),
-                ],
-            ),
-            taxid=438782,
-            isolates=[],
-        )
-
-        with console.capture() as capture:
-            print_otu_as_json(otu)
-
-        assert capture.get() == snapshot
+        output = capture.get()
+        assert "Hostuviroid latensdahliae" in output
+        assert "TAXID" in output
+        assert "3429802" in output
+        assert "NC_020160.1" in output

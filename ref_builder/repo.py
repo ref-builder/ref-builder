@@ -22,7 +22,6 @@ import arrow
 from structlog import get_logger
 
 from ref_builder.errors import (
-    InvalidInputError,
     LockRequiredError,
     OTUDeletedError,
     TransactionExistsError,
@@ -71,6 +70,7 @@ from ref_builder.index import Index
 from ref_builder.lock import Lock
 from ref_builder.models.accession import Accession
 from ref_builder.models.isolate import IsolateName
+from ref_builder.models.lineage import Lineage
 from ref_builder.models.molecule import Molecule
 from ref_builder.models.otu import OTUMinimal
 from ref_builder.models.plan import Plan
@@ -361,6 +361,7 @@ class Repo:
     def create_otu(
         self,
         acronym: str,
+        lineage: Lineage,
         molecule: Molecule,
         name: str,
         plan: Plan,
@@ -383,6 +384,7 @@ class Repo:
             CreateOTUData(
                 id=otu_id,
                 acronym=acronym,
+                lineage=lineage,
                 molecule=molecule,
                 name=name,
                 plan=plan,
@@ -813,45 +815,12 @@ class Repo:
         """
         return self._index.get_id_by_taxid(taxid)
 
-    def get_otu_id_by_partial(self, partial: str) -> uuid.UUID | None:
-        """Return the UUID of the OTU starting with the given ``partial`` string.
-        Raise a ValueErrror if more than one matching OTU id is found.
-
-        If no OTU is found, return None.
-
-        :param partial: a partial segment of the OTU id with a minimum length of 8
-        :return: the UUID of the OTU or ``None``
-
-        """
-        if len(partial) < 8:
-            raise InvalidInputError(
-                "Partial ID segment must be at least 8 characters long."
-            )
-
-        return self._index.get_id_by_partial(partial)
-
     def get_isolate(self, isolate_id: uuid.UUID) -> IsolateBuilder | None:
         """Return the isolate with the given id if it exists, else None."""
         if otu_id := self.get_otu_id_by_isolate_id(isolate_id):
             return self.get_otu(otu_id).get_isolate(isolate_id)
 
         return None
-
-    def get_isolate_id_by_partial(self, partial: str) -> uuid.UUID | None:
-        """Return the UUID of the isolate starting with the given ``partial`` string.
-        Raise a ValueErrror if more than one matching isolate id is found.
-        If no isolate is found, return None.
-
-        :param partial: a partial segment of the isolate id with a minimum length of 8
-        :return: the UUID of the isolate or ``None``
-
-        """
-        if len(partial) < 8:
-            raise InvalidInputError(
-                "Partial ID segment must be at least 8 characters long."
-            )
-
-        return self._index.get_isolate_id_by_partial(partial)
 
     def get_otu_first_created(self, otu_id: uuid.UUID) -> datetime.datetime | None:
         """Get the timestamp of the first event associated with an OTU.

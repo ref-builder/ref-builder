@@ -9,7 +9,7 @@ from ref_builder.cli.validate import validate_no_duplicate_accessions
 from ref_builder.console import print_isolate, print_isolate_as_json
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.repo import Repo, locked_repo
-from ref_builder.services.isolate import IsolateService
+from ref_builder.services.cls import Services
 
 
 @click.group(name="isolate")
@@ -43,10 +43,8 @@ def isolate_create(
         click.echo(f"OTU {taxid} not found.", err=True)
         sys.exit(1)
 
-    ncbi_client = NCBIClient(False)
-
-    isolate_service = IsolateService(repo, ncbi_client)
-    isolate_service.create(otu_.id, accessions_)
+    services = Services(repo, NCBIClient(False))
+    services.isolate.create(otu_.id, accessions_)
 
 
 @isolate.command(name="delete")
@@ -59,10 +57,9 @@ def isolate_delete(repo: Repo, identifier: str) -> None:
     """
     otu_id, isolate_id = get_otu_isolate_ids_from_identifier(repo, identifier)
 
-    ncbi_client = NCBIClient(False)
-    isolate_service = IsolateService(repo, ncbi_client)
+    services = Services(repo, NCBIClient(False))
 
-    if isolate_service.delete(otu_id, isolate_id):
+    if services.isolate.delete(otu_id, isolate_id):
         click.echo("Isolate deleted.")
     else:
         sys.exit(1)

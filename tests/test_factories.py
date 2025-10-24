@@ -9,13 +9,11 @@ from ref_builder.models.accession import Accession
 from ref_builder.ncbi.models import NCBISource
 from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.otu.validators.isolate import Isolate
-from ref_builder.otu.validators.otu import OTU
 from ref_builder.otu.validators.sequence import Sequence
 from tests.fixtures.factories import (
     IsolateFactory,
     NCBIGenbankFactory,
     NCBISourceFactory,
-    OTUFactory,
     SequenceFactory,
 )
 
@@ -211,9 +209,3 @@ def test_isolate_factory():
         Isolate.model_validate(isolate.model_dump())
         for isolate in IsolateFactory.coverage()
     )
-
-
-def test_otu_factory(otu_factory: OTUFactory):
-    """Test that OTUFactory creates valid mock OTU data."""
-    mock_otus = otu_factory.coverage()
-    assert all(OTU.model_validate(otu.model_dump()) for otu in mock_otus)

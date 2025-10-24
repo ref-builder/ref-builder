@@ -10,14 +10,12 @@ from ref_builder.ncbi.cache import NCBICache
 from ref_builder.ncbi.client import NCBIClient, NCBIClientProtocol
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.repo import Repo
-from ref_builder.services.isolate import IsolateService
-from ref_builder.services.otu import OTUService
+from ref_builder.services.cls import Services
 from tests.fixtures.factories import (
     IsolateFactory,
     NCBIGenbankFactory,
     NCBISourceFactory,
     NCBITaxonomyFactory,
-    OTUFactory,
     OTUMinimalFactory,
     PlanFactory,
     SequenceFactory,
@@ -67,21 +65,6 @@ def empty_repo(tmp_path: Path) -> Repo:
 
 
 @pytest.fixture
-def precached_repo(
-    mocker: MockerFixture,
-    scratch_user_cache_path: Path,
-    tmp_path: Path,
-) -> Repo:
-    """A reference repository with a preloaded NCBI cache."""
-    mocker.patch(
-        "ref_builder.paths.user_cache_directory_path",
-        return_value=scratch_user_cache_path,
-    )
-
-    return Repo.new("Empty", tmp_path / "precached_repo", "virus")
-
-
-@pytest.fixture
 def scratch_ncbi_cache(mocker: MockerFixture, scratch_user_cache_path: Path):
     """A scratch NCBI cache with preloaded data."""
     mocker.patch(
@@ -112,17 +95,24 @@ def scratch_path(scratch_repo: Repo) -> Path:
     return scratch_repo.path
 
 
-@pytest.fixture
-def scratch_repo(tmp_path: Path, mock_ncbi_client: NCBIClientProtocol) -> Repo:
-    """A prepared scratch repository built from mock data."""
+@pytest.fixture(scope="session")
+def _session_scratch_repo(tmp_path_factory) -> Repo:
+    """A session-scoped scratch repository built once from mock data."""
+    from tests.fixtures.mock_ncbi_client import MockNCBIClient
+
+    tmp_path = tmp_path_factory.mktemp("session_scratch")
     repo = Repo.new(
         name="test",
         path=tmp_path / "scratch_repo",
         organism="viruses",
     )
 
-    otu_service = OTUService(repo, mock_ncbi_client)
-    isolate_service = IsolateService(repo, mock_ncbi_client)
+    mock_ncbi_client = MockNCBIClient(
+        manifest=OTUManifest,
+        data_dir=Path(__file__).parent / "fixtures" / "ncbi" / "otus",
+    )
+
+    services = Services(repo, mock_ncbi_client)
 
     with repo.lock():
         for (
@@ -130,7 +120,7 @@ def scratch_repo(tmp_path: Path, mock_ncbi_client: NCBIClientProtocol) -> Repo:
             plan_accessions,
             isolate_accessions,
         ) in mock_ncbi_client.get_otu_structure():
-            otu = otu_service.create(plan_accessions)
+            otu = services.otu.create(plan_accessions)
 
             if otu is None:
                 raise RuntimeError(
@@ -139,9 +129,21 @@ def scratch_repo(tmp_path: Path, mock_ncbi_client: NCBIClientProtocol) -> Repo:
                 )
 
             for accessions in isolate_accessions:
-                isolate_service.create(otu.id, accessions)
+                services.isolate.create(otu.id, accessions)
 
     return repo
+
+
+@pytest.fixture
+def scratch_repo(tmp_path: Path, _session_scratch_repo: Repo) -> Repo:
+    """A prepared scratch repository built from mock data (copied from session fixture)."""
+    repo_path = tmp_path / "scratch_repo"
+    shutil.copytree(
+        _session_scratch_repo.path,
+        repo_path,
+        ignore=shutil.ignore_patterns(".git"),
+    )
+    return Repo(repo_path)
 
 
 @pytest.fixture
@@ -160,11 +162,27 @@ def scratch_user_cache_path(files_path: Path, tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def indexable_otus() -> list[OTUBuilder]:
+def indexable_otus(
+    empty_repo: Repo, mock_ncbi_client: NCBIClientProtocol
+) -> list[OTUBuilder]:
     """A list of eight OTUs for use in Snapshotter testing."""
-    return [
-        OTUBuilder.model_validate(OTUFactory.build().model_dump()) for _ in range(8)
-    ]
+    services = Services(empty_repo, mock_ncbi_client)
+
+    with empty_repo.lock():
+        otus = [
+            services.otu.create(OTUManifest.abaca_bunchy_top_virus.refseq),
+            services.otu.create(OTUManifest.babaco_mosaic_virus.refseq),
+            services.otu.create(OTUManifest.cabbage_leaf_curl_jamaica_virus.refseq),
+            services.otu.create(OTUManifest.dahlia_latent_viroid.refseq),
+            services.otu.create(
+                OTUManifest.east_african_cassava_mosaic_cameroon_virus.refseq
+            ),
+            services.otu.create(OTUManifest.oat_blue_dwarf_virus.refseq),
+            services.otu.create(OTUManifest.okra_leaf_curl_alphasatellite.refseq),
+            services.otu.create(OTUManifest.saccharum_streak_virus.refseq),
+        ]
+
+    return [otu for otu in otus if otu is not None]
 
 
 @pytest.fixture
@@ -183,12 +201,6 @@ def ncbi_genbank_factory() -> NCBIGenbankFactory:
 def ncbi_source_factory() -> NCBISourceFactory:
     """Fixture for a factory that generates NCBISource instances."""
     return NCBISourceFactory
-
-
-@pytest.fixture
-def otu_factory() -> OTUFactory:
-    """Fixture for a factory that generates OTUBase instances."""
-    return OTUFactory
 
 
 @pytest.fixture

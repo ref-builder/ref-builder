@@ -7,28 +7,28 @@ from ref_builder.repo import Repo
 runner = CliRunner()
 
 
-class TestCreateOTUCommands:
+class TestCreateOTU:
     """Test the behaviour of ``ref-builder otu create``."""
 
     @pytest.mark.parametrize(
         ("taxid", "accessions"),
         [(3429802, ["NC_020160"]), (3426695, ["DQ178610", "DQ178611"])],
     )
-    def test_without_taxid(
+    def test_ok(
         self,
         accessions: list[str],
-        precached_repo: Repo,
+        empty_repo: Repo,
         taxid: int,
     ):
         """Test that an OTU can be created without the --taxid option."""
         result = runner.invoke(
             otu_command_group,
-            ["--path", str(precached_repo.path), "create", *accessions],
+            ["--path", str(empty_repo.path), "create", *accessions],
         )
 
         assert result.exit_code == 0
 
-        otus = list(Repo(precached_repo.path).iter_otus())
+        otus = list(Repo(empty_repo.path).iter_otus())
 
         assert len(otus) == 1
         assert otus[0].taxid == taxid
@@ -148,18 +148,27 @@ class TestAllowAccessionsCommand:
 
         result = runner.invoke(
             otu_command_group,
-            ["--path", str(scratch_repo.path)]
-            + ["exclude-accessions", str(taxid)]
-            + ["DQ178608", "DQ178609"],
+            [
+                "--path",
+                str(scratch_repo.path),
+                "exclude-accessions",
+                str(taxid),
+                "DQ178608",
+                "DQ178609",
+            ],
         )
 
         assert result.exit_code == 0
 
         result = runner.invoke(
             otu_command_group,
-            ["--path", str(scratch_repo.path)]
-            + ["allow-accessions", str(taxid)]
-            + ["DQ178608"],
+            [
+                "--path",
+                str(scratch_repo.path),
+                "allow-accessions",
+                str(taxid),
+                "DQ178608",
+            ],
         )
 
         assert result.exit_code == 0

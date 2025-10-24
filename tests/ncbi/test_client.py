@@ -111,12 +111,12 @@ class TestFetchAccessionsByTaxid:
 
     def test_ok(self):
         """Test that the client can fetch accessions by taxid."""
-        assert NCBIClient.fetch_accessions_by_taxid(1198450) == [
-            "NC_038797.1",
-            "NC_038796.1",
-            "JQ821387.1",
-            "JQ821386.1",
-        ]
+        assert set(NCBIClient.fetch_accessions_by_taxid(1198450)) == {
+            Accession("JQ821387", 1),
+            Accession("JQ821386", 1),
+            Accession("NC_038796", 1),
+            Accession("NC_038797", 1),
+        }
 
     def test_nonexistent(self):
         """Test that the client returns an empty list when the taxid does not exist."""
@@ -130,10 +130,8 @@ class TestFetchAccessionsByTaxid:
 
     def test_refseq_limit(self, uncached_ncbi_client: NCBIClient):
         """Test that RefSeq-only searches return only RefSeq accessions."""
-        for raw_accession in NCBIClient.fetch_accessions_by_taxid(
-            438782, refseq_only=True
-        ):
-            assert raw_accession[:3] == "NC_"
+        for accession in NCBIClient.fetch_accessions_by_taxid(438782, refseq_only=True):
+            assert accession.is_refseq
 
     def test_esearch_limit_by_length(self, uncached_ncbi_client: NCBIClient):
         """Test that narrow search terms fetch a smaller subset of accessions

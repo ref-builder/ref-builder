@@ -7,6 +7,7 @@ from pathlib import Path
 from structlog import get_logger
 
 from ref_builder.models.accession import Accession
+from ref_builder.models.lineage import Lineage, Taxon, TaxonOtherNames
 from ref_builder.ncbi.models import (
     NCBIGenbank,
     NCBIRank,
@@ -305,6 +306,137 @@ class MockNCBIClient:
                 hint="Add it to tests/fixtures/ncbi/ modules",
             )
             return None
+
+    def fetch_lineage(self, taxid: int) -> Lineage:
+        """Fetch mocked lineage from species down to target taxon.
+
+        Args:
+            taxid: NCBI Taxonomy ID
+
+        Returns:
+            Lineage object with complete details for each taxon
+
+        """
+        taxonomy = self.fetch_taxonomy_record(taxid)
+
+        if taxonomy is None:
+            raise ValueError(f"Could not fetch taxonomy record for taxid {taxid}")
+
+        # If not at species level, fetch the species-level taxonomy
+        if taxonomy.rank != NCBIRank.SPECIES:
+            species_taxonomy = self.fetch_taxonomy_record(taxonomy.species.id)
+            if species_taxonomy is None:
+                raise ValueError(
+                    f"Could not fetch species taxonomy for taxid {taxonomy.species.id}"
+                )
+        else:
+            species_taxonomy = taxonomy
+
+        # Build list of taxa from target down to species
+        taxa_to_fetch = []
+
+        # Add the target taxon if it's not species level
+        if taxonomy.rank != NCBIRank.SPECIES:
+            taxa_to_fetch.append(taxonomy.id)
+
+        # Always add the species
+        taxa_to_fetch.append(species_taxonomy.id)
+
+        # Build Taxon objects
+        taxon_objects = []
+
+        for i, tid in enumerate(taxa_to_fetch):
+            tax_record = self.fetch_taxonomy_record(tid)
+
+            if tax_record is None:
+                logger.warning("Could not fetch taxonomy record", taxid=tid)
+                continue
+
+            # Determine parent (None for species, otherwise next in list)
+            parent_id = None if i == len(taxa_to_fetch) - 1 else taxa_to_fetch[i + 1]
+
+            taxon = Taxon(
+                id=tax_record.id,
+                name=tax_record.name,
+                parent=parent_id,
+                rank=tax_record.rank,
+                other_names=TaxonOtherNames(
+                    acronym=tax_record.other_names.acronym,
+                    synonyms=tax_record.other_names.equivalent_name,
+                ),
+            )
+
+            taxon_objects.append(taxon)
+
+        if not taxon_objects:
+            raise ValueError(f"Could not build lineage for taxid {taxid}")
+
+        return Lineage(taxa=taxon_objects)
+
+    def filter_accessions(self, raw_accessions: Collection[str]) -> set[Accession]:
+        """Filter raw accession list and return a set of valid Accession objects.
+
+        Args:
+            raw_accessions: Raw accession strings to filter
+
+        Returns:
+            Set of valid Accession objects
+
+        """
+        from contextlib import suppress
+
+        valid_accessions = set()
+        for accession in raw_accessions:
+            with suppress(ValueError):
+                valid_accessions.add(Accession.from_string(accession))
+        return valid_accessions
+
+    def fetch_accessions_by_taxid(
+        self,
+        taxid: int,
+        sequence_min_length: int | None = None,
+        sequence_max_length: int | None = None,
+        modification_date_start: str | None = None,
+        modification_date_end: str | None = None,
+        refseq_only: bool = False,
+    ) -> list[Accession]:
+        """Fetch mock accessions for a given taxid from loaded OTU data.
+
+        Args:
+            taxid: NCBI Taxonomy ID
+            sequence_min_length: Minimum sequence length filter (ignored in mock)
+            sequence_max_length: Maximum sequence length filter (ignored in mock)
+            modification_date_start: Start date filter (ignored in mock)
+            modification_date_end: End date filter (ignored in mock)
+            refseq_only: If True, only return RefSeq accessions
+
+        Returns:
+            List of Accession objects from the OTU structure
+
+        """
+        accession_keys = []
+
+        for otu_taxid, refseq, isolates in self._otu_structure:
+            if otu_taxid == taxid:
+                if not refseq_only:
+                    # Include RefSeq accessions
+                    accession_keys.extend(refseq)
+                    # Include all isolate accessions
+                    for isolate_group in isolates:
+                        accession_keys.extend(isolate_group)
+                else:
+                    # Only RefSeq accessions
+                    accession_keys.extend(refseq)
+                break
+
+        # Convert accession keys to Accession objects by looking up in genbank records
+        accessions = []
+        for key in accession_keys:
+            if key in self._genbank_records:
+                record = self._genbank_records[key]
+                accessions.append(Accession.from_string(record.accession_version))
+
+        return accessions
 
 
 # Module-level singleton for use by per-OTU modules

@@ -10,19 +10,14 @@ from structlog import get_logger
 
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBIGenbank
-from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.promote import (
-    promote_otu_accessions,
     promote_otu_accessions_from_records,
-    upgrade_outdated_sequences_in_otu,
 )
 from ref_builder.otu.utils import (
-    DeleteRationale,
     get_segments_max_length,
     get_segments_min_length,
     group_genbank_records_by_isolate,
-    parse_refseq_comment,
 )
 from ref_builder.repo import Repo
 from ref_builder.services.isolate import IsolateService
@@ -49,65 +44,6 @@ class BaseBatchRecordGetter(ABC):
     def get_records(self, taxid: int) -> list[NCBIGenbank]:
         """Return Genbank records corresponding to the given Taxonomy ID."""
         return NotImplemented
-
-
-def comprehensive_update_otu(
-    repo: Repo,
-    otu: OTUBuilder,
-    ignore_cache: bool = False,
-) -> OTUBuilder:
-    """Comprehensively update an OTU by promoting, upgrading, and adding new isolates.
-
-    This function performs three operations in sequence:
-    1. Promote GenBank accessions to RefSeq equivalents where available
-    2. Upgrade outdated sequence versions (e.g., v1 → v2)
-    3. Add new isolates from newly available accessions
-    """
-    log = logger.bind(taxid=otu.taxid, otu_id=str(otu.id), name=otu.name)
-
-    log.info("Starting comprehensive OTU update.")
-
-    # Step 1: Promote GenBank accessions to RefSeq
-    promoted_accessions = promote_otu_accessions(repo, otu, ignore_cache)
-    if promoted_accessions:
-        log.info("Promoted sequences", count=len(promoted_accessions))
-        otu = repo.get_otu(otu.id)
-
-    # Step 2: Upgrade outdated sequence versions
-    upgraded_sequence_ids = upgrade_outdated_sequences_in_otu(
-        repo,
-        otu,
-        modification_date_start=None,
-        ignore_cache=ignore_cache,
-    )
-    if upgraded_sequence_ids:
-        log.info("Upgraded sequences", count=len(upgraded_sequence_ids))
-        otu = repo.get_otu(otu.id)
-
-    # Step 3: Add new isolates
-    ncbi = NCBIClient(False)
-    accessions = ncbi.filter_accessions(
-        ncbi.fetch_accessions_by_taxid(
-            otu.taxid,
-            sequence_min_length=get_segments_min_length(otu.plan.segments),
-            sequence_max_length=get_segments_max_length(otu.plan.segments),
-        ),
-    )
-
-    fetch_set = {accession.key for accession in accessions} - otu.blocked_accessions
-
-    if fetch_set:
-        log.info("Adding new isolates from NCBI.")
-        new_isolate_ids = update_otu_with_accessions(repo, otu, fetch_set, ignore_cache)
-
-        if new_isolate_ids:
-            log.info("Added new isolates", count=len(new_isolate_ids))
-
-    repo.write_otu_update_history_entry(otu.id)
-
-    log.info("Comprehensive OTU update complete.")
-
-    return repo.get_otu(otu.id)
 
 
 class PrecachedRecordStore(BaseBatchRecordGetter):
@@ -283,7 +219,7 @@ def batch_fetch_new_accessions(
                 otu_counter=otu_counter,
             )
 
-        raw_accessions = ncbi.fetch_accessions_by_taxid(
+        accessions = ncbi.fetch_accessions_by_taxid(
             otu.taxid,
             sequence_min_length=get_segments_min_length(otu.plan.segments),
             sequence_max_length=get_segments_max_length(otu.plan.segments),
@@ -292,7 +228,7 @@ def batch_fetch_new_accessions(
         )
 
         accessions_to_fetch = {
-            accession.key for accession in ncbi.filter_accessions(raw_accessions)
+            accession.key for accession in accessions
         } - otu.blocked_accessions
 
         if accessions_to_fetch:
@@ -372,31 +308,6 @@ def promote_and_update_otu_from_records(
     repo.get_otu(otu.id)
 
     return new_isolate_ids
-
-
-def update_otu_with_accessions(
-    repo: Repo,
-    otu: OTUBuilder,
-    accessions: Collection[str],
-    ignore_cache: bool = False,
-) -> list[UUID]:
-    """Take a list of accessions, filter for eligible accessions and
-    add new sequences to the OTU.
-    """
-    log = logger.bind(taxid=otu.taxid, otu_id=str(otu.id), name=otu.name)
-
-    ncbi = NCBIClient(ignore_cache)
-
-    log.info(
-        "Fetching records.",
-        count=len(accessions),
-        fetch_list=sorted(accessions),
-    )
-
-    records = ncbi.fetch_genbank_records(accessions)
-
-    if records:
-        return promote_and_update_otu_from_records(repo, otu, records)
 
 
 def update_otu_with_records(

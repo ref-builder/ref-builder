@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID
 
-from ref_builder.errors import PartialIDConflictError
 from ref_builder.events.base import EventMetadata
 from ref_builder.models.otu import OTUMinimal
 from ref_builder.otu.builders.otu import OTUBuilder
@@ -284,22 +283,6 @@ class Index:
 
         return None
 
-    def get_id_by_partial(self, partial: str) -> UUID | None:
-        """Get an OTU ID by a truncated ``partial`` string."""
-        cursor = self.con.execute(
-            'SELECT id AS "id [uuid]" FROM otus WHERE id LIKE ?',
-            (f"{partial}%",),
-        )
-
-        if result := cursor.fetchmany(size=2):
-            if len(result) > 1:
-                raise PartialIDConflictError
-
-            if result:
-                return result[0][0]
-
-        return None
-
     def get_id_by_isolate_id(self, isolate_id: UUID) -> UUID | None:
         """Get an OTU ID from an isolate ID that belongs to it."""
         cursor = self.con.execute(
@@ -309,25 +292,6 @@ class Index:
 
         if result := cursor.fetchone():
             return result[0]
-
-        return None
-
-    def get_isolate_id_by_partial(self, partial: str) -> UUID | None:
-        """Get an isolate ID beginning with a truncated ``partial`` string."""
-        if partial == "":
-            raise ValueError("Empty partial given.")
-
-        cursor = self.con.execute(
-            'SELECT id AS "id [uuid]" FROM isolates WHERE id LIKE ?',
-            (f"{partial}%",),
-        )
-
-        if result := cursor.fetchmany(size=2):
-            if len(result) > 1:
-                raise PartialIDConflictError
-
-            if result:
-                return result[0][0]
 
         return None
 

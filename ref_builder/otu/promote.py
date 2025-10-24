@@ -50,13 +50,11 @@ def promote_otu_accessions(
 
     log.info("Checking for promotable sequences.")
 
-    accessions = ncbi.filter_accessions(
-        ncbi.fetch_accessions_by_taxid(
-            otu.taxid,
-            sequence_min_length=get_segments_min_length(otu.plan.segments),
-            sequence_max_length=get_segments_max_length(otu.plan.segments),
-            refseq_only=True,
-        ),
+    accessions = ncbi.fetch_accessions_by_taxid(
+        otu.taxid,
+        sequence_min_length=get_segments_min_length(otu.plan.segments),
+        sequence_max_length=get_segments_max_length(otu.plan.segments),
+        refseq_only=True,
     )
     fetch_set = {accession.key for accession in accessions} - otu.blocked_accessions
 
@@ -257,13 +255,11 @@ def upgrade_outdated_sequences_in_otu(
     """
     ncbi = NCBIClient(ignore_cache)
 
-    all_server_accessions = ncbi.filter_accessions(
-        ncbi.fetch_accessions_by_taxid(
-            otu.taxid,
-            modification_date_start=modification_date_start,
-            sequence_min_length=get_segments_min_length(otu.plan.segments),
-            sequence_max_length=get_segments_max_length(otu.plan.segments),
-        ),
+    all_server_accessions = ncbi.fetch_accessions_by_taxid(
+        otu.taxid,
+        modification_date_start=modification_date_start,
+        sequence_min_length=get_segments_min_length(otu.plan.segments),
+        sequence_max_length=get_segments_max_length(otu.plan.segments),
     )
 
     server_upgraded_accessions = {
