@@ -318,6 +318,114 @@ class TestIsolateServiceCreateValidation:
         assert otu_after
         assert "NC_003355" not in otu_after.accessions
 
+    def test_sequence_too_short(
+        self,
+        scratch_repo: Repo,
+        mock_ncbi_client: MockNCBIClient,
+        mocker: MockerFixture,
+        ncbi_genbank_factory: type[NCBIGenbankFactory],
+        ncbi_source_factory: type[NCBISourceFactory],
+    ):
+        """Test that sequences below length tolerance are rejected."""
+        services = Services(scratch_repo, mock_ncbi_client)
+
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        )
+
+        assert otu
+        assert len(otu.plan.required_segments) == 2
+
+        segment = otu.plan.required_segments[0]
+        too_short_length = int(segment.length * 0.5)
+
+        records = []
+        for i, seg in enumerate(otu.plan.required_segments):
+            source = ncbi_source_factory.build(
+                taxid=otu.taxid,
+                organism=otu.name,
+                segment=str(seg.name),
+            )
+            sequence_length = too_short_length if i == 0 else seg.length
+            records.append(
+                ncbi_genbank_factory.build(
+                    accession=f"AB{100000 + i}",
+                    sequence="A" * sequence_length,
+                    source=source,
+                )
+            )
+
+        mocker.patch(
+            "ref_builder.services.isolate._fetch_records",
+            return_value=records,
+        )
+
+        with scratch_repo.lock():
+            isolate = services.isolate.create(
+                otu_id=otu.id,
+                accessions=[r.accession for r in records],
+            )
+
+        assert isolate is None
+
+        otu_after = scratch_repo.get_otu(otu.id)
+        assert otu_after
+        assert otu_after.isolate_ids == otu.isolate_ids
+
+    def test_sequence_too_long(
+        self,
+        scratch_repo: Repo,
+        mock_ncbi_client: MockNCBIClient,
+        mocker: MockerFixture,
+        ncbi_genbank_factory: type[NCBIGenbankFactory],
+        ncbi_source_factory: type[NCBISourceFactory],
+    ):
+        """Test that sequences above length tolerance are rejected."""
+        services = Services(scratch_repo, mock_ncbi_client)
+
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+        )
+
+        assert otu
+        assert len(otu.plan.required_segments) == 2
+
+        segment = otu.plan.required_segments[0]
+        too_long_length = int(segment.length * 2.0)
+
+        records = []
+        for i, seg in enumerate(otu.plan.required_segments):
+            source = ncbi_source_factory.build(
+                taxid=otu.taxid,
+                organism=otu.name,
+                segment=str(seg.name),
+            )
+            sequence_length = too_long_length if i == 0 else seg.length
+            records.append(
+                ncbi_genbank_factory.build(
+                    accession=f"AB{200000 + i}",
+                    sequence="A" * sequence_length,
+                    source=source,
+                )
+            )
+
+        mocker.patch(
+            "ref_builder.services.isolate._fetch_records",
+            return_value=records,
+        )
+
+        with scratch_repo.lock():
+            isolate = services.isolate.create(
+                otu_id=otu.id,
+                accessions=[r.accession for r in records],
+            )
+
+        assert isolate is None
+
+        otu_after = scratch_repo.get_otu(otu.id)
+        assert otu_after
+        assert otu_after.isolate_ids == otu.isolate_ids
+
 
 class TestIsolateServicePromotion:
     """Test RefSeq promotion logic."""

@@ -55,6 +55,11 @@ class OTUManifest:
         refseq=["NC_013464"],
     )
 
+    tobacco_mosaic_virus = OTUSpec(
+        refseq=["NC_001367"],
+        isolates=[["OQ953825"], ["HE818414"], ["AJ011933"], ["AF395128"], ["V01408"]],
+    )
+
     wasabi_mottle_virus = OTUSpec(
         refseq=["KJ207375"],
         isolates=[

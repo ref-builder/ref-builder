@@ -1,39 +1,51 @@
 """Tests for OTU models."""
 
 import warnings
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
 
+from ref_builder.isolate import IsolateNameType
 from ref_builder.models.accession import Accession
-from ref_builder.models.plan import SegmentRule
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.lineage import Lineage, Taxon, TaxonOtherNames
+from ref_builder.models.molecule import Molecule, MoleculeType, Strandedness, Topology
+from ref_builder.models.plan import Plan, Segment, SegmentRule
+from ref_builder.ncbi.models import NCBIRank
 from ref_builder.otu.validators.isolate import Isolate
 from ref_builder.otu.validators.otu import OTU, OTUBase
 from ref_builder.otu.validators.sequence import Sequence
 from ref_builder.warnings import PlanWarning
-from tests.fixtures.factories import (
-    IsolateFactory,
-    OTUFactory,
-    PlanFactory,
-    SegmentFactory,
-    SequenceFactory,
-)
 
 
 class TestSequence:
     """Test the ``Sequence`` model which is used for complete validation of sequences."""
 
-    def test_ok(self, sequence_factory: SequenceFactory):
-        sequence = sequence_factory.build()
+    def test_ok(self):
+        """Test that a valid sequence passes validation."""
+        assert Sequence.model_validate(
+            {
+                "id": uuid4(),
+                "accession": Accession("NC_001234", 1),
+                "definition": "Test virus, complete genome",
+                "segment": uuid4(),
+                "sequence": "ATCGATCGATCG",
+            }
+        )
 
-        assert Sequence.model_validate(sequence.model_dump())
-
-    def test_bad_sequence_fail(self, sequence_factory: SequenceFactory):
-        bad_sequence = sequence_factory.build(accession=Accession("BADSEQUENCE", 1))
+    def test_invalid_accession(self):
+        """Test that an invalid accession fails validation."""
+        bad_sequence_data = {
+            "id": uuid4(),
+            "accession": Accession("BADSEQUENCE", 1),
+            "definition": "Test virus, complete genome",
+            "segment": uuid4(),
+            "sequence": "ATCGATCGATCG",
+        }
 
         try:
-            assert Sequence.model_validate(bad_sequence.model_dump())
-
+            Sequence.model_validate(bad_sequence_data)
         except ValidationError as e:
             for error in e.errors():
                 assert "accession" in error["loc"]
@@ -46,46 +58,45 @@ class TestSequence:
 class TestIsolate:
     """Test the ``Isolate`` model which is used for complete validation of isolates."""
 
-    otu: OTUBase
-
-    @pytest.fixture(autouse=True)
-    def _build_otu(self, otu_factory: OTUFactory):
-        self.otu = otu_factory.build(
-            plan=PlanFactory.build(segments=SegmentFactory.build_series(3))
-        )
-
-    def test_accession_consistency_warning(self, isolate_factory: IsolateFactory):
+    def test_accession_consistency_warning(self):
         """Test that a warning is raised if accession provenances are mixed."""
-        genbank_isolate = isolate_factory.build_on_plan(self.otu.plan)
-        refseq_isolate = isolate_factory.build_on_plan(self.otu.plan, refseq=True)
+        segment_id = uuid4()
 
-        for isolate in (genbank_isolate, refseq_isolate):
-            bad_isolate = isolate.model_copy()
+        # Create isolate with mixed RefSeq and GenBank accessions
+        mixed_isolate_data = {
+            "id": uuid4(),
+            "name": None,
+            "sequences": [
+                {
+                    "id": uuid4(),
+                    "accession": Accession("NC_000001", 1),  # RefSeq
+                    "definition": "Test virus segment A",
+                    "segment": segment_id,
+                    "sequence": "ATCGATCGATCG",
+                },
+                {
+                    "id": uuid4(),
+                    "accession": Accession("BD000001", 1),  # GenBank
+                    "definition": "Test virus segment B",
+                    "segment": segment_id,
+                    "sequence": "GCTAGCTAGCTA",
+                },
+            ],
+        }
 
-            if bad_isolate.sequences[0].accession.is_refseq:
-                bad_isolate.sequences[0].accession = Accession("BD000001", 1)
-            else:
-                bad_isolate.sequences[0].accession = Accession("NC_000001", 1)
+        with warnings.catch_warnings(record=True) as warning_list:
+            Isolate.model_validate(mixed_isolate_data)
 
-            assert not all(
-                [sequence.accession.is_refseq for sequence in bad_isolate.sequences]
-            )
+        assert len(warning_list) > 0
+        warning_msg = warning_list[0]
 
-            with warnings.catch_warnings(record=True) as warning_list:
-                Isolate.model_validate(bad_isolate.model_dump())
-
-            for warning_msg in warning_list:
-                assert warning_msg.category.__name__ == "IsolateInconsistencyWarning"
-
-                assert (
-                    "Combination of RefSeq and non-RefSeq sequences found in multipartite isolate"
-                    in str(warning_msg.message)
-                )
-
-                assert (
-                    f"{[sequence.accession.key for sequence in bad_isolate.sequences]}"
-                    in str(warning_msg)
-                )
+        assert warning_msg.category.__name__ == "IsolateInconsistencyWarning"
+        assert (
+            "Combination of RefSeq and non-RefSeq sequences found in multipartite isolate"
+            in str(warning_msg.message)
+        )
+        assert "NC_000001" in str(warning_msg)
+        assert "BD000001" in str(warning_msg)
 
 
 class TestOTU:
@@ -94,8 +105,81 @@ class TestOTU:
     otu: OTUBase
 
     @pytest.fixture(autouse=True)
-    def _build_otu(self, otu_factory: OTUFactory):
-        self.otu = otu_factory.build()
+    def _build_otu(self):
+        """Build static OTU data for testing."""
+        segment_id = uuid4()
+        plan_id = uuid4()
+
+        self.otu = OTUBase(
+            id=uuid4(),
+            acronym="TMV",
+            excluded_accessions=set(),
+            lineage=Lineage(
+                taxa=[
+                    Taxon(
+                        id=12242,
+                        name="Tobacco mosaic virus",
+                        parent=3432891,
+                        rank=NCBIRank.NO_RANK,
+                        other_names=TaxonOtherNames(acronym=["TMV"], synonyms=[]),
+                    ),
+                    Taxon(
+                        id=3432891,
+                        name="Tobamovirus tabaci",
+                        parent=None,
+                        rank=NCBIRank.SPECIES,
+                        other_names=TaxonOtherNames(acronym=[], synonyms=[]),
+                    ),
+                ]
+            ),
+            molecule=Molecule(
+                strandedness=Strandedness.SINGLE,
+                type=MoleculeType.RNA,
+                topology=Topology.LINEAR,
+            ),
+            name="Tobacco mosaic virus",
+            plan=Plan(
+                id=plan_id,
+                segments=[
+                    Segment(
+                        id=segment_id,
+                        length=20,
+                        length_tolerance=0.1,
+                        name=None,
+                        rule=SegmentRule.REQUIRED,
+                    )
+                ],
+            ),
+            taxid=12242,
+            isolates=[
+                {
+                    "id": uuid4(),
+                    "name": IsolateName(type=IsolateNameType.ISOLATE, value="TMV-001"),
+                    "sequences": [
+                        {
+                            "id": uuid4(),
+                            "accession": Accession("NC_001367", 1),
+                            "definition": "Tobacco mosaic virus, complete genome",
+                            "segment": segment_id,
+                            "sequence": "ATCGATCGATCGATCGATCG",
+                        }
+                    ],
+                },
+                {
+                    "id": uuid4(),
+                    "name": IsolateName(type=IsolateNameType.ISOLATE, value="TMV-002"),
+                    "sequences": [
+                        {
+                            "id": uuid4(),
+                            "accession": Accession("AF395128", 1),
+                            "definition": "Tobacco mosaic virus isolate TMV-017",
+                            "segment": segment_id,
+                            "sequence": "GCTAGCTAGCTAGCTAGCTA",
+                        }
+                    ],
+                },
+            ],
+        )
 
     def test_ok(self):
         """Test that a valid OTU passes validation."""
@@ -103,16 +187,64 @@ class TestOTU:
 
     def test_no_required_segments(self):
         """Test that OTU raises a warning if initialized without required segments."""
-        mock_otu = OTUFactory.build(
-            plan=PlanFactory.build(
-                segments=[SegmentFactory.build(rule=SegmentRule.RECOMMENDED)]
-            )
+        segment_id = uuid4()
+        plan_id = uuid4()
+
+        otu_data = OTUBase(
+            id=uuid4(),
+            acronym="TMV",
+            excluded_accessions=set(),
+            lineage=Lineage(
+                taxa=[
+                    Taxon(
+                        id=3432891,
+                        name="Tobamovirus tabaci",
+                        parent=None,
+                        rank=NCBIRank.SPECIES,
+                        other_names=TaxonOtherNames(acronym=[], synonyms=[]),
+                    ),
+                ]
+            ),
+            molecule=Molecule(
+                strandedness=Strandedness.SINGLE,
+                type=MoleculeType.RNA,
+                topology=Topology.LINEAR,
+            ),
+            name="Tobacco mosaic virus",
+            plan=Plan(
+                id=plan_id,
+                segments=[
+                    Segment(
+                        id=segment_id,
+                        length=20,
+                        length_tolerance=0.1,
+                        name=None,
+                        rule=SegmentRule.RECOMMENDED,  # Not required
+                    )
+                ],
+            ),
+            taxid=3432891,
+            isolates=[
+                {
+                    "id": uuid4(),
+                    "name": IsolateName(type=IsolateNameType.ISOLATE, value="TMV-001"),
+                    "sequences": [
+                        {
+                            "id": uuid4(),
+                            "accession": Accession("NC_001367", 1),
+                            "definition": "Tobacco mosaic virus, complete genome",
+                            "segment": segment_id,
+                            "sequence": "ATCGATCGATCGATCGATCG",
+                        }
+                    ],
+                }
+            ],
         )
 
-        assert not mock_otu.plan.required_segments
+        assert not otu_data.plan.required_segments
 
         with pytest.warns(PlanWarning):
-            OTU.model_validate(mock_otu.model_dump())
+            OTU.model_validate(otu_data.model_dump())
 
     def test_excluded_accessions(self):
         """Test that validation fails if the OTU includes accessions that are included

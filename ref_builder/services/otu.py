@@ -16,9 +16,16 @@ from ref_builder.models.plan import (
 from ref_builder.ncbi.models import NCBIGenbank, NCBIRank, NCBITaxonomy
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.isolate import create_sequence_from_record
+from ref_builder.otu.promote import (
+    promote_otu_accessions,
+    promote_otu_accessions_from_records,
+    upgrade_outdated_sequences_in_otu,
+)
 from ref_builder.otu.utils import (
     assign_records_to_segments,
     create_segments_from_records,
+    get_segments_max_length,
+    get_segments_min_length,
     group_genbank_records_by_isolate,
     parse_refseq_comment,
 )
@@ -233,8 +240,11 @@ class OTUService(Service):
 
         molecule = get_molecule_from_records(records)
 
+        lineage = self.ncbi.fetch_lineage(taxonomy.id)
+
         otu = self._repo.create_otu(
             acronym=acronym,
+            lineage=lineage,
             molecule=molecule,
             name=taxonomy.name,
             plan=plan,
@@ -353,3 +363,97 @@ class OTUService(Service):
                 otu_id=str(otu.id),
                 excluded_accessions=sorted(excluded_accessions),
             )
+
+    def update(self, otu_id: UUID, ignore_cache: bool = False) -> OTUBuilder | None:
+        """Update an OTU by promoting, upgrading, and adding new isolates.
+
+        This method performs three operations in sequence:
+        1. Promote GenBank accessions to RefSeq equivalents where available
+        2. Upgrade outdated sequence versions (e.g., v1 → v2)
+        3. Add new isolates from newly available accessions
+
+        :param otu_id: the OTU ID
+        :param ignore_cache: whether to ignore the NCBI cache
+        :return: the updated OTU or None if the OTU was not found
+        """
+        otu = self._repo.get_otu(otu_id)
+
+        if otu is None:
+            logger.error("OTU not found", otu_id=str(otu_id))
+            return None
+
+        log = logger.bind(taxid=otu.taxid, otu_id=str(otu.id), name=otu.name)
+
+        log.info("Starting comprehensive OTU update.")
+
+        # Step 1: Promote GenBank accessions to RefSeq
+        promoted_accessions = promote_otu_accessions(self._repo, otu, ignore_cache)
+        if promoted_accessions:
+            log.info("Promoted sequences", count=len(promoted_accessions))
+            otu = self._repo.get_otu(otu.id)
+
+        # Step 2: Upgrade outdated sequence versions
+        upgraded_sequence_ids = upgrade_outdated_sequences_in_otu(
+            self._repo,
+            otu,
+            modification_date_start=None,
+            ignore_cache=ignore_cache,
+        )
+        if upgraded_sequence_ids:
+            log.info("Upgraded sequences", count=len(upgraded_sequence_ids))
+            otu = self._repo.get_otu(otu.id)
+
+        # Step 3: Add new isolates
+        accessions = self.ncbi.fetch_accessions_by_taxid(
+            otu.taxid,
+            sequence_min_length=get_segments_min_length(otu.plan.segments),
+            sequence_max_length=get_segments_max_length(otu.plan.segments),
+        )
+
+        fetch_set = {accession.key for accession in accessions} - otu.blocked_accessions
+
+        if fetch_set:
+            log.info("Adding new isolates from NCBI.")
+            log.info(
+                "Fetching records.",
+                count=len(fetch_set),
+                fetch_list=sorted(fetch_set),
+            )
+
+            records = self.ncbi.fetch_genbank_records(fetch_set)
+
+            if records:
+                # Promote RefSeq records first
+                refseq_records = [r for r in records if r.refseq]
+                if refseq_records and promote_otu_accessions_from_records(
+                    self._repo, otu, refseq_records
+                ):
+                    otu = self._repo.get_otu(otu.id)
+
+                # Create isolates
+                new_isolate_ids = []
+
+                for isolate_name, isolate_records in group_genbank_records_by_isolate(
+                    records
+                ).items():
+                    try:
+                        isolate = self._services.isolate.create_from_records(
+                            otu.id, isolate_name, list(isolate_records.values())
+                        )
+                        if isolate:
+                            new_isolate_ids.append(isolate.id)
+                    except ValueError as e:
+                        log.error(
+                            "Error creating isolate",
+                            error=str(e),
+                            isolate_name=isolate_name,
+                        )
+
+                if new_isolate_ids:
+                    log.info("Added new isolates", count=len(new_isolate_ids))
+
+        self._repo.write_otu_update_history_entry(otu.id)
+
+        log.info("Comprehensive OTU update complete.")
+
+        return self._repo.get_otu(otu.id)

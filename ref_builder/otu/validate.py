@@ -22,6 +22,7 @@ def get_validated_otu(unvalidated_otu: OTUBuilder) -> OTU:
                     "name": unvalidated_otu.name,
                     "taxid": unvalidated_otu.taxid,
                     "acronym": unvalidated_otu.acronym,
+                    "lineage": unvalidated_otu.lineage,
                     "molecule": unvalidated_otu.molecule,
                     "plan": unvalidated_otu.plan,
                     "excluded_accessions": unvalidated_otu.excluded_accessions,

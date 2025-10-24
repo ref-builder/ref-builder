@@ -13,7 +13,7 @@ from ref_builder.console import (
 )
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.repo import Repo, locked_repo
-from ref_builder.services.otu import OTUService
+from ref_builder.services.cls import Services
 
 
 @click.group(name="event")
@@ -38,8 +38,8 @@ def event_list(repo: Repo, otu_identifier_: str | None) -> None:
         print_event_list(repo.iter_event_metadata())
 
     else:
-        otu_service = OTUService(repo, NCBIClient(False))
-        otu = otu_service.get_otu(otu_identifier_)
+        services = Services(repo, NCBIClient(False))
+        otu = services.otu.get_otu(otu_identifier_)
 
         if otu is None:
             click.echo("OTU not found.", err=True)

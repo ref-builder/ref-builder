@@ -1,4 +1,3 @@
-import warnings
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -10,15 +9,35 @@ from ref_builder.errors import InvalidInputError
 from ref_builder.isolate import IsolateNameType
 from ref_builder.models.accession import Accession
 from ref_builder.models.isolate import IsolateName
+from ref_builder.models.lineage import Lineage, Taxon, TaxonOtherNames
 from ref_builder.models.molecule import Molecule, MoleculeType, Strandedness, Topology
 from ref_builder.models.plan import Plan, Segment, SegmentRule
+from ref_builder.ncbi.models import NCBIRank
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.repo import GITIGNORE_CONTENTS, Repo
-from ref_builder.warnings import OTUDeletedWarning
 
 SEGMENT_LENGTH = 15
+
+TMV_LINEAGE = Lineage(
+    taxa=[
+        Taxon(
+            id=12242,
+            name="Tobacco mosaic virus",
+            parent=3432891,
+            rank=NCBIRank.NO_RANK,
+            other_names=TaxonOtherNames(acronym=["TMV"], synonyms=[]),
+        ),
+        Taxon(
+            id=3432891,
+            name="Tobamovirus tabaci",
+            parent=None,
+            rank=NCBIRank.SPECIES,
+            other_names=TaxonOtherNames(acronym=[], synonyms=[]),
+        ),
+    ]
+)
 
 
 def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
@@ -29,6 +48,7 @@ def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
 
     otu_before = repo.create_otu(
         acronym=otu.acronym,
+        lineage=otu.lineage,
         molecule=otu.molecule,
         name=otu.name,
         plan=otu.plan,
@@ -82,6 +102,7 @@ def initialized_repo(tmp_path: Path):
     with repo.lock(), repo.use_transaction():
         otu = repo.create_otu(
             acronym="TMV",
+            lineage=TMV_LINEAGE,
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
                 type=MoleculeType.RNA,
@@ -126,6 +147,7 @@ def init_otu(repo: Repo) -> OTUBuilder:
     """Create an empty OTU."""
     result = repo.create_otu(
         acronym="TMV",
+        lineage=TMV_LINEAGE,
         molecule=Molecule(
             strandedness=Strandedness.SINGLE,
             type=MoleculeType.RNA,
@@ -195,6 +217,7 @@ class TestCreateOTU:
         with empty_repo.lock(), empty_repo.use_transaction():
             otu = empty_repo.create_otu(
                 acronym="TMV",
+                lineage=TMV_LINEAGE,
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
                     type=MoleculeType.RNA,
@@ -210,6 +233,7 @@ class TestCreateOTU:
                 id=otu.id,
                 acronym="TMV",
                 excluded_accessions=set(),
+                lineage=TMV_LINEAGE,
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
                     type=MoleculeType.RNA,
@@ -241,6 +265,24 @@ class TestCreateOTU:
                 "data": {
                     "id": str(otu.id),
                     "acronym": "TMV",
+                    "lineage": {
+                        "taxa": [
+                            {
+                                "id": 12242,
+                                "name": "Tobacco mosaic virus",
+                                "parent": 3432891,
+                                "rank": "no rank",
+                                "other_names": {"acronym": ["TMV"], "synonyms": []},
+                            },
+                            {
+                                "id": 3432891,
+                                "name": "Tobamovirus tabaci",
+                                "parent": None,
+                                "rank": "species",
+                                "other_names": {"acronym": [], "synonyms": []},
+                            },
+                        ]
+                    },
                     "molecule": {
                         "strandedness": "single",
                         "type": "RNA",
@@ -277,6 +319,7 @@ class TestCreateOTU:
         with empty_repo.lock(), empty_repo.use_transaction():
             empty_repo.create_otu(
                 acronym="TMV",
+                lineage=TMV_LINEAGE,
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
                     type=MoleculeType.RNA,
@@ -301,6 +344,7 @@ class TestCreateOTU:
             ):
                 empty_repo.create_otu(
                     acronym="TMV",
+                    lineage=TMV_LINEAGE,
                     molecule=Molecule(
                         strandedness=Strandedness.SINGLE,
                         type=MoleculeType.RNA,
@@ -341,6 +385,7 @@ class TestCreateOTU:
         ):
             otu = empty_repo.create_otu(
                 acronym="TMV",
+                lineage=TMV_LINEAGE,
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
                     type=MoleculeType.RNA,
@@ -507,6 +552,7 @@ class TestGetOTU:
             with empty_repo.use_transaction():
                 otu = empty_repo.create_otu(
                     acronym="TMV",
+                    lineage=TMV_LINEAGE,
                     molecule=Molecule(
                         strandedness=Strandedness.SINGLE,
                         type=MoleculeType.RNA,
@@ -592,6 +638,7 @@ class TestGetOTU:
                 id=otu.id,
                 acronym="TMV",
                 excluded_accessions=set(),
+                lineage=TMV_LINEAGE,
                 molecule=Molecule(
                     strandedness=Strandedness.SINGLE,
                     type=MoleculeType.RNA,

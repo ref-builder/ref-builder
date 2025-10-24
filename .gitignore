@@ -5,6 +5,7 @@ __pycache__
 .idea
 .pytest_cache
 .vscode
+datasets_oas.yaml
 dist
 Thumbs.db
 TODO.md

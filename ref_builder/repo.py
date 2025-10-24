@@ -71,6 +71,7 @@ from ref_builder.index import Index
 from ref_builder.lock import Lock
 from ref_builder.models.accession import Accession
 from ref_builder.models.isolate import IsolateName
+from ref_builder.models.lineage import Lineage
 from ref_builder.models.molecule import Molecule
 from ref_builder.models.otu import OTUMinimal
 from ref_builder.models.plan import Plan
@@ -361,6 +362,7 @@ class Repo:
     def create_otu(
         self,
         acronym: str,
+        lineage: Lineage,
         molecule: Molecule,
         name: str,
         plan: Plan,
@@ -383,6 +385,7 @@ class Repo:
             CreateOTUData(
                 id=otu_id,
                 acronym=acronym,
+                lineage=lineage,
                 molecule=molecule,
                 name=name,
                 plan=plan,

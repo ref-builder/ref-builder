@@ -9,7 +9,7 @@ runner = CliRunner()
 def test_otu_list(scratch_repo: Repo):
     result = runner.invoke(
         otu_command_group,
-        ["--path", str(scratch_repo.path)] + ["list"],
+        ["--path", str(scratch_repo.path), "list"],
     )
 
     assert result.exit_code == 0
@@ -22,7 +22,7 @@ class TestOTUGet:
         for otu_ in scratch_repo.iter_otus():
             result = runner.invoke(
                 otu_command_group,
-                ["--path", str(scratch_repo.path)] + ["get", str(otu_.id)],
+                ["--path", str(scratch_repo.path), "get", str(otu_.id)],
             )
 
             if result.exit_code != 0:
@@ -35,7 +35,7 @@ class TestOTUGet:
         for otu_ in scratch_repo.iter_otus():
             result = runner.invoke(
                 otu_command_group,
-                ["--path", str(scratch_repo.path)] + ["get", str(otu_.id), "--json"],
+                ["--path", str(scratch_repo.path), "get", str(otu_.id), "--json"],
             )
 
             if result.exit_code != 0:
@@ -48,7 +48,7 @@ class TestOTUGet:
         for otu_ in scratch_repo.iter_otus():
             result = runner.invoke(
                 otu_command_group,
-                ["--path", str(scratch_repo.path)] + ["get", str(otu_.id)[:8]],
+                ["--path", str(scratch_repo.path), "get", str(otu_.id)[:8]],
             )
 
             if result.exit_code != 0:
@@ -61,7 +61,7 @@ class TestOTUGet:
         for otu_ in scratch_repo.iter_otus():
             result = runner.invoke(
                 otu_command_group,
-                ["--path", str(scratch_repo.path)] + ["get", str(otu_.id)[:5]],
+                ["--path", str(scratch_repo.path), "get", str(otu_.id)[:5]],
             )
 
             if result.exit_code != 1:
@@ -73,7 +73,7 @@ class TestOTUGet:
     def test_empty(self, scratch_repo):
         """Test that an empty ID string raises an error."""
         result = runner.invoke(
-            otu_command_group, ["--path", str(scratch_repo.path)] + ["get", ""]
+            otu_command_group, ["--path", str(scratch_repo.path), "get", ""]
         )
 
         if result.exit_code != 1:

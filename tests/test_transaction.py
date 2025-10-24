@@ -1,62 +1,111 @@
 from structlog.testing import capture_logs
 
+from ref_builder.isolate import IsolateNameType
+from ref_builder.models.isolate import IsolateName
+from ref_builder.models.lineage import Lineage, Taxon, TaxonOtherNames
+from ref_builder.models.molecule import Molecule, MoleculeType, Strandedness, Topology
+from ref_builder.models.plan import Plan, Segment
+from ref_builder.ncbi.models import NCBIRank
 from ref_builder.repo import Repo
-from tests.fixtures.factories import OTUFactory
+
+TMV_LINEAGE = Lineage(
+    taxa=[
+        Taxon(
+            id=12242,
+            name="Tobacco mosaic virus",
+            parent=3432891,
+            rank=NCBIRank.NO_RANK,
+            other_names=TaxonOtherNames(acronym=["TMV"], synonyms=[]),
+        ),
+        Taxon(
+            id=3432891,
+            name="Tobamovirus tabaci",
+            parent=None,
+            rank=NCBIRank.SPECIES,
+            other_names=TaxonOtherNames(acronym=[], synonyms=[]),
+        ),
+    ]
+)
 
 
-def test_commit(empty_repo: Repo, otu_factory: OTUFactory):
+def test_commit(empty_repo: Repo):
     """Test a successful transaction."""
-    fake_otu = otu_factory.build()
+    plan = Plan.new(
+        [
+            Segment.new(
+                length=15,
+                length_tolerance=empty_repo.settings.default_segment_length_tolerance,
+                name=None,
+            )
+        ]
+    )
 
     with empty_repo.lock(), empty_repo.use_transaction():
         otu = empty_repo.create_otu(
-            fake_otu.acronym,
-            molecule=fake_otu.molecule,
-            name=fake_otu.name,
-            plan=fake_otu.plan,
-            taxid=fake_otu.taxid,
+            acronym="TMV",
+            lineage=TMV_LINEAGE,
+            molecule=Molecule(
+                strandedness=Strandedness.SINGLE,
+                type=MoleculeType.RNA,
+                topology=Topology.LINEAR,
+            ),
+            name="Tobacco mosaic virus",
+            plan=plan,
+            taxid=12242,
         )
 
         assert otu
 
         isolate = empty_repo.create_isolate(
             otu.id,
-            name=fake_otu.isolates[0].name,
+            IsolateName(IsolateNameType.ISOLATE, "Test"),
         )
 
-        for fake_sequence in fake_otu.isolates[0].sequences:
-            sequence = empty_repo.create_sequence(
-                otu.id,
-                accession=str(fake_sequence.accession),
-                definition=fake_sequence.definition,
-                segment=fake_sequence.segment,
-                sequence=fake_sequence.sequence,
-            )
+        sequence = empty_repo.create_sequence(
+            otu.id,
+            accession="NC_001367.1",
+            definition="Tobacco mosaic virus",
+            segment=plan.segments[0].id,
+            sequence="ACGTACGTACGTACG",
+        )
 
-            assert isolate
-            assert sequence
+        assert isolate
+        assert sequence
 
-            empty_repo.link_sequence(otu.id, isolate.id, sequence.id)
+        empty_repo.link_sequence(otu.id, isolate.id, sequence.id)
 
     assert empty_repo.last_id == 5
     assert len(list(empty_repo.iter_otus())) == 1
 
 
-def test_fail(empty_repo: Repo, otu_factory: OTUFactory):
+def test_fail(empty_repo: Repo):
     """Test auto-validation behaviour. If the transaction results in an invalid OTU,
     the repo should roll back all events.
     """
-    fake_otu = otu_factory.build()
+    plan = Plan.new(
+        [
+            Segment.new(
+                length=15,
+                length_tolerance=empty_repo.settings.default_segment_length_tolerance,
+                name=None,
+            )
+        ]
+    )
 
     assert empty_repo.last_id == 1
 
     with capture_logs() as cap_logs, empty_repo.lock(), empty_repo.use_transaction():
         empty_repo.create_otu(
-            fake_otu.acronym,
-            molecule=fake_otu.molecule,
-            name=fake_otu.name,
-            plan=fake_otu.plan,
-            taxid=fake_otu.taxid,
+            acronym="TMV",
+            lineage=TMV_LINEAGE,
+            molecule=Molecule(
+                strandedness=Strandedness.SINGLE,
+                type=MoleculeType.RNA,
+                topology=Topology.LINEAR,
+            ),
+            name="Tobacco mosaic virus",
+            plan=plan,
+            taxid=12242,
         )
 
     assert any(
@@ -67,17 +116,30 @@ def test_fail(empty_repo: Repo, otu_factory: OTUFactory):
     assert len(list(empty_repo.iter_otus())) == 0
 
 
-def test_abort(empty_repo: Repo, otu_factory: OTUFactory):
+def test_abort(empty_repo: Repo):
     """Test manual transaction abort. The repo should roll back all events."""
-    otu = otu_factory.build()
+    plan = Plan.new(
+        [
+            Segment.new(
+                length=15,
+                length_tolerance=empty_repo.settings.default_segment_length_tolerance,
+                name=None,
+            )
+        ]
+    )
 
     with empty_repo.lock(), empty_repo.use_transaction() as transaction:
         empty_repo.create_otu(
-            otu.acronym,
-            molecule=otu.molecule,
-            name=otu.name,
-            plan=otu.plan,
-            taxid=otu.taxid,
+            acronym="TMV",
+            lineage=TMV_LINEAGE,
+            molecule=Molecule(
+                strandedness=Strandedness.SINGLE,
+                type=MoleculeType.RNA,
+                topology=Topology.LINEAR,
+            ),
+            name="Tobacco mosaic virus",
+            plan=plan,
+            taxid=12242,
         )
 
         assert empty_repo.last_id == 2

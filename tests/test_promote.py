@@ -12,16 +12,16 @@ from ref_builder.otu.promote import (
     upgrade_outdated_sequences_in_otu,
 )
 from ref_builder.repo import Repo
-from ref_builder.services.otu import OTUService
+from ref_builder.services.cls import Services
 from tests.fixtures.factories import IsolateFactory
 
 
 def test_replace_sequence(empty_repo: Repo):
     """Test OTU sequence replacement."""
-    otu_service = OTUService(empty_repo, NCBIClient(False))
+    services = Services(empty_repo, NCBIClient(False))
 
     with empty_repo.lock():
-        otu_before = otu_service.create(["MF062125", "MF062126", "MF062127"])
+        otu_before = services.otu.create(["MF062125", "MF062126", "MF062127"])
 
     assert otu_before
     assert otu_before.accessions == {"MF062125", "MF062126", "MF062127"}
@@ -62,10 +62,10 @@ def test_replace_sequence(empty_repo: Repo):
 
 def test_multi_linked_promotion(empty_repo: Repo):
     """Test the promotion of a sequence that is linked to more than one isolate."""
-    otu_service = OTUService(empty_repo, NCBIClient(False))
+    services = Services(empty_repo, NCBIClient(False))
 
     with empty_repo.lock():
-        otu_before = otu_service.create(["MF062125", "MF062126", "MF062127"])
+        otu_before = services.otu.create(["MF062125", "MF062126", "MF062127"])
 
     assert otu_before
     assert otu_before.accessions == {"MF062125", "MF062126", "MF062127"}
@@ -170,12 +170,12 @@ def test_multi_linked_promotion(empty_repo: Repo):
 class TestUpgradeSequencesInOTU:
     """Test OTU-wide outdated sequence version upgrade."""
 
-    def test_ok(self, precached_repo: Repo):
+    def test_ok(self, scratch_repo: Repo):
         """Test a simple fetch and replace upgrade."""
-        otu_service = OTUService(precached_repo, NCBIClient(False))
+        services = Services(scratch_repo, NCBIClient(False))
 
-        with precached_repo.lock():
-            otu_before = otu_service.create(["NC_004452.1"])
+        with scratch_repo.lock():
+            otu_before = services.otu.create(["NC_004452.1"])
 
         assert otu_before
         assert "NC_004452" in otu_before.accessions
@@ -193,14 +193,14 @@ class TestUpgradeSequencesInOTU:
 
         assert isolate_before
 
-        with precached_repo.lock():
+        with scratch_repo.lock():
             upgraded_sequence_ids = upgrade_outdated_sequences_in_otu(
-                precached_repo, otu_before
+                scratch_repo, otu_before
             )
 
         updated_sequence_id = list(upgraded_sequence_ids)[0]
 
-        otu_after = precached_repo.get_otu(otu_before.id)
+        otu_after = scratch_repo.get_otu(otu_before.id)
 
         assert otu_after
         assert isolate_before.id in otu_after.isolate_ids
@@ -220,12 +220,12 @@ class TestUpgradeSequencesInOTU:
         assert sequence_after.accession.key == sequence_before.accession.key
         assert sequence_after.accession.version > sequence_before.accession.version
 
-    def test_with_future_date_limit(self, precached_repo: Repo):
+    def test_with_future_date_limit(self, scratch_repo: Repo):
         """Test that setting modification_date_start to a future date does returns no new sequences."""
-        otu_service = OTUService(precached_repo, NCBIClient(False))
+        services = Services(scratch_repo, NCBIClient(False))
 
-        with precached_repo.lock():
-            otu_before = otu_service.create(["NC_004452.1"])
+        with scratch_repo.lock():
+            otu_before = services.otu.create(["NC_004452.1"])
 
         assert otu_before
         assert "NC_004452" in otu_before.accessions
@@ -235,9 +235,9 @@ class TestUpgradeSequencesInOTU:
         assert sequence
         assert sequence.accession == (Accession(key="NC_004452", version=1))
 
-        with precached_repo.lock(), capture_logs() as captured_logs:
+        with scratch_repo.lock(), capture_logs() as captured_logs:
             upgrade_outdated_sequences_in_otu(
-                precached_repo,
+                scratch_repo,
                 otu_before,
                 modification_date_start=arrow.utcnow().naive
                 + datetime.timedelta(days=1),

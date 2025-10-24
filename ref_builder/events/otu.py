@@ -1,6 +1,7 @@
 from pydantic import UUID4, ConfigDict, field_serializer
 
 from ref_builder.events.base import ApplicableEvent, Event, EventData, OTUQuery
+from ref_builder.models.lineage import Lineage
 from ref_builder.models.molecule import Molecule
 from ref_builder.models.plan import Plan
 from ref_builder.otu.builders.otu import OTUBuilder
@@ -12,6 +13,7 @@ class CreateOTUData(EventData):
 
     id: UUID4
     acronym: str
+    lineage: Lineage
     molecule: Molecule
     name: str
     taxid: int
@@ -27,6 +29,7 @@ class CreateOTU(Event[CreateOTUData, OTUQuery]):
             acronym=self.data.acronym,
             excluded_accessions=set(),
             isolates=[],
+            lineage=self.data.lineage,
             molecule=self.data.molecule,
             name=self.data.name,
             plan=self.data.plan,

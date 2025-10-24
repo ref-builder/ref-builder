@@ -11,28 +11,45 @@ runner = CliRunner()
 class TestIsolateCreateCommand:
     """Test `ref-builder isolate create`` works as expected."""
 
-    def test_ok(self, precached_repo):
+    def test_ok(self, empty_repo):
         """Test basic command functionality."""
-        path_option_list = ["--path", str(precached_repo.path)]
-
-        rep_isolate_accessions = ["MF062136", "MF062137", "MF062138"]
+        first_isolate_accessions = [
+            "EF546808",
+            "EF546809",
+            "EF546810",
+            "EF546811",
+            "EF546812",
+            "EF546813",
+        ]
 
         result = runner.invoke(
             otu_command_group,
-            [*path_option_list, "create", *rep_isolate_accessions],
+            ["--path", str(empty_repo.path), "create", *first_isolate_accessions],
         )
 
         assert result.exit_code == 0
 
         taxid = result.output.split("TAXID")[1].split()[0]
 
-        second_isolate_accessions = ["MF062125", "MF062126", "MF062127"]
+        second_isolate_accessions = [
+            "EF546802",
+            "EF546803",
+            "EF546804",
+            "EF546805",
+            "EF546806",
+            "EF546807",
+        ]
 
         result = runner.invoke(
             isolate_command_group,
-            path_option_list
-            + ["create", "--taxid", str(taxid)]
-            + second_isolate_accessions,
+            [
+                "--path",
+                str(empty_repo.path),
+                "create",
+                "--taxid",
+                str(taxid),
+                *second_isolate_accessions,
+            ],
         )
 
         assert result.exit_code == 0
@@ -43,9 +60,15 @@ class TestIsolateCreateCommand:
         """Test that an error is raised when duplicate accessions are provided."""
         result = runner.invoke(
             isolate_command_group,
-            ["--path", str(scratch_repo.path)]
-            + ["create", "--taxid", str(345184)]
-            + ["DQ178610", "DQ178610"],
+            [
+                "--path",
+                str(scratch_repo.path),
+                "create",
+                "--taxid",
+                "345184",
+                "DQ178610",
+                "DQ178610",
+            ],
         )
 
         assert result.exit_code == 2

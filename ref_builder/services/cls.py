@@ -6,5 +6,5 @@ from ref_builder.services.otu import OTUService
 
 class Services:
     def __init__(self, repo: Repo, ncbi_client: NCBIClientProtocol) -> None:
-        self.otu = OTUService(repo, ncbi_client)
-        self.isolate = IsolateService(repo, ncbi_client)
+        self.otu = OTUService(repo, ncbi_client, self)
+        self.isolate = IsolateService(repo, ncbi_client, self)

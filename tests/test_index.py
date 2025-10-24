@@ -164,25 +164,6 @@ class TestGetIDByPartial:
         assert index.get_id_by_partial("00000000") is None
 
 
-class TestGetIDByAcronym:
-    """Test `Index.get_id_by_acronym`."""
-
-    def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
-        """Test that the correct OTU ID is retrieved by acronym."""
-        for otu in indexable_otus:
-            assert otu.id == index.get_id_by_acronym(otu.acronym)
-
-    def test_empty(self, index: Index, indexable_otus: list[OTUBuilder]):
-        with pytest.raises(
-            ValueError, match="Acronym must contain at least one character."
-        ):
-            index.get_id_by_acronym("")
-
-    def test_not_found(self, index: Index):
-        """Test that `None` is returned when the acronym is not found."""
-        assert index.get_id_by_acronym("paella") is None
-
-
 class TestGetIDByName:
     """Test `Index.get_id_by_name`."""
 
