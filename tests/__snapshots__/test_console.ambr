@@ -65,50 +65,6 @@
   
   '''
 # ---
-# name: TestPrintOTU.test_as_json_ok
-  '''
-  {"id":"45735fee-5def-48f1-a343-4e38bfe607ff","acronym":"","excluded_accessions":
-  ["JX263426"],"lineage":{"taxa":[{"id":3429802,"name":"Hostuviroid 
-  latensdahliae","parent":null,"rank":"species","other_names":{"acronym":[],"synon
-  yms":[]}}]},"molecule":{"strandedness":"single","topology":"linear","type":"RNA"
-  },"name":"Hostuviroid 
-  latensdahliae","plan":{"id":"947a5760-d19e-46b7-af3c-a929c12b8475","segments":[{
-  "id":"b42056e0-c605-49cc-a9f2-2b302db6c695","length":342,"length_tolerance":0.03
-  ,"name":null,"rule":"required"}]},"taxid":3429802,"isolates":[{"id":"ec26c9fb-fe
-  5a-43d0-8c98-e333b5e300df","name":{"type":"isolate","value":"4706174"},"sequence
-  s":[{"id":"1f78ffed-432a-4f7a-8f90-bdbacad4852a","accession":"NC_020160.1","defi
-  nition":"Dahlia latent viroid, complete 
-  sequence","sequence":"CAGGTCTTCTAAGGGTTCCTGTGGTGCCTCCCTCCAAGGCCGCGTAGGGAAAGAAAAA
-  GTGAAAGAAAGTGTACCTGAAGAGAGAGAGACTCTCTGAGGAGCCCCGGGGCAACTCCGAGAGTGCTGCGGCAGGAGGAG
-  CCGGGGGCGGAGGTTGTCTCGCTCTTGAGAGCTCCGCTCCTTGTAGCTTTGAGACTACCGCCCTTTTGCTTCCTTCTCGC
-  TGGCTGACTCGAGGACGCGACCGGTGGTACACCAAGAGGTCTCCACCTCCTAGGGTACTTTTTTCTAACACCGATTCCGT
-  ACCGAGCGCCGGAGAGTGAAGCGCCCAGGGCTCCAAAGAAGCCC","segment":"b42056e0-c605-49cc-a9f2
-  -2b302db6c695"}]}]}
-  
-  '''
-# ---
-# name: TestPrintOTU.test_print_otu
-  '''
-  Hostuviroid latensdahliae
-  
-   ACRONYM                                       
-   ID       45735fee-5def-48f1-a343-4e38bfe607ff 
-   TAXID    3429802                              
-  
-  PLAN
-  
-   NAME     REQUIRED  LENGTH  TOLERANCE  ID                                   
-   Unnamed  Yes       342     0.03       b42056e0-c605-49cc-a9f2-2b302db6c695 
-  
-  ISOLATES
-  
-  Isolate 4706174
-  
-   ACCESSION    LENGTH  SEGMENT  DEFINITION                              
-   NC_020160.1  342     Unnamed  Dahlia latent viroid, complete sequence 
-  
-  '''
-# ---
 # name: TestPrintOTUList.test_ok
   '''
   [1mNAME                               ACRONYM  TAXID   ID                                  [0m
