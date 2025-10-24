@@ -85,3 +85,18 @@ class Lineage(BaseModel):
         The root taxon (last position) is always species rank (enforced by validator).
         """
         return self.taxa[-1].name
+
+    @property
+    def synonyms(self) -> set[str]:
+        """Return all possible names derived from the lineage.
+
+        Collects all taxon names, acronyms, and synonyms from all taxa in the lineage.
+        """
+        synonyms = set()
+
+        for taxon in self.taxa:
+            synonyms.add(taxon.name)
+            synonyms.update(taxon.other_names.acronym)
+            synonyms.update(taxon.other_names.synonyms)
+
+        return synonyms

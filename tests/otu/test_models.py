@@ -185,6 +185,10 @@ class TestOTU:
         """Test that a valid OTU passes validation."""
         assert OTU.model_validate(self.otu.model_dump())
 
+    def test_synonyms(self):
+        """Test that synonyms returns all names from lineage."""
+        assert self.otu.synonyms == {"Tobacco mosaic virus", "TMV", "Tobamovirus tabaci"}
+
     def test_no_required_segments(self):
         """Test that OTU raises a warning if initialized without required segments."""
         segment_id = uuid4()

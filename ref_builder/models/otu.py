@@ -48,6 +48,14 @@ class OTUModel(BaseModel):
         """The OTU name computed from the species-level taxon in the lineage."""
         return self.lineage.name
 
+    @property
+    def synonyms(self) -> set[str]:
+        """All possible names derived from the OTU's lineage.
+
+        Returns all taxon names, acronyms, and synonyms from the lineage.
+        """
+        return self.lineage.synonyms
+
 
 class SequenceModel(BaseModel):
     """A class representing the fields of a sequence."""
