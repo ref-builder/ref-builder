@@ -241,7 +241,6 @@ class OTUService(Service):
             acronym=acronym,
             lineage=lineage,
             molecule=molecule,
-            name=taxonomy.name,
             plan=plan,
             taxid=taxonomy.id,
         )

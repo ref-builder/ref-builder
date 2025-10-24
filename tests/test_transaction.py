@@ -49,7 +49,6 @@ def test_commit(empty_repo: Repo):
                 type=MoleculeType.RNA,
                 topology=Topology.LINEAR,
             ),
-            name="Tobacco mosaic virus",
             plan=plan,
             taxid=12242,
         )
@@ -103,7 +102,6 @@ def test_fail(empty_repo: Repo):
                 type=MoleculeType.RNA,
                 topology=Topology.LINEAR,
             ),
-            name="Tobacco mosaic virus",
             plan=plan,
             taxid=12242,
         )
@@ -137,7 +135,6 @@ def test_abort(empty_repo: Repo):
                 type=MoleculeType.RNA,
                 topology=Topology.LINEAR,
             ),
-            name="Tobacco mosaic virus",
             plan=plan,
             taxid=12242,
         )

@@ -32,9 +32,6 @@ class OTUBase(OTUModel):
     molecule: Molecule
     """The type of molecular information contained in this OTU."""
 
-    name: str = Field(min_length=1)
-    """The name of the OTU (eg. TMV for Tobacco mosaic virus)"""
-
     plan: Plan
     """The plan for the OTU."""
 

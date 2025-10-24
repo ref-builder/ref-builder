@@ -35,14 +35,16 @@ class OTUModel(BaseModel):
     molecule: Molecule
     """The type of molecular information contained in this OTU."""
 
-    name: str
-    """The name of the OTU (eg. TMV for Tobacco mosaic virus)"""
-
     plan: Plan
     """The plan for the OTU."""
 
     taxid: int
     """The NCBI Taxonomy id for this OTU."""
+
+    @property
+    def name(self) -> str:
+        """The OTU name computed from the species-level taxon in the lineage."""
+        return self.lineage.name
 
 
 class SequenceModel(BaseModel):

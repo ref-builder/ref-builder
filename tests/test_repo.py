@@ -49,7 +49,6 @@ def init_otu_with_contents(repo: Repo, otu: OTUBuilder):
         acronym=otu.acronym,
         lineage=otu.lineage,
         molecule=otu.molecule,
-        name=otu.name,
         plan=otu.plan,
         taxid=otu.taxid,
     )
@@ -107,7 +106,6 @@ def initialized_repo(tmp_path: Path):
                 type=MoleculeType.RNA,
                 topology=Topology.LINEAR,
             ),
-            name="Tobacco mosaic virus",
             plan=Plan.new(
                 [
                     Segment.new(
@@ -152,7 +150,6 @@ def init_otu(repo: Repo) -> OTUBuilder:
             type=MoleculeType.RNA,
             topology=Topology.LINEAR,
         ),
-        name="Tobacco mosaic virus",
         plan=Plan.new(
             segments=[
                 Segment.new(
@@ -222,7 +219,6 @@ class TestCreateOTU:
                     type=MoleculeType.RNA,
                     topology=Topology.LINEAR,
                 ),
-                name="Tobacco mosaic virus",
                 plan=plan,
                 taxid=12242,
             )
@@ -238,7 +234,6 @@ class TestCreateOTU:
                     type=MoleculeType.RNA,
                     topology=Topology.LINEAR,
                 ),
-                name="Tobacco mosaic virus",
                 plan=Plan(
                     id=plan.id,
                     segments=[
@@ -287,7 +282,6 @@ class TestCreateOTU:
                         "type": "RNA",
                         "topology": "linear",
                     },
-                    "name": "Tobacco mosaic virus",
                     "plan": {
                         "id": str(plan.id),
                         "segments": [
@@ -324,7 +318,6 @@ class TestCreateOTU:
                     type=MoleculeType.RNA,
                     topology=Topology.LINEAR,
                 ),
-                name="Tobacco mosaic virus",
                 plan=Plan.new(
                     segments=[
                         Segment.new(
@@ -339,7 +332,7 @@ class TestCreateOTU:
 
             with pytest.raises(
                 ValueError,
-                match="An OTU with the name 'Tobacco mosaic virus' already exists",
+                match="An OTU with the name 'Tobamovirus tabaci' already exists",
             ):
                 empty_repo.create_otu(
                     acronym="TMV",
@@ -349,7 +342,6 @@ class TestCreateOTU:
                         type=MoleculeType.RNA,
                         topology=Topology.LINEAR,
                     ),
-                    name="Tobacco mosaic virus",
                     plan=Plan.new(
                         segments=[
                             Segment.new(
@@ -390,7 +382,6 @@ class TestCreateOTU:
                     type=MoleculeType.RNA,
                     topology=Topology.LINEAR,
                 ),
-                name="Tobacco mosaic virus",
                 plan=plan,
                 taxid=12242,
             )
@@ -557,7 +548,6 @@ class TestGetOTU:
                         type=MoleculeType.RNA,
                         topology=Topology.LINEAR,
                     ),
-                    name="Tobacco mosaic virus",
                     taxid=12242,
                     plan=monopartite_plan,
                 )
@@ -643,7 +633,6 @@ class TestGetOTU:
                     type=MoleculeType.RNA,
                     topology=Topology.LINEAR,
                 ),
-                name="Tobacco mosaic virus",
                 plan=Plan(
                     id=monopartite_plan.id,
                     segments=[

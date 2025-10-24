@@ -15,7 +15,6 @@ class CreateOTUData(EventData):
     acronym: str
     lineage: Lineage
     molecule: Molecule
-    name: str
     taxid: int
     plan: Plan
 
@@ -31,7 +30,6 @@ class CreateOTU(Event[CreateOTUData, OTUQuery]):
             isolates=[],
             lineage=self.data.lineage,
             molecule=self.data.molecule,
-            name=self.data.name,
             plan=self.data.plan,
             taxid=self.data.taxid,
         )

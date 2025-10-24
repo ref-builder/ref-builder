@@ -363,7 +363,6 @@ class Repo:
         acronym: str,
         lineage: Lineage,
         molecule: Molecule,
-        name: str,
         plan: Plan,
         taxid: int,
     ) -> OTUBuilder | None:
@@ -372,10 +371,10 @@ class Repo:
             otu = self.get_otu(otu_id)
             raise ValueError(f"OTU already exists as {otu.id}")
 
-        if self._index.get_id_by_name(name):
-            raise ValueError(f"An OTU with the name '{name}' already exists")
+        if self._index.get_id_by_name(lineage.name):
+            raise ValueError(f"An OTU with the name '{lineage.name}' already exists")
 
-        logger.info("Creating new OTU.", taxid=taxid, name=name)
+        logger.info("Creating new OTU.", taxid=taxid, name=lineage.name)
 
         otu_id = uuid.uuid4()
 
@@ -386,7 +385,6 @@ class Repo:
                 acronym=acronym,
                 lineage=lineage,
                 molecule=molecule,
-                name=name,
                 plan=plan,
                 taxid=taxid,
             ),
