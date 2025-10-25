@@ -49,7 +49,6 @@ def test_commit(empty_repo: Repo):
                 topology=Topology.LINEAR,
             ),
             plan=plan,
-            taxid=12242,
         )
 
         assert otu
@@ -57,6 +56,7 @@ def test_commit(empty_repo: Repo):
         isolate = empty_repo.create_isolate(
             otu.id,
             IsolateName(IsolateNameType.ISOLATE, "Test"),
+            taxid=12242,
         )
 
         sequence = empty_repo.create_sequence(
@@ -101,7 +101,6 @@ def test_fail(empty_repo: Repo):
                 topology=Topology.LINEAR,
             ),
             plan=plan,
-            taxid=12242,
         )
 
     assert any(
@@ -133,7 +132,6 @@ def test_abort(empty_repo: Repo):
                 topology=Topology.LINEAR,
             ),
             plan=plan,
-            taxid=12242,
         )
 
         assert empty_repo.last_id == 2

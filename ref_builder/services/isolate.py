@@ -200,6 +200,27 @@ class IsolateService(Service):
             accessions=[record.accession for record in records],
         )
 
+        # Validate all records have the same taxid
+        taxids = {record.source.taxid for record in records}
+        if len(taxids) > 1:
+            log.error(
+                "Not all records have the same taxid.",
+                taxids=sorted(taxids),
+            )
+            return None
+
+        taxid = records[0].source.taxid
+
+        # Validate taxid exists in OTU lineage
+        lineage_taxids = {taxon.id for taxon in otu.lineage.taxa}
+        if taxid not in lineage_taxids:
+            log.error(
+                "Taxid not found in OTU lineage.",
+                taxid=taxid,
+                lineage_taxids=sorted(lineage_taxids),
+            )
+            return None
+
         try:
             assigned = assign_records_to_segments(records, otu.plan)
         except PlanConformationError as e:
@@ -213,6 +234,7 @@ class IsolateService(Service):
         isolate = self._repo.create_isolate(
             otu.id,
             name=isolate_name,
+            taxid=taxid,
         )
 
         for segment_id, record in assigned.items():

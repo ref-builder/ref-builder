@@ -66,6 +66,7 @@ class TestIsolate:
         mixed_isolate_data = {
             "id": uuid4(),
             "name": None,
+            "taxid": 12345,
             "sequences": [
                 {
                     "id": uuid4(),
@@ -155,6 +156,7 @@ class TestOTU:
                 {
                     "id": uuid4(),
                     "name": IsolateName(type=IsolateNameType.ISOLATE, value="TMV-001"),
+                    "taxid": 12242,
                     "sequences": [
                         {
                             "id": uuid4(),
@@ -168,6 +170,7 @@ class TestOTU:
                 {
                     "id": uuid4(),
                     "name": IsolateName(type=IsolateNameType.ISOLATE, value="TMV-002"),
+                    "taxid": 12242,
                     "sequences": [
                         {
                             "id": uuid4(),
@@ -187,7 +190,11 @@ class TestOTU:
 
     def test_synonyms(self):
         """Test that synonyms returns all names from lineage."""
-        assert self.otu.synonyms == {"Tobacco mosaic virus", "TMV", "Tobamovirus tabaci"}
+        assert self.otu.synonyms == {
+            "Tobacco mosaic virus",
+            "TMV",
+            "Tobamovirus tabaci",
+        }
 
     def test_no_required_segments(self):
         """Test that OTU raises a warning if initialized without required segments."""
@@ -232,6 +239,7 @@ class TestOTU:
                 {
                     "id": uuid4(),
                     "name": IsolateName(type=IsolateNameType.ISOLATE, value="TMV-001"),
+                    "taxid": 3432891,
                     "sequences": [
                         {
                             "id": uuid4(),

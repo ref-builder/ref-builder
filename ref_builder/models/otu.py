@@ -35,9 +35,6 @@ class OTUModel(BaseModel):
     plan: Plan
     """The plan for the OTU."""
 
-    taxid: int
-    """The NCBI Taxonomy id for this OTU."""
-
     @property
     def acronym(self) -> str:
         """The OTU acronym computed from the lineage."""
@@ -55,6 +52,11 @@ class OTUModel(BaseModel):
         Returns all taxon names, acronyms, and synonyms from the lineage.
         """
         return self.lineage.synonyms
+
+    @property
+    def taxid(self) -> int:
+        """The NCBI Taxonomy ID for this OTU (species-level taxon from lineage)."""
+        return self.lineage.taxa[-1].id
 
 
 class SequenceModel(BaseModel):

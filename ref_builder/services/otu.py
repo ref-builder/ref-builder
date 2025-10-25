@@ -228,18 +228,18 @@ class OTUService(Service):
 
         molecule = get_molecule_from_records(records)
 
-        lineage = self.ncbi.fetch_lineage(taxonomy.id)
+        lineage = self.ncbi.fetch_lineage(records[0].source.taxid)
 
         otu = self._repo.create_otu(
             lineage=lineage,
             molecule=molecule,
             plan=plan,
-            taxid=taxonomy.id,
         )
 
         isolate = self._repo.create_isolate(
             otu_id=otu.id,
             name=isolate_name,
+            taxid=records[0].source.taxid,
         )
 
         otu.add_isolate(isolate)

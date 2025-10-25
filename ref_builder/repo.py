@@ -363,9 +363,10 @@ class Repo:
         lineage: Lineage,
         molecule: Molecule,
         plan: Plan,
-        taxid: int,
     ) -> OTUBuilder | None:
         """Create an OTU."""
+        taxid = lineage.taxa[-1].id
+
         if (otu_id := self.get_otu_id_by_taxid(taxid)) is not None:
             otu = self.get_otu(otu_id)
             raise ValueError(f"OTU already exists as {otu.id}")
@@ -384,7 +385,6 @@ class Repo:
                 lineage=lineage,
                 molecule=molecule,
                 plan=plan,
-                taxid=taxid,
             ),
             OTUQuery(otu_id=otu_id),
         )
@@ -395,6 +395,7 @@ class Repo:
         self,
         otu_id: uuid.UUID,
         name: IsolateName | None,
+        taxid: int,
     ) -> IsolateBuilder | None:
         """Create and isolate for the OTU with ``otu_id``.
 
@@ -406,7 +407,7 @@ class Repo:
 
         event = self._write_event(
             CreateIsolate,
-            CreateIsolateData(id=isolate_id, name=name),
+            CreateIsolateData(id=isolate_id, name=name, taxid=taxid),
             IsolateQuery(isolate_id=isolate_id, otu_id=otu_id),
         )
 
@@ -415,6 +416,7 @@ class Repo:
             event_id=event.id,
             isolate_id=str(isolate_id),
             name=str(name) if name is not None else None,
+            taxid=taxid,
         )
 
         return self.get_otu(otu_id).get_isolate(isolate_id)

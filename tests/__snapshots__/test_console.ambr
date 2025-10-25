@@ -2,8 +2,8 @@
 # name: TestPrintIsolate.test_json_ok
   '''
   {"id":"0ab2555b-6021-4d2f-82e5-5676a29db1a5","name":{"type":"isolate","value":"O
-  rganization"},"sequences":[{"id":"1cb9eea1-f2dc-48c6-b57d-d6ab52634c8a","accessi
-  on":"SZ800875.1","definition":"Type social right call until 
+  rganization"},"taxid":906919,"sequences":[{"id":"1cb9eea1-f2dc-48c6-b57d-d6ab526
+  34c8a","accession":"SZ800875.1","definition":"Type social right call until 
   even.","sequence":"TCTCGAAGTGATGTWRAACSTATAATCTTACTAGCCANGATGGSTGCTCGGCCATGTACGG
   TTCGCTCAAGVCTACVGCGTCWCCTCBAGGGGGCCTAGCACCTTCCCCATACGGGGTGCAAAGTACTAACATGCTCATTA
   ARCACGAAAGAGGCAHGCACTCTCATDGTGTSGTTAGAGBCAGHGCTTACTAACTCTGRAATVGTAGGMTGGCVTGAAYA

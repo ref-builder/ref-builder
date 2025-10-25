@@ -14,7 +14,6 @@ class CreateOTUData(EventData):
     id: UUID4
     lineage: Lineage
     molecule: Molecule
-    taxid: int
     plan: Plan
 
 
@@ -29,7 +28,6 @@ class CreateOTU(Event[CreateOTUData, OTUQuery]):
             lineage=self.data.lineage,
             molecule=self.data.molecule,
             plan=self.data.plan,
-            taxid=self.data.taxid,
         )
 
 
