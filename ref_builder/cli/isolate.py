@@ -1,12 +1,13 @@
 import sys
 from pathlib import Path
+from uuid import UUID
 
 import click
 
 from ref_builder.cli.options import path_option
-from ref_builder.cli.utils import get_otu_isolate_ids_from_identifier, pass_repo
+from ref_builder.cli.utils import pass_repo
 from ref_builder.cli.validate import validate_no_duplicate_accessions
-from ref_builder.console import print_isolate, print_isolate_as_json
+from ref_builder.console import print_isolate
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.repo import Repo, locked_repo
 from ref_builder.services.cls import Services
@@ -40,15 +41,13 @@ def isolate_create(
 
 
 @isolate.command(name="delete")
-@click.argument("IDENTIFIER", type=str)
+@click.argument("ISOLATE_ID", type=UUID)
 @pass_repo
-def isolate_delete(repo: Repo, identifier: str) -> None:
-    """Delete an isolate with a UUID corresponding to IDENTIFIER.
+def isolate_delete(repo: Repo, isolate_id: UUID) -> None:
+    """Delete an isolate by UUID.
 
-    IDENTIFIER is an unique isolate ID (>8 characters)
+    ISOLATE_ID is the isolate UUID.
     """
-    _, isolate_id = get_otu_isolate_ids_from_identifier(repo, identifier)
-
     services = Services(repo, NCBIClient(False))
 
     if services.isolate.delete(isolate_id):
@@ -58,30 +57,19 @@ def isolate_delete(repo: Repo, identifier: str) -> None:
 
 
 @isolate.command(name="get")
-@click.argument("IDENTIFIER", type=str)
-@click.option(
-    "--json",
-    "json_",
-    is_flag=True,
-    help="Output in JSON form",
-)
+@click.argument("ISOLATE_ID", type=UUID)
 @pass_repo
-def isolate_get(repo: Repo, identifier: str, json_: bool) -> None:
-    """Get an isolate with a UUID corresponding to IDENTIFIER.
+def isolate_get(repo: Repo, isolate_id: UUID) -> None:
+    """Get an isolate by UUID.
 
-    IDENTIFIER is an unique isolate ID (>8 characters)
+    ISOLATE_ID is the isolate UUID.
     """
-    otu_id, isolate_id = get_otu_isolate_ids_from_identifier(repo, identifier)
-
-    otu_ = repo.get_otu(otu_id)
-
-    isolate_ = otu_.get_isolate(isolate_id)
+    isolate_ = repo.get_isolate(isolate_id)
 
     if isolate_ is None:
         click.echo("Isolate could not be found.", err=True)
         sys.exit(1)
 
-    if json_:
-        print_isolate_as_json(isolate_)
-    else:
-        print_isolate(isolate_, otu_.plan)
+    otu_id = repo.get_otu_id_by_isolate_id(isolate_id)
+    otu_ = repo.get_otu(otu_id)
+    print_isolate(isolate_, otu_.plan)

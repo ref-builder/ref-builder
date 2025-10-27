@@ -3,6 +3,7 @@ from click.testing import CliRunner
 from ref_builder.cli.isolate import isolate as isolate_command_group
 from ref_builder.cli.otu import otu as otu_command_group
 from ref_builder.models.isolate import IsolateName, IsolateNameType
+from ref_builder.repo import Repo
 
 runner = CliRunner()
 
@@ -10,7 +11,7 @@ runner = CliRunner()
 class TestIsolateCreateCommand:
     """Test `ref-builder isolate create`` works as expected."""
 
-    def test_ok(self, empty_repo):
+    def test_ok(self, empty_repo: Repo):
         """Test basic command functionality."""
         first_isolate_accessions = [
             "EF546808",
@@ -27,8 +28,6 @@ class TestIsolateCreateCommand:
         )
 
         assert result.exit_code == 0
-
-        taxid = result.output.split("TAXID")[1].split()[0]
 
         second_isolate_accessions = [
             "EF546802",
@@ -50,10 +49,9 @@ class TestIsolateCreateCommand:
         )
 
         assert result.exit_code == 0
-
         assert "Isolate created" in result.output
 
-    def test_duplicate_accessions_error(self, scratch_repo):
+    def test_duplicate_accessions(self, scratch_repo: Repo):
         """Test that an error is raised when duplicate accessions are provided."""
         result = runner.invoke(
             isolate_command_group,
@@ -74,13 +72,20 @@ class TestIsolateCreateCommand:
 class TestIsolateGetCommand:
     """Test `ref-builder isolate get ISOLATE_ID`` works as expected."""
 
-    def test_ok(self, scratch_repo, mock_ncbi_client):
+    def test_ok(self, scratch_repo: Repo, mock_ncbi_client):
         """Test basic command functionality."""
         otu_id = scratch_repo.get_otu_id_by_taxid(
             mock_ncbi_client.otus.wasabi_mottle_virus.taxid
         )
 
-        for isolate_id in scratch_repo.get_otu(otu_id).isolate_ids:
+        assert otu_id
+
+        otu = scratch_repo.get_otu(otu_id)
+
+        assert otu
+
+        for isolate_id in otu.isolate_ids:
+            print({"isolate_id": isolate_id})
             result = runner.invoke(
                 isolate_command_group,
                 [
@@ -93,20 +98,7 @@ class TestIsolateGetCommand:
 
             assert result.exit_code == 0
 
-    def test_json_ok(self, scratch_repo, mock_ncbi_client):
-        otu_id = scratch_repo.get_otu_id_by_taxid(
-            mock_ncbi_client.otus.wasabi_mottle_virus.taxid
-        )
-
-        for isolate_id in scratch_repo.get_otu(otu_id).isolate_ids:
-            result = runner.invoke(
-                isolate_command_group,
-                ["--path", str(scratch_repo.path), "get", str(isolate_id), "--json"],
-            )
-
-            assert result.exit_code == 0
-
-    def test_empty(self, scratch_repo):
+    def test_missing_id(self, scratch_repo: Repo):
         """Test that an empty isolate identifier string exits with an error."""
         result = runner.invoke(
             isolate_command_group,
@@ -118,19 +110,19 @@ class TestIsolateGetCommand:
             ],
         )
 
-        assert result.exit_code == 1
-
-        assert "Invalid isolate ID format" in result.output
+        assert result.exit_code == 2
 
 
 class TestIsolateDeleteCommand:
     """Test `ref-builder isolate delete ISOLATE_ID`` works as expected."""
 
-    def test_ok(self, scratch_repo, mock_ncbi_client):
+    def test_ok(self, scratch_repo: Repo, mock_ncbi_client):
         """Test basic command functionality."""
         otu = scratch_repo.get_otu_by_taxid(
             mock_ncbi_client.otus.wasabi_mottle_virus.taxid
         )
+
+        assert otu
 
         isolate_id = otu.get_isolate_id_by_name(
             IsolateName(type=IsolateNameType.ISOLATE, value="WMoV-6.3"),
@@ -144,21 +136,20 @@ class TestIsolateDeleteCommand:
         )
 
         assert result.exit_code == 0
-
         assert "Isolate deleted" in result.output
 
-        assert (
-            isolate_id
-            not in scratch_repo.get_otu_by_taxid(
-                mock_ncbi_client.otus.wasabi_mottle_virus.taxid
-            ).isolate_ids
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.wasabi_mottle_virus.taxid
         )
 
-    def test_empty(self, scratch_repo):
+        assert otu
+        assert isolate_id not in otu.isolate_ids
+
+    def test_missing_id(self, scratch_repo: Repo):
         """Test that an empty isolate identifier string exits with an error."""
         result = runner.invoke(
             isolate_command_group,
             ["--path", str(scratch_repo.path), "delete", ""],
         )
 
-        assert result.exit_code == 1
+        assert result.exit_code == 2
