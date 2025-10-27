@@ -7,9 +7,8 @@ from polyfactory import PostGenerated, Use
 from polyfactory.decorators import post_generated
 from polyfactory.factories.pydantic_factory import ModelFactory
 
-from ref_builder.isolate import IsolateNameType
 from ref_builder.models.accession import Accession
-from ref_builder.models.isolate import IsolateName
+from ref_builder.models.isolate import IsolateName, IsolateNameType
 from ref_builder.models.molecule import Molecule, MoleculeType
 from ref_builder.models.otu import OTUMinimal
 from ref_builder.models.plan import Plan, Segment, SegmentName, SegmentRule
