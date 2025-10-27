@@ -42,3 +42,6 @@ class IsolateModel(BaseModel):
 
     name: IsolateName | None
     """The isolate's name."""
+
+    taxid: int
+    """The NCBI Taxonomy ID for this isolate."""

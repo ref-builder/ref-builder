@@ -23,9 +23,6 @@ class OTUModel(BaseModel):
     id: UUID4
     """The OTU id."""
 
-    acronym: str
-    """The OTU acronym (eg. TMV for Tobacco mosaic virus)."""
-
     excluded_accessions: set[str]
     """A set of accessions that should not be retrieved in future fetch operations."""
 
@@ -35,14 +32,31 @@ class OTUModel(BaseModel):
     molecule: Molecule
     """The type of molecular information contained in this OTU."""
 
-    name: str
-    """The name of the OTU (eg. TMV for Tobacco mosaic virus)"""
-
     plan: Plan
     """The plan for the OTU."""
 
-    taxid: int
-    """The NCBI Taxonomy id for this OTU."""
+    @property
+    def acronym(self) -> str:
+        """The OTU acronym computed from the lineage."""
+        return self.lineage.acronym
+
+    @property
+    def name(self) -> str:
+        """The OTU name computed from the species-level taxon in the lineage."""
+        return self.lineage.name
+
+    @property
+    def synonyms(self) -> set[str]:
+        """All possible names derived from the OTU's lineage.
+
+        Returns all taxon names, acronyms, and synonyms from the lineage.
+        """
+        return self.lineage.synonyms
+
+    @property
+    def taxid(self) -> int:
+        """The NCBI Taxonomy ID for this OTU (species-level taxon from lineage)."""
+        return self.lineage.taxa[-1].id
 
 
 class SequenceModel(BaseModel):

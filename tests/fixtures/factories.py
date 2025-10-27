@@ -522,6 +522,9 @@ class IsolateFactory(ModelFactory[IsolateBase]):
     id = Use(ModelFactory.__faker__.uuid4, cast_to=None)
     """Generate a UUID."""
 
+    taxid = Use(ModelFactory.__faker__.random_int, min=1000, max=999999)
+    """A realistic taxonomy ID."""
+
     @classmethod
     def name(cls) -> IsolateName:
         """Generate a quasi-realistic isolate name."""

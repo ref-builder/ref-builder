@@ -88,7 +88,7 @@ def test_multi_linked_promotion(empty_repo: Repo):
 
     with empty_repo.lock(), empty_repo.use_transaction():
         isolate_before = empty_repo.create_isolate(
-            otu_before.id, name=mock_isolate.name
+            otu_before.id, name=mock_isolate.name, taxid=mock_isolate.taxid
         )
 
         assert isolate_before

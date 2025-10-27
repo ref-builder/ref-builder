@@ -67,9 +67,36 @@ class Lineage(BaseModel):
         return taxa
 
     @property
+    def acronym(self) -> str:
+        """Return first acronym found in lineage, searching from root to leaf.
+
+        Searches taxa from species (root at taxa[-1]) down to leaf (taxa[0]).
+        Returns empty string if no acronyms found.
+        """
+        for taxon in reversed(self.taxa):
+            if taxon.other_names.acronym:
+                return taxon.other_names.acronym[0]
+        return ""
+
+    @property
     def name(self) -> str:
         """Return the species name from the lineage.
 
         The root taxon (last position) is always species rank (enforced by validator).
         """
         return self.taxa[-1].name
+
+    @property
+    def synonyms(self) -> set[str]:
+        """Return all possible names derived from the lineage.
+
+        Collects all taxon names, acronyms, and synonyms from all taxa in the lineage.
+        """
+        synonyms = set()
+
+        for taxon in self.taxa:
+            synonyms.add(taxon.name)
+            synonyms.update(taxon.other_names.acronym)
+            synonyms.update(taxon.other_names.synonyms)
+
+        return synonyms

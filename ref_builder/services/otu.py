@@ -107,11 +107,9 @@ class OTUService(Service):
     def get_otu(self, identifier: str) -> OTUBuilder | None:
         """Return an OTU from the repo if identifier matches a single OTU.
 
-        The identifier can either be a stringified UUIDv4, a NCBI Taxonomy ID,
-        or an acronym associated with the OTU.
+        The identifier can either be a stringified UUIDv4 or a NCBI Taxonomy ID.
 
-        :param identifier: a non-UUID identifier.
-            Can be an integer Taxonomy ID or acronym.
+        :param identifier: an OTU identifier (UUID or taxid)
         :return: the OTU or None if not found
         """
         otu_id = None
@@ -129,9 +127,6 @@ class OTUService(Service):
                 pass
             else:
                 otu_id = self._repo.get_otu_id_by_taxid(taxid)
-
-        else:
-            otu_id = self._repo.get_otu_id_by_acronym(identifier)
 
         if otu_id is None:
             return None
@@ -193,15 +188,10 @@ class OTUService(Service):
             )
             return None
 
-        acronym = ""
-        if taxonomy.other_names.acronym:
-            acronym = taxonomy.other_names.acronym[0]
-
         with self._repo.use_transaction():
             return self._write_otu(
                 taxonomy,
                 records,
-                acronym,
                 isolate_name=next(iter(binned_records.keys()))
                 if binned_records
                 else None,
@@ -211,14 +201,12 @@ class OTUService(Service):
         self,
         taxonomy: NCBITaxonomy,
         records: list[NCBIGenbank],
-        acronym: str,
         isolate_name: IsolateName | None,
     ) -> OTUBuilder | None:
         """Create a new OTU from an NCBI Taxonomy record and a list of Nucleotide records.
 
         :param taxonomy: the NCBI taxonomy record
         :param records: the GenBank records
-        :param acronym: the OTU acronym
         :param isolate_name: the isolate name
         :return: the created OTU or None if creation failed
         """
@@ -235,20 +223,18 @@ class OTUService(Service):
 
         molecule = get_molecule_from_records(records)
 
-        lineage = self.ncbi.fetch_lineage(taxonomy.id)
+        lineage = self.ncbi.fetch_lineage(records[0].source.taxid)
 
         otu = self._repo.create_otu(
-            acronym=acronym,
             lineage=lineage,
             molecule=molecule,
-            name=taxonomy.name,
             plan=plan,
-            taxid=taxonomy.id,
         )
 
         isolate = self._repo.create_isolate(
             otu_id=otu.id,
             name=isolate_name,
+            taxid=records[0].source.taxid,
         )
 
         otu.add_isolate(isolate)

@@ -1,0 +1,12 @@
+[tasks.format]
+description = "Format code with ruff and fix linting issues."
+run = ["uv run ruff format", "uv run ruff check --fix --silent --exit-zero"]
+
+[tasks.scratch]
+description = "Create a test repo in example."
+run = [
+  "rm -rf scratch",
+  "mkdir scratch",
+  "(cd scratch && uv run ref-builder init --name Scratch)",
+  "(cd scratch && uv run ref-builder otu create NC_001367.1)",
+]

@@ -15,6 +15,7 @@ class CreateIsolateData(EventData):
 
     id: UUID4
     name: IsolateName | None
+    taxid: int
 
 
 class CreateIsolate(ApplicableEvent[CreateIsolateData, IsolateQuery]):
@@ -26,6 +27,7 @@ class CreateIsolate(ApplicableEvent[CreateIsolateData, IsolateQuery]):
             IsolateBuilder(
                 id=self.data.id,
                 name=self.data.name,
+                taxid=self.data.taxid,
                 sequences=[],
             ),
         )

@@ -12,11 +12,8 @@ class CreateOTUData(EventData):
     """The data for a :class:`CreateOTU` event."""
 
     id: UUID4
-    acronym: str
     lineage: Lineage
     molecule: Molecule
-    name: str
-    taxid: int
     plan: Plan
 
 
@@ -24,16 +21,17 @@ class CreateOTU(Event[CreateOTUData, OTUQuery]):
     """An event that creates a new OTU."""
 
     def apply(self) -> OTUBuilder:
+        """Apply and OTU creation event.
+
+        Instantiates and returns and OTU builder.
+        """
         return OTUBuilder(
             id=self.query.otu_id,
-            acronym=self.data.acronym,
             excluded_accessions=set(),
             isolates=[],
             lineage=self.data.lineage,
             molecule=self.data.molecule,
-            name=self.data.name,
             plan=self.data.plan,
-            taxid=self.data.taxid,
         )
 
 

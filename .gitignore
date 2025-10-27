@@ -5,8 +5,8 @@ __pycache__
 .idea
 .pytest_cache
 .vscode
-datasets_oas.yaml
 dist
+scratch
 Thumbs.db
 TODO.md
 venv

@@ -42,16 +42,13 @@ def test_commit(empty_repo: Repo):
 
     with empty_repo.lock(), empty_repo.use_transaction():
         otu = empty_repo.create_otu(
-            acronym="TMV",
             lineage=TMV_LINEAGE,
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
                 type=MoleculeType.RNA,
                 topology=Topology.LINEAR,
             ),
-            name="Tobacco mosaic virus",
             plan=plan,
-            taxid=12242,
         )
 
         assert otu
@@ -59,6 +56,7 @@ def test_commit(empty_repo: Repo):
         isolate = empty_repo.create_isolate(
             otu.id,
             IsolateName(IsolateNameType.ISOLATE, "Test"),
+            taxid=12242,
         )
 
         sequence = empty_repo.create_sequence(
@@ -96,16 +94,13 @@ def test_fail(empty_repo: Repo):
 
     with capture_logs() as cap_logs, empty_repo.lock(), empty_repo.use_transaction():
         empty_repo.create_otu(
-            acronym="TMV",
             lineage=TMV_LINEAGE,
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
                 type=MoleculeType.RNA,
                 topology=Topology.LINEAR,
             ),
-            name="Tobacco mosaic virus",
             plan=plan,
-            taxid=12242,
         )
 
     assert any(
@@ -130,16 +125,13 @@ def test_abort(empty_repo: Repo):
 
     with empty_repo.lock(), empty_repo.use_transaction() as transaction:
         empty_repo.create_otu(
-            acronym="TMV",
             lineage=TMV_LINEAGE,
             molecule=Molecule(
                 strandedness=Strandedness.SINGLE,
                 type=MoleculeType.RNA,
                 topology=Topology.LINEAR,
             ),
-            name="Tobacco mosaic virus",
             plan=plan,
-            taxid=12242,
         )
 
         assert empty_repo.last_id == 2

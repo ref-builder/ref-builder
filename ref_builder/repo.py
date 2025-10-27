@@ -360,22 +360,20 @@ class Repo:
 
     def create_otu(
         self,
-        acronym: str,
         lineage: Lineage,
         molecule: Molecule,
-        name: str,
         plan: Plan,
-        taxid: int,
     ) -> OTUBuilder | None:
         """Create an OTU."""
-        if (otu_id := self.get_otu_id_by_taxid(taxid)) is not None:
-            otu = self.get_otu(otu_id)
-            raise ValueError(f"OTU already exists as {otu.id}")
+        for taxon in lineage.taxa:
+            if (otu_id := self.get_otu_id_by_taxid(taxon.id)) is not None:
+                otu = self.get_otu(otu_id)
+                msg = f"OTU {otu.id} already contains taxid {taxon.id} ({taxon.name})"
+                raise ValueError(msg)
 
-        if self._index.get_id_by_name(name):
-            raise ValueError(f"An OTU with the name '{name}' already exists")
+        taxid = lineage.taxa[-1].id
 
-        logger.info("Creating new OTU.", taxid=taxid, name=name)
+        logger.info("Creating new OTU.", taxid=taxid, name=lineage.name)
 
         otu_id = uuid.uuid4()
 
@@ -383,12 +381,9 @@ class Repo:
             CreateOTU,
             CreateOTUData(
                 id=otu_id,
-                acronym=acronym,
                 lineage=lineage,
                 molecule=molecule,
-                name=name,
                 plan=plan,
-                taxid=taxid,
             ),
             OTUQuery(otu_id=otu_id),
         )
@@ -399,6 +394,7 @@ class Repo:
         self,
         otu_id: uuid.UUID,
         name: IsolateName | None,
+        taxid: int,
     ) -> IsolateBuilder | None:
         """Create and isolate for the OTU with ``otu_id``.
 
@@ -410,7 +406,7 @@ class Repo:
 
         event = self._write_event(
             CreateIsolate,
-            CreateIsolateData(id=isolate_id, name=name),
+            CreateIsolateData(id=isolate_id, name=name, taxid=taxid),
             IsolateQuery(isolate_id=isolate_id, otu_id=otu_id),
         )
 
@@ -419,6 +415,7 @@ class Repo:
             event_id=event.id,
             isolate_id=str(isolate_id),
             name=str(name) if name is not None else None,
+            taxid=taxid,
         )
 
         return self.get_otu(otu_id).get_isolate(isolate_id)
@@ -782,25 +779,6 @@ class Repo:
         """
         if (otu_id := self.get_otu_id_by_taxid(taxid)) is not None:
             return self.get_otu(otu_id)
-
-        return None
-
-    def get_otu_id_by_acronym(self, acronym: str) -> uuid.UUID | None:
-        """Return the UUID of the OTU with the given ``acronym``.
-        If no OTU is found, return None.
-
-        :param acronym: the exact acronym of the OTU
-        :return: the UUID of the OTU or ``None``
-        """
-        try:
-            return self._index.get_id_by_acronym(acronym)
-
-        except ValueError as e:
-            logger.error(
-                "Bad input. Search acronym cannot be empty.",
-                acronym=acronym,
-                error=str(e),
-            )
 
         return None
 
