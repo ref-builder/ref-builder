@@ -2,8 +2,7 @@ from uuid import uuid4
 
 from pytest_mock import MockerFixture
 
-from ref_builder.isolate import IsolateNameType
-from ref_builder.models.isolate import IsolateName
+from ref_builder.models.isolate import IsolateName, IsolateNameType
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.repo import Repo
 from ref_builder.services.cls import Services
@@ -28,10 +27,7 @@ class TestIsolateServiceCreate:
         assert otu
 
         with empty_repo.lock():
-            isolate = services.isolate.create(
-                otu_id=otu.id,
-                accessions=["MH200607"],
-            )
+            isolate = services.isolate.create(["MH200607"])
 
         assert isolate is not None
         assert isinstance(isolate, IsolateBuilder)
@@ -61,15 +57,14 @@ class TestIsolateServiceCreate:
             assert otu
 
             isolate = services.isolate.create(
-                otu_id=otu.id,
-                accessions=[
+                [
                     "EF546802",
                     "EF546803",
                     "EF546804",
                     "EF546805",
                     "EF546806",
                     "EF546807",
-                ],
+                ]
             )
 
         assert isolate
@@ -103,15 +98,14 @@ class TestIsolateServiceCreate:
             assert otu
 
             isolate = services.isolate.create(
-                otu_id=otu.id,
-                accessions=[
+                [
                     "NC_010314",
                     "NC_010315",
                     "NC_010316",
                     "NC_010317",
                     "NC_010318",
                     "NC_010319",
-                ],
+                ]
             )
 
         assert isolate
@@ -134,15 +128,24 @@ class TestIsolateServiceCreateValidation:
         self,
         empty_repo: Repo,
         mock_ncbi_client: MockNCBIClient,
+        mocker: MockerFixture,
+        ncbi_genbank_factory: type[NCBIGenbankFactory],
     ):
-        """Test that non-existent OTU returns None."""
+        """Test that non-existent OTU returns None when taxid doesn't match any OTU."""
         services = Services(empty_repo, mock_ncbi_client)
 
+        # Mock a record with a taxid that doesn't match any OTU
+        source = NCBISourceFactory.build(taxid=999999)
+        record = ncbi_genbank_factory.build(source=source, accession="AB123456")
+
+        mocker.patch.object(
+            mock_ncbi_client,
+            "fetch_genbank_records",
+            return_value=[record],
+        )
+
         with empty_repo.lock():
-            isolate = services.isolate.create(
-                otu_id=uuid4(),
-                accessions=["AB123456"],
-            )
+            isolate = services.isolate.create(["AB123456"])
 
         assert isolate is None
 
@@ -159,10 +162,7 @@ class TestIsolateServiceCreateValidation:
 
             assert otu
 
-            isolate = services.isolate.create(
-                otu_id=otu.id,
-                accessions=["MISS123"],
-            )
+            isolate = services.isolate.create(["MISS123"])
 
         assert isolate is None
 
@@ -189,22 +189,18 @@ class TestIsolateServiceCreateValidation:
             assert otu
 
             isolate = services.isolate.create(
-                otu_id=otu.id,
-                accessions=[
+                [
                     "EF546803",
                     "EF546804",
                     "EF546805",
                     "NC_010314",
                     "NC_010318",
                     "NC_010319",
-                ],
+                ]
             )
 
         with empty_repo.lock():
-            isolate = services.isolate.create(
-                otu_id=otu.id,
-                accessions=[],
-            )
+            isolate = services.isolate.create([])
 
         assert isolate is None
 
@@ -236,16 +232,14 @@ class TestIsolateServiceCreateValidation:
         record_1 = ncbi_genbank_factory.build(source=source_1, accession="AB123456")
         record_2 = ncbi_genbank_factory.build(source=source_2, accession="AB123457")
 
-        mocker.patch(
-            "ref_builder.services.isolate._fetch_records",
+        mocker.patch.object(
+            mock_ncbi_client,
+            "fetch_genbank_records",
             return_value=[record_1, record_2],
         )
 
         with scratch_repo.lock():
-            isolate = services.isolate.create(
-                otu_id=otu.id,
-                accessions=[record_1.accession, record_2.accession],
-            )
+            isolate = services.isolate.create([record_1.accession, record_2.accession])
 
         assert isolate is None
 
@@ -279,16 +273,14 @@ class TestIsolateServiceCreateValidation:
             refseq=False,
         )
 
-        mocker.patch(
-            "ref_builder.services.isolate._fetch_records",
+        mocker.patch.object(
+            mock_ncbi_client,
+            "fetch_genbank_records",
             return_value=[record],
         )
 
         with scratch_repo.lock():
-            isolate = services.isolate.create(
-                otu_id=otu.id,
-                accessions=[record.accession],
-            )
+            isolate = services.isolate.create([record.accession])
 
         assert isolate is None
 
@@ -307,10 +299,7 @@ class TestIsolateServiceCreateValidation:
         assert otu
 
         with scratch_repo.lock():
-            isolate = services.isolate.create(
-                otu_id=otu.id,
-                accessions=["NC_003355"],
-            )
+            isolate = services.isolate.create(["NC_003355"])
 
         assert isolate is None
 
@@ -355,16 +344,14 @@ class TestIsolateServiceCreateValidation:
                 )
             )
 
-        mocker.patch(
-            "ref_builder.services.isolate._fetch_records",
+        mocker.patch.object(
+            mock_ncbi_client,
+            "fetch_genbank_records",
             return_value=records,
         )
 
         with scratch_repo.lock():
-            isolate = services.isolate.create(
-                otu_id=otu.id,
-                accessions=[r.accession for r in records],
-            )
+            isolate = services.isolate.create([r.accession for r in records])
 
         assert isolate is None
 
@@ -409,16 +396,14 @@ class TestIsolateServiceCreateValidation:
                 )
             )
 
-        mocker.patch(
-            "ref_builder.services.isolate._fetch_records",
+        mocker.patch.object(
+            mock_ncbi_client,
+            "fetch_genbank_records",
             return_value=records,
         )
 
         with scratch_repo.lock():
-            isolate = services.isolate.create(
-                otu_id=otu.id,
-                accessions=[r.accession for r in records],
-            )
+            isolate = services.isolate.create([r.accession for r in records])
 
         assert isolate is None
 
@@ -461,8 +446,9 @@ class TestIsolateServicePromotion:
             f"The reference sequence is identical to {existing_isolate.sequences[0].accession.key},COMPLETENESS: full length.",
         )
 
-        mocker.patch(
-            "ref_builder.services.isolate._fetch_records",
+        mocker.patch.object(
+            mock_ncbi_client,
+            "fetch_genbank_records",
             return_value=[refseq_record],
         )
 
@@ -473,10 +459,7 @@ class TestIsolateServicePromotion:
         )
 
         with scratch_repo.lock():
-            isolate = services.isolate.create(
-                otu_id=otu.id,
-                accessions=[refseq_record.accession],
-            )
+            isolate = services.isolate.create([refseq_record.accession])
 
         assert isolate is not None
         assert isolate.id == existing_isolate.id

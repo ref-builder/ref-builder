@@ -6,9 +6,8 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
-from ref_builder.isolate import IsolateNameType
 from ref_builder.models.accession import Accession
-from ref_builder.models.isolate import IsolateName
+from ref_builder.models.isolate import IsolateName, IsolateNameType
 from ref_builder.models.lineage import Lineage, Taxon, TaxonOtherNames
 from ref_builder.models.molecule import Molecule, MoleculeType, Strandedness, Topology
 from ref_builder.models.plan import Plan, Segment, SegmentRule
