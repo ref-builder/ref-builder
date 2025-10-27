@@ -47,11 +47,11 @@ def isolate_delete(repo: Repo, identifier: str) -> None:
 
     IDENTIFIER is an unique isolate ID (>8 characters)
     """
-    otu_id, isolate_id = get_otu_isolate_ids_from_identifier(repo, identifier)
+    _, isolate_id = get_otu_isolate_ids_from_identifier(repo, identifier)
 
     services = Services(repo, NCBIClient(False))
 
-    if services.isolate.delete(otu_id, isolate_id):
+    if services.isolate.delete(isolate_id):
         click.echo("Isolate deleted.")
     else:
         sys.exit(1)

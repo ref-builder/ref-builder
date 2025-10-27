@@ -173,26 +173,27 @@ class IsolateService(Service):
 
         return None
 
-    def delete(self, otu_id: UUID, isolate_id: UUID) -> bool:
-        """Delete an isolate from an OTU.
+    def delete(self, isolate_id: UUID) -> bool:
+        """Delete an isolate.
 
-        :param otu_id: the OTU ID
         :param isolate_id: the isolate ID to delete
         :return: True if deletion succeeded, False otherwise
         """
+        isolate = self._repo.get_isolate(isolate_id)
+
+        if isolate is None:
+            logger.error("Isolate not found", isolate_id=str(isolate_id))
+            return False
+
+        otu_id = self._repo.get_otu_id_by_isolate_id(isolate_id)
+
+        if otu_id is None:
+            logger.error("OTU not found for isolate", isolate_id=str(isolate_id))
+            return False
+
         otu = self._repo.get_otu(otu_id)
 
-        if otu is None:
-            logger.error("OTU not found", otu_id=str(otu_id))
-            return False
-
         otu_logger = logger.bind(otu_id=str(otu.id), taxid=otu.taxid)
-
-        isolate = otu.get_isolate(isolate_id)
-
-        if not isolate:
-            otu_logger.error("Isolate not found.", isolate_id=str(isolate_id))
-            return False
 
         with self._repo.use_transaction():
             self._repo.delete_isolate(
