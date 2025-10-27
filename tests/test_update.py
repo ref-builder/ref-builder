@@ -17,9 +17,7 @@ class TestPromoteOTU:
 
             assert otu
 
-            isolate = services.isolate.create(
-                otu.id, ["MF062125", "MF062126", "MF062127"]
-            )
+            isolate = services.isolate.create(["MF062125", "MF062126", "MF062127"])
 
             assert isolate
 

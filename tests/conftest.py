@@ -129,7 +129,7 @@ def _session_scratch_repo(tmp_path_factory) -> Repo:
                 )
 
             for accessions in isolate_accessions:
-                services.isolate.create(otu.id, accessions)
+                services.isolate.create(accessions)
 
     return repo
 

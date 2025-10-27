@@ -18,6 +18,7 @@ from ref_builder.otu.utils import (
     parse_refseq_comment,
 )
 from ref_builder.services import Service
+from ref_builder.utils import filter_accessions
 
 logger = structlog.get_logger("services.isolate")
 
@@ -27,7 +28,6 @@ class IsolateService(Service):
 
     def create(
         self,
-        otu_id: UUID,
         accessions: list[str],
     ) -> IsolateBuilder | None:
         """Create a new isolate from a list of accessions.
@@ -35,23 +35,54 @@ class IsolateService(Service):
         The isolate name is extracted from GenBank record metadata. If the records
         contain multiple isolate names or no isolate name, creation will fail.
 
-        :param otu_id: the OTU ID to add the isolate to
+        The OTU is automatically determined by fetching the GenBank records and
+        extracting the taxid, then finding an OTU that contains that taxid in its
+        lineage.
+
         :param accessions: accessions to build the new isolate from
-        :param ignore_cache: whether to ignore the NCBI cache
         :return: the created isolate or None if creation failed
         """
-        otu = self._repo.get_otu(otu_id)
+        log = logger.bind(accessions=accessions)
+
+        # Fetch records to determine taxid
+        fetched_records = self.ncbi.fetch_genbank_records(accessions)
+
+        if not fetched_records:
+            log.error("Failed to fetch records from NCBI")
+            return None
+
+        # Extract taxid from records
+        taxids = {record.source.taxid for record in fetched_records}
+        if len(taxids) > 1:
+            log.error(
+                "Not all records have the same taxid.",
+                taxids=sorted(taxids),
+            )
+            return None
+
+        taxid = fetched_records[0].source.taxid
+        log = log.bind(taxid=taxid)
+
+        # Find OTU by taxid
+        otu = self._repo.get_otu_by_taxid(taxid)
 
         if otu is None:
-            logger.error("OTU not found", otu_id=str(otu_id))
+            log.error("No OTU found for taxid")
             return None
 
-        otu_logger = logger.bind(taxid=otu.taxid, otu_id=str(otu.id), name=otu.name)
+        otu_logger = log.bind(otu_id=str(otu.id), otu_name=otu.name)
 
-        records = _fetch_records(accessions, otu.blocked_accessions, self.ncbi)
+        # Filter out blocked accessions
+        eligible_accessions = filter_accessions(
+            [r.accession for r in fetched_records],
+            otu.blocked_accessions,
+        )
 
-        if not records:
+        if not eligible_accessions:
+            otu_logger.error("All fetched accessions are blocked for this OTU")
             return None
+
+        records = [r for r in fetched_records if r.accession in eligible_accessions]
 
         # Validate that we don't mix RefSeq and non-RefSeq sequences
         if any(record.refseq for record in records) and not all(

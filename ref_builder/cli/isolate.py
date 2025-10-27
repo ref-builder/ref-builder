@@ -29,22 +29,14 @@ def isolate(ctx: click.Context, path: Path) -> None:
     type=str,
     required=True,
 )
-@click.option("--taxid", type=int, required=True)
 @pass_repo
 def isolate_create(
     repo: Repo,
     accessions_: list[str],
-    taxid: int,
 ) -> None:
     """Create a new isolate using the given accessions."""
-    otu_ = repo.get_otu_by_taxid(taxid)
-
-    if otu_ is None:
-        click.echo(f"OTU {taxid} not found.", err=True)
-        sys.exit(1)
-
     services = Services(repo, NCBIClient(False))
-    services.isolate.create(otu_.id, accessions_)
+    services.isolate.create(accessions_)
 
 
 @isolate.command(name="delete")

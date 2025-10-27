@@ -46,8 +46,6 @@ class TestIsolateCreateCommand:
                 "--path",
                 str(empty_repo.path),
                 "create",
-                "--taxid",
-                str(taxid),
                 *second_isolate_accessions,
             ],
         )
@@ -64,8 +62,6 @@ class TestIsolateCreateCommand:
                 "--path",
                 str(scratch_repo.path),
                 "create",
-                "--taxid",
-                "345184",
                 "DQ178610",
                 "DQ178610",
             ],
