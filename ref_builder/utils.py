@@ -68,6 +68,19 @@ def generate_natural_sort_key(string: str) -> list[int | str]:
     return [_convert(c) for c in re.split("([0-9]+)", string)]
 
 
+def filter_accessions(
+    accessions: list[str],
+    blocked: set[str],
+) -> list[str]:
+    """Filter a list of accessions by removing blocked accessions.
+
+    :param accessions: list of accession strings to filter
+    :param blocked: set of blocked accession strings
+    :return: filtered list of accessions
+    """
+    return [acc for acc in accessions if acc not in blocked]
+
+
 def pad_zeroes(number: int) -> str:
     """Pad a number with zeroes to make it 8 characters long.
 
