@@ -496,9 +496,7 @@ class TestIsolateServiceDelete:
         isolate_before = otu_before.get_isolate(isolate_id)
 
         with scratch_repo.lock():
-            result = services.isolate.delete(
-                otu_id=otu_before.id, isolate_id=isolate_id
-            )
+            result = services.isolate.delete(isolate_id)
 
         assert result is True
 
@@ -516,10 +514,7 @@ class TestIsolateServiceDelete:
         """Test deletion with non-existent OTU returns False."""
         services = Services(empty_repo, mock_ncbi_client)
 
-        result = services.isolate.delete(
-            otu_id=uuid4(),
-            isolate_id=uuid4(),
-        )
+        result = services.isolate.delete(uuid4())
 
         assert result is False
 
@@ -536,9 +531,6 @@ class TestIsolateServiceDelete:
         )
 
         with scratch_repo.lock():
-            result = services.isolate.delete(
-                otu_id=otu.id,
-                isolate_id=uuid4(),
-            )
+            result = services.isolate.delete(uuid4())
 
         assert result is False
