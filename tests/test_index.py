@@ -7,10 +7,7 @@ import arrow
 import pytest
 
 from ref_builder.index import EventIndexItem, Index
-from ref_builder.models.lineage import Lineage, Taxon, TaxonOtherNames
-from ref_builder.models.molecule import Molecule
 from ref_builder.models.otu import OTUMinimal
-from ref_builder.models.plan import Plan
 from ref_builder.ncbi.client import NCBIClientProtocol
 from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.repo import Repo
