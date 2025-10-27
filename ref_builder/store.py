@@ -13,7 +13,9 @@ from ref_builder.events.isolate import (
 from ref_builder.events.otu import (
     CreateOTU,
     CreatePlan,
+    PromoteSequence,
     UpdateExcludedAccessions,
+    UpdateSequence,
 )
 from ref_builder.events.repo import CreateRepo
 from ref_builder.events.sequence import CreateSequence, DeleteSequence
@@ -128,7 +130,9 @@ class EventStore:
                     "DeleteIsolate": DeleteIsolate,
                     "DeleteSequence": DeleteSequence,
                     "CreatePlan": CreatePlan,
+                    "PromoteSequence": PromoteSequence,
                     "UpdateExcludedAccessions": UpdateExcludedAccessions,
+                    "UpdateSequence": UpdateSequence,
                 }[loaded["type"]]
 
                 return cls(**loaded)

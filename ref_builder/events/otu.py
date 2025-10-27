@@ -82,3 +82,71 @@ class UpdateExcludedAccessions(ApplicableEvent[UpdateExcludedAccessionsData, OTU
                 otu.excluded_accessions.add(accession)
 
         return otu
+
+
+class PromoteSequenceData(EventData):
+    """Data for a sequence promotion event."""
+
+    old_sequence_id: UUID4
+    new_sequence_id: UUID4
+
+
+class PromoteSequence(ApplicableEvent[PromoteSequenceData, OTUQuery]):
+    """An event that promotes a GenBank sequence to its RefSeq equivalent.
+
+    This event replaces an old sequence with a new sequence across all isolates
+    where the old sequence is linked, deletes the old sequence, and excludes
+    the old accession from future fetches.
+    """
+
+    def apply(self, otu: OTUBuilder) -> OTUBuilder:
+        """Apply promotion by replacing sequence wherever it exists."""
+        old_sequence = otu.get_sequence_by_id(self.data.old_sequence_id)
+
+        if old_sequence is None:
+            return otu
+
+        old_accession = old_sequence.accession.key
+
+        for isolate in otu.isolates:
+            if any(s.id == self.data.old_sequence_id for s in isolate.sequences):
+                otu.unlink_sequence(isolate.id, self.data.old_sequence_id)
+                otu.link_sequence(isolate.id, self.data.new_sequence_id)
+
+        otu.delete_sequence(self.data.old_sequence_id)
+        otu.excluded_accessions.add(old_accession)
+
+        return otu
+
+
+class UpdateSequenceData(EventData):
+    """Data for a sequence version update event."""
+
+    old_sequence_id: UUID4
+    new_sequence_id: UUID4
+
+
+class UpdateSequence(ApplicableEvent[UpdateSequenceData, OTUQuery]):
+    """An event that updates a sequence to a newer version.
+
+    This event replaces an old sequence with a new sequence across all isolates
+    where the old sequence is linked and deletes the old sequence. Unlike
+    PromoteSequence, this does NOT exclude accessions since the accession key
+    remains the same (only the version changes).
+    """
+
+    def apply(self, otu: OTUBuilder) -> OTUBuilder:
+        """Apply update by replacing sequence wherever it exists."""
+        old_sequence = otu.get_sequence_by_id(self.data.old_sequence_id)
+
+        if old_sequence is None:
+            return otu
+
+        for isolate in otu.isolates:
+            if any(s.id == self.data.old_sequence_id for s in isolate.sequences):
+                otu.unlink_sequence(isolate.id, self.data.old_sequence_id)
+                otu.link_sequence(isolate.id, self.data.new_sequence_id)
+
+        otu.delete_sequence(self.data.old_sequence_id)
+
+        return otu
