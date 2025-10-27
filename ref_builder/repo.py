@@ -45,16 +45,18 @@ from ref_builder.events.isolate import (
     DeleteIsolateData,
     LinkSequence,
     LinkSequenceData,
-    UnlinkSequence,
-    UnlinkSequenceData,
 )
 from ref_builder.events.otu import (
     CreateOTU,
     CreateOTUData,
     CreatePlan,
     CreatePlanData,
+    PromoteSequence,
+    PromoteSequenceData,
     UpdateExcludedAccessions,
     UpdateExcludedAccessionsData,
+    UpdateSequence,
+    UpdateSequenceData,
 )
 from ref_builder.events.repo import (
     CreateRepo,
@@ -63,8 +65,6 @@ from ref_builder.events.repo import (
 from ref_builder.events.sequence import (
     CreateSequence,
     CreateSequenceData,
-    DeleteSequence,
-    DeleteSequenceData,
 )
 from ref_builder.index import Index
 from ref_builder.lock import Lock
@@ -488,55 +488,67 @@ class Repo:
 
         return self.get_otu(otu_id).get_sequence_by_id(sequence_id)
 
-    def replace_sequence(
+    def promote_sequence(
         self,
         otu_id: uuid.UUID,
-        isolate_id: uuid.UUID,
-        sequence_id: uuid.UUID,
-        replaced_sequence_id: uuid.UUID,
-        rationale: str,
-    ) -> SequenceBuilder | None:
-        """Link a new sequence, replacing the old sequence under the isolate.
-        Delete the original sequence if it is still in the OTU.
+        old_sequence_id: uuid.UUID,
+        new_sequence_id: uuid.UUID,
+    ) -> None:
+        """Promote a GenBank sequence to its RefSeq equivalent.
+
+        This replaces the old sequence with the new sequence across all isolates
+        where the old sequence is linked, deletes the old sequence, and excludes
+        the old accession from future fetches.
         """
         otu = self.get_otu(otu_id)
 
-        new_sequence = otu.get_sequence_by_id(sequence_id)
+        old_sequence = otu.get_sequence_by_id(old_sequence_id)
+        if old_sequence is None:
+            raise ValueError(f"Old sequence does not exist: {old_sequence_id}")
+
+        new_sequence = otu.get_sequence_by_id(new_sequence_id)
         if new_sequence is None:
-            raise ValueError(f"New sequence does not exist: {sequence_id}")
+            raise ValueError(f"New sequence does not exist: {new_sequence_id}")
 
         self._write_event(
-            UnlinkSequence,
-            UnlinkSequenceData(
-                sequence_id=replaced_sequence_id,
+            PromoteSequence,
+            PromoteSequenceData(
+                old_sequence_id=old_sequence_id,
+                new_sequence_id=new_sequence_id,
             ),
-            IsolateQuery(otu_id=otu_id, isolate_id=isolate_id),
+            OTUQuery(otu_id=otu_id),
         )
+
+    def update_sequence(
+        self,
+        otu_id: uuid.UUID,
+        old_sequence_id: uuid.UUID,
+        new_sequence_id: uuid.UUID,
+    ) -> None:
+        """Update a sequence to a newer version.
+
+        This replaces the old sequence with the new sequence across all isolates
+        where the old sequence is linked and deletes the old sequence. Does not
+        exclude accessions since the accession key remains the same.
+        """
+        otu = self.get_otu(otu_id)
+
+        old_sequence = otu.get_sequence_by_id(old_sequence_id)
+        if old_sequence is None:
+            raise ValueError(f"Old sequence does not exist: {old_sequence_id}")
+
+        new_sequence = otu.get_sequence_by_id(new_sequence_id)
+        if new_sequence is None:
+            raise ValueError(f"New sequence does not exist: {new_sequence_id}")
 
         self._write_event(
-            LinkSequence,
-            LinkSequenceData(sequence_id=new_sequence.id),
-            IsolateQuery(
-                otu_id=otu_id,
-                isolate_id=isolate_id,
+            UpdateSequence,
+            UpdateSequenceData(
+                old_sequence_id=old_sequence_id,
+                new_sequence_id=new_sequence_id,
             ),
+            OTUQuery(otu_id=otu_id),
         )
-
-        if otu.get_sequence_by_id(replaced_sequence_id) is not None:
-            self._write_event(
-                DeleteSequence,
-                DeleteSequenceData(
-                    sequence_id=replaced_sequence_id,
-                    replacement=new_sequence.id,
-                    rationale=rationale,
-                ),
-                SequenceQuery(
-                    otu_id=otu_id,
-                    sequence_id=replaced_sequence_id,
-                ),
-            )
-
-        return self.get_otu(otu_id).get_sequence_by_id(new_sequence.id)
 
     def set_plan(self, otu_id: uuid.UUID, plan: Plan) -> Plan:
         """Set the isolate plan for an OTU."""

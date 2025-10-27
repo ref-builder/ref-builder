@@ -8,56 +8,11 @@ from ref_builder.ncbi.client import NCBIClient
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.promote import (
     promote_otu_accessions_from_records,
-    replace_otu_sequence_from_record,
     upgrade_outdated_sequences_in_otu,
 )
 from ref_builder.repo import Repo
 from ref_builder.services.cls import Services
 from tests.fixtures.factories import IsolateFactory
-
-
-def test_replace_sequence(empty_repo: Repo):
-    """Test OTU sequence replacement."""
-    services = Services(empty_repo, NCBIClient(False))
-
-    with empty_repo.lock():
-        otu_before = services.otu.create(["MF062125", "MF062126", "MF062127"])
-
-    assert otu_before
-    assert otu_before.accessions == {"MF062125", "MF062126", "MF062127"}
-
-    isolate = otu_before.isolates[0]
-
-    assert isolate
-
-    sequence_ids_before = [sequence.id for sequence in isolate.sequences]
-
-    refseq_records = NCBIClient(ignore_cache=False).fetch_genbank_records(
-        ["NC_055390", "NC_055391", "NC_055392"]
-    )
-
-    record_by_sequence_id = {
-        sequence_ids_before[i]: refseq_records[i] for i in (0, 1, 2)
-    }
-
-    with empty_repo.lock():
-        for sequence_id, record in record_by_sequence_id.items():
-            assert replace_otu_sequence_from_record(
-                empty_repo,
-                otu_before,
-                sequence_id,
-                replacement_record=record,
-                exclude_accession=True,
-            )
-
-    otu_after = empty_repo.get_otu(otu_before.id)
-
-    assert otu_after
-    assert otu_after.accessions == {
-        "NC_055390",
-        "NC_055391",
-        "NC_055392",
-    }
 
 
 def test_multi_linked_promotion(empty_repo: Repo):

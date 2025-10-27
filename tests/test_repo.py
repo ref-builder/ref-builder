@@ -1153,43 +1153,6 @@ class TestDeleteIsolate:
         assert initialized_repo.last_id == event_id_before_delete + 1
 
 
-def test_replace_sequence(initialized_repo: Repo):
-    """Test the replacement of an existing sequence using a new Genbank accession and
-    record.
-    """
-    otu_init = initialized_repo.get_otu_by_taxid(3432891)
-
-    replaceable_sequence = otu_init.get_sequence_by_accession("TM000001")
-
-    isolate_id = next(
-        iter(otu_init.get_isolate_ids_containing_sequence_id(replaceable_sequence.id))
-    )
-
-    with initialized_repo.lock():
-        with initialized_repo.use_transaction():
-            new_sequence = initialized_repo.create_sequence(
-                otu_init.id,
-                "RP000001.1",
-                "TMV edit",
-                otu_init.plan.segments[0].id,
-                "TACGTGGAGAGACCA",
-            )
-
-        with initialized_repo.use_transaction():
-            initialized_repo.replace_sequence(
-                otu_id=otu_init.id,
-                isolate_id=isolate_id,
-                sequence_id=new_sequence.id,
-                replaced_sequence_id=replaceable_sequence.id,
-                rationale="Testing sequence redaction",
-            )
-
-        otu_after = initialized_repo.get_otu(otu_init.id)
-
-    assert otu_after.get_sequence_by_id(new_sequence.id) is not None
-    assert otu_after.get_sequence_by_id(replaceable_sequence.id) is None
-
-
 class TestMalformedEvent:
     """Test that malformed events cannot be rehydrated."""
 
