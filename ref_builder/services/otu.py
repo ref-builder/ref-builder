@@ -107,11 +107,9 @@ class OTUService(Service):
     def get_otu(self, identifier: str) -> OTUBuilder | None:
         """Return an OTU from the repo if identifier matches a single OTU.
 
-        The identifier can either be a stringified UUIDv4, a NCBI Taxonomy ID,
-        or an acronym associated with the OTU.
+        The identifier can either be a stringified UUIDv4 or a NCBI Taxonomy ID.
 
-        :param identifier: a non-UUID identifier.
-            Can be an integer Taxonomy ID or acronym.
+        :param identifier: an OTU identifier (UUID or taxid)
         :return: the OTU or None if not found
         """
         otu_id = None
@@ -129,9 +127,6 @@ class OTUService(Service):
                 pass
             else:
                 otu_id = self._repo.get_otu_id_by_taxid(taxid)
-
-        else:
-            otu_id = self._repo.get_otu_id_by_acronym(identifier)
 
         if otu_id is None:
             return None

@@ -7,8 +7,14 @@ import arrow
 import pytest
 
 from ref_builder.index import EventIndexItem, Index
+from ref_builder.models.lineage import Lineage, Taxon, TaxonOtherNames
+from ref_builder.models.molecule import Molecule
 from ref_builder.models.otu import OTUMinimal
+from ref_builder.models.plan import Plan
+from ref_builder.ncbi.client import NCBIClientProtocol
 from ref_builder.otu.builders.otu import OTUBuilder
+from ref_builder.repo import Repo
+from ref_builder.services.cls import Services
 
 SNAPSHOT_AT_EVENT = (
     31,
@@ -44,7 +50,6 @@ class TestDeleteOTU:
         index.delete_otu(otu.id)
 
         assert index.get_event_ids_by_otu_id(otu.id) is None
-        assert index.get_id_by_name(otu.name) is None
         assert index.get_id_by_taxid(otu.taxid) is None
 
     def test_not_found(self, index: Index, indexable_otus: list[OTUBuilder]):
@@ -151,19 +156,6 @@ class TestEvents:
         assert index.get_latest_timestamp_by_otu_id(otu.id) == second_timestamp
 
 
-class TestGetIDByName:
-    """Test `Index.get_id_by_name`."""
-
-    def test_ok(self, index: Index, indexable_otus: list[OTUBuilder]):
-        """Test that the correct OTU ID is retrieved by name."""
-        for otu in indexable_otus:
-            assert otu.id == index.get_id_by_name(otu.name)
-
-    def test_not_found(self, index: Index):
-        """Test that `None` is returned when the name is not found."""
-        assert index.get_id_by_name("not found") is None
-
-
 class TestGetIDByTaxid:
     """Test `Index.get_id_by_taxid`."""
 
@@ -172,9 +164,48 @@ class TestGetIDByTaxid:
         for otu in indexable_otus:
             assert index.get_id_by_taxid(otu.taxid) == otu.id
 
+    def test_any_lineage_taxid(self, index: Index, indexable_otus: list[OTUBuilder]):
+        """Test that OTU can be found by ANY taxid in its lineage."""
+        for otu in indexable_otus:
+            for taxon in otu.lineage.taxa:
+                assert index.get_id_by_taxid(taxon.id) == otu.id
+
     def test_not_found(self, index: Index):
         """Test that `None` is returned when the taxid is not found."""
         assert index.get_id_by_taxid(999999999999999) is None
+
+    def test_subspecies_taxid_lookup(
+        self, empty_repo: Repo, mock_ncbi_client: NCBIClientProtocol
+    ):
+        """Test that OTU can be found by sub-species taxid.
+
+        Wasabi mottle virus has:
+        - Target taxon (sub-species): taxid=1169032, rank="no rank"
+        - Species: taxid=3432896, rank="species"
+
+        Both taxids should find the same OTU.
+        """
+        from tests.fixtures.ncbi import OTUManifest
+
+        services = Services(empty_repo, mock_ncbi_client)
+
+        with empty_repo.lock():
+            otu = services.otu.create(OTUManifest.wasabi_mottle_virus.refseq)
+
+        assert otu is not None
+
+        index = Index(empty_repo.path / "index.db")
+        index.upsert_otu(otu, 1)
+
+        subspecies_taxid = 1169032
+        species_taxid = 3432896
+
+        otu_id_subspecies = index.get_id_by_taxid(subspecies_taxid)
+        otu_id_species = index.get_id_by_taxid(species_taxid)
+
+        assert otu_id_subspecies is not None
+        assert otu_id_species is not None
+        assert otu_id_subspecies == otu_id_species == otu.id
 
 
 class TestGetIDByIsolateID:

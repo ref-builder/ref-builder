@@ -192,9 +192,10 @@ class TestNew:
 
 
 class TestCreateOTU:
-    def test_empty_ok(self, empty_repo: Repo):
-        """Test that creating an OTU returns the expected ``OTUBuilder`` object and creates
-        the expected event file.
+    def test_empty(self, empty_repo: Repo):
+        """Test that creating an OTU.
+
+        The method should create the correct even and return an OTUBuilder.
         """
         plan = Plan.new(
             segments=[
@@ -295,10 +296,8 @@ class TestCreateOTU:
 
             assert empty_repo.last_id == 2
 
-    def test_duplicate_name_fail(self, empty_repo: Repo):
-        """Test that creating an OTU with a name that already exists raises a
-        ``ValueError``.
-        """
+    def test_duplicate_taxid(self, empty_repo: Repo):
+        """Test that creating an OTU with an existing taxid fails."""
         with empty_repo.lock(), empty_repo.use_transaction():
             empty_repo.create_otu(
                 lineage=TMV_LINEAGE,
@@ -320,7 +319,7 @@ class TestCreateOTU:
 
             with pytest.raises(
                 ValueError,
-                match="OTU already exists as",
+                match="already contains taxid",
             ):
                 empty_repo.create_otu(
                     lineage=TMV_LINEAGE,
@@ -341,9 +340,7 @@ class TestCreateOTU:
                 )
 
     def test_plan_required_segment_warning(self, empty_repo: Repo):
-        """Test that creating an OTU without required segments raises a warning
-        once the transaction exits.
-        """
+        """Test that missing required segments raises a warning."""
         plan = Plan.new(
             segments=[
                 Segment(
@@ -401,8 +398,9 @@ class TestCreateIsolate:
     """Test the creation and addition of new isolates in Repo."""
 
     def test_ok(self, empty_repo: Repo):
-        """Test that creating an isolate returns the expected ``IsolateBuilder`` object and
-        creates the expected event file.
+        """Test creating an isolate.
+
+        The method should return the expected ``IsolateBuilder`` create an event.
         """
         with empty_repo.lock(), empty_repo.use_transaction():
             otu = init_otu(empty_repo)
@@ -639,27 +637,6 @@ class TestGetOTU:
         )
 
         assert empty_repo.last_id == 8
-
-    def test_acronym_ok(self, initialized_repo: Repo):
-        """Test that getting an OTU ID from the exact acronym of the OTU returns the expected ID."""
-        otu = next(initialized_repo.iter_otus())
-
-        assert initialized_repo.get_otu_id_by_acronym("TMV") == otu.id
-
-    def test_acronym_fail(self, initialized_repo: Repo):
-        """Test that a non-matching acronym cannot retrieve the OTU ID"""
-        assert initialized_repo.get_otu_id_by_acronym("TM") is None
-
-        assert initialized_repo.get_otu_id_by_acronym("TMVV") is None
-
-    def test_acronym_empty_fail(self, initialized_repo: Repo):
-        """Test that an attempt to search indexed OTUs using an empty acronym
-        logs an error message and returns None.
-        """
-        with capture_logs() as logs:
-            assert initialized_repo.get_otu_id_by_acronym("") is None
-
-        assert any(["Bad input" in log["event"] for log in logs])
 
     def test_retrieve_nonexistent_otu(self, initialized_repo: Repo):
         """Test that getting an OTU that does not exist returns ``None``."""

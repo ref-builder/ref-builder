@@ -365,14 +365,13 @@ class Repo:
         plan: Plan,
     ) -> OTUBuilder | None:
         """Create an OTU."""
+        for taxon in lineage.taxa:
+            if (otu_id := self.get_otu_id_by_taxid(taxon.id)) is not None:
+                otu = self.get_otu(otu_id)
+                msg = f"OTU {otu.id} already contains taxid {taxon.id} ({taxon.name})"
+                raise ValueError(msg)
+
         taxid = lineage.taxa[-1].id
-
-        if (otu_id := self.get_otu_id_by_taxid(taxid)) is not None:
-            otu = self.get_otu(otu_id)
-            raise ValueError(f"OTU already exists as {otu.id}")
-
-        if self._index.get_id_by_name(lineage.name):
-            raise ValueError(f"An OTU with the name '{lineage.name}' already exists")
 
         logger.info("Creating new OTU.", taxid=taxid, name=lineage.name)
 
@@ -780,25 +779,6 @@ class Repo:
         """
         if (otu_id := self.get_otu_id_by_taxid(taxid)) is not None:
             return self.get_otu(otu_id)
-
-        return None
-
-    def get_otu_id_by_acronym(self, acronym: str) -> uuid.UUID | None:
-        """Return the UUID of the OTU with the given ``acronym``.
-        If no OTU is found, return None.
-
-        :param acronym: the exact acronym of the OTU
-        :return: the UUID of the OTU or ``None``
-        """
-        try:
-            return self._index.get_id_by_acronym(acronym)
-
-        except ValueError as e:
-            logger.error(
-                "Bad input. Search acronym cannot be empty.",
-                acronym=acronym,
-                error=str(e),
-            )
 
         return None
 

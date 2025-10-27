@@ -135,6 +135,15 @@ class Index:
             """,
         )
 
+        self.con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS otu_taxids (
+                otu_id TEXT,
+                taxid INTEGER
+            );
+            """,
+        )
+
         for table, column in [
             ("events", "otu_id"),
             ("isolates", "id"),
@@ -144,6 +153,8 @@ class Index:
             ("sequences", "otu_id"),
             ("sequences", "crc"),
             ("otu_updates", "otu_id"),
+            ("otu_taxids", "otu_id"),
+            ("otu_taxids", "taxid"),
         ]:
             self.con.execute(
                 f"""
@@ -244,37 +255,14 @@ class Index:
 
         return None
 
-    def get_id_by_acronym(self, acronym: str) -> UUID | None:
-        """Get an OTU ID by its acronym."""
-        if not acronym:
-            raise ValueError("Acronym must contain at least one character.")
-
-        cursor = self.con.execute(
-            'SELECT id AS "id [uuid]" FROM otus WHERE acronym = ?',
-            (acronym,),
-        )
-
-        if result := cursor.fetchone():
-            return result[0]
-
-        return None
-
-    def get_id_by_name(self, name: str) -> UUID | None:
-        """Get an OTU ID by its name."""
-        cursor = self.con.execute(
-            'SELECT id AS "id [uuid]" FROM otus WHERE name = ?',
-            (name,),
-        )
-
-        if result := cursor.fetchone():
-            return result[0]
-
-        return None
-
     def get_id_by_taxid(self, taxid: int) -> UUID | None:
-        """Get an OTU ID by its taxonomy ID."""
+        """Get an OTU ID by any taxonomy ID in its lineage.
+
+        :param taxid: the taxonomy ID to search for
+        :return: the UUID of the OTU containing this taxid, or None if not found
+        """
         cursor = self.con.execute(
-            'SELECT id AS "id [uuid]" FROM otus WHERE taxid = ?',
+            'SELECT otu_id AS "otu_id [uuid]" FROM otu_taxids WHERE taxid = ?',
             (taxid,),
         )
 
@@ -314,6 +302,11 @@ class Index:
 
         self.con.execute(
             "DELETE FROM sequences WHERE otu_id = ?",
+            (otu_id,),
+        )
+
+        self.con.execute(
+            "DELETE FROM otu_taxids WHERE otu_id = ?",
             (otu_id,),
         )
 
@@ -517,6 +510,17 @@ class Index:
                 otu.model_dump_json(),
                 otu.taxid,
             ),
+        )
+
+        # Delete and re-insert taxids for this OTU
+        self.con.execute(
+            "DELETE FROM otu_taxids WHERE otu_id = ?",
+            (otu.id,),
+        )
+
+        self.con.executemany(
+            "INSERT INTO otu_taxids (otu_id, taxid) VALUES (?, ?)",
+            [(otu.id, taxon.id) for taxon in otu.lineage.taxa],
         )
 
         self.con.commit()

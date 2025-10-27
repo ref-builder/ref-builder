@@ -21,6 +21,10 @@ class CreateOTU(Event[CreateOTUData, OTUQuery]):
     """An event that creates a new OTU."""
 
     def apply(self) -> OTUBuilder:
+        """Apply and OTU creation event.
+
+        Instantiates and returns and OTU builder.
+        """
         return OTUBuilder(
             id=self.query.otu_id,
             excluded_accessions=set(),
