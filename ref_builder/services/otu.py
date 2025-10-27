@@ -14,7 +14,6 @@ from ref_builder.models.plan import (
 )
 from ref_builder.ncbi.models import NCBIGenbank, NCBIRank, NCBITaxonomy
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.isolate import create_sequence_from_record
 from ref_builder.otu.promote import (
     promote_otu_accessions,
     promote_otu_accessions_from_records,
@@ -23,6 +22,7 @@ from ref_builder.otu.promote import (
 from ref_builder.otu.utils import (
     assign_records_to_segments,
     create_segments_from_records,
+    create_sequence_from_record,
     get_segments_max_length,
     get_segments_min_length,
     group_genbank_records_by_isolate,

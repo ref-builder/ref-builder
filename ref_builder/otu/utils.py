@@ -11,9 +11,12 @@ from ref_builder.models.accession import Accession
 from ref_builder.models.isolate import IsolateName, IsolateNameType
 from ref_builder.models.plan import Plan, Segment, SegmentRule
 from ref_builder.ncbi.models import NCBIGenbank
+from ref_builder.otu.builders.otu import OTUBuilder
+from ref_builder.otu.builders.sequence import SequenceBuilder
 from ref_builder.plan import (
     extract_segment_name_from_record_with_plan,
 )
+from ref_builder.repo import Repo
 from ref_builder.utils import (
     generate_natural_sort_key,
 )
@@ -182,3 +185,19 @@ def assign_records_to_segments(
         ].id: record
         for record in records
     }
+
+
+def create_sequence_from_record(
+    repo: Repo,
+    otu: OTUBuilder,
+    record: NCBIGenbank,
+    segment_id: UUID,
+) -> SequenceBuilder | None:
+    """Take a NCBI Nucleotide record and create a new sequence."""
+    return repo.create_sequence(
+        otu.id,
+        accession=record.accession_version,
+        definition=record.definition,
+        segment=segment_id,
+        sequence=record.sequence,
+    )

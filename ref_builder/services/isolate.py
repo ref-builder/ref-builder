@@ -9,11 +9,11 @@ from ref_builder.models.isolate import IsolateName
 from ref_builder.ncbi.models import NCBIGenbank
 from ref_builder.otu.builders.isolate import IsolateBuilder
 from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.isolate import create_sequence_from_record
 from ref_builder.otu.promote import promote_otu_accessions_from_records
 from ref_builder.otu.utils import (
     DeleteRationale,
     assign_records_to_segments,
+    create_sequence_from_record,
     group_genbank_records_by_isolate,
     parse_refseq_comment,
 )
