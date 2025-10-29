@@ -1,5 +1,5 @@
 import pytest
-from syrupy import SnapshotAssertion
+from syrupy.assertion import SnapshotAssertion
 
 from ref_builder.models.accession import Accession
 from ref_builder.ncbi.cache import NCBICache

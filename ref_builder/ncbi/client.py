@@ -29,7 +29,7 @@ if email := os.environ.get("NCBI_EMAIL"):
 if api_key := os.environ.get("NCBI_API_KEY"):
     Entrez.api_key = os.environ.get("NCBI_API_KEY")
 
-base_logger = get_logger("ncbi")
+logger = get_logger("ncbi")
 
 ESEARCH_PAGE_SIZE = 1000
 """The number of results to fetch per page in an Entrez esearch query."""
@@ -42,7 +42,6 @@ class NCBIClientProtocol(Protocol):
     """Protocol defining the interface for NCBI client implementations."""
 
     ignore_cache: bool
-    cache: NCBICache | None
 
     def fetch_genbank_records(
         self,
@@ -53,13 +52,14 @@ class NCBIClientProtocol(Protocol):
     def fetch_taxonomy_record(self, taxid: int) -> NCBITaxonomy | None:
         """Fetch taxonomy record for the given taxid."""
 
+    def fetch_descendant_taxids(self, species_taxid: int) -> list[int]:
+        """Fetch all descendant taxids under a species."""
+
     @staticmethod
     def fetch_accessions_by_taxid(
         taxid: int,
         sequence_min_length: int = 0,
         sequence_max_length: int = 0,
-        modification_date_start: datetime.date | None = None,
-        modification_date_end: datetime.date | None = None,
         refseq_only: bool = False,
     ) -> list[Accession]:
         """Fetch all accessions associated with the given taxid."""
@@ -112,7 +112,7 @@ class NCBIClient:
 
         records = []
 
-        logger = base_logger.bind(accessions=accessions)
+        log = logger.bind(accessions=accessions)
 
         if not self.ignore_cache:
             uncached_accessions = []
@@ -133,7 +133,7 @@ class NCBIClient:
                     records.append(record)
 
             if records:
-                logger.debug(
+                log.debug(
                     "Loaded cached records",
                     record_count=len(records),
                     cached_records=[
@@ -142,7 +142,7 @@ class NCBIClient:
                     ],
                 )
             if uncached_accessions:
-                logger.debug(
+                log.debug(
                     "Uncached accessions found",
                     uncached_accessions=uncached_accessions,
                 )
@@ -153,7 +153,7 @@ class NCBIClient:
         )
 
         if fetch_list:
-            logger.debug("Fetching accessions...", fetch_list=fetch_list)
+            log.debug("Fetching accessions...", fetch_list=fetch_list)
             new_records = NCBIClient.fetch_unvalidated_genbank_records(fetch_list)
 
             for record in new_records:
@@ -184,7 +184,7 @@ class NCBIClient:
         :param accessions: List of accession numbers to fetch from GenBank
         :return: A list of deserialized XML records from NCBI Nucleotide
         """
-        logger = base_logger.bind(accessions=accessions)
+        log = logger.bind(accessions=accessions)
 
         try:
             with log_http_error():
@@ -196,27 +196,27 @@ class NCBIClient:
                         retmode="xml",
                     )
                 except RuntimeError as e:
-                    logger.warning("Bad ID.", exception=e)
+                    log.warning("Bad ID.", exception=e)
                     return []
 
         except HTTPError as e:
             if e.code == HTTPStatus.BAD_REQUEST:
-                logger.exception("Accessions not found")
+                log.exception("Accessions not found")
             else:
-                logger.exception("HTTPError")
+                log.exception("HTTPError")
 
             return []
 
         try:
             records = Entrez.read(handle)
         except RuntimeError:
-            logger.exception("NCBI returned unparseable data")
+            log.exception("NCBI returned unparseable data")
             return []
 
         if records:
             # Handle cases where not all accessions can be fetched
             if len(records) != len(accessions):
-                logger.debug("Partial results fetched. Returning results...")
+                log.debug("Partial results fetched. Returning results...")
 
             return records
 
@@ -227,8 +227,6 @@ class NCBIClient:
         taxid: int,
         sequence_min_length: int = 0,
         sequence_max_length: int = 0,
-        modification_date_start: datetime.date | None = None,
-        modification_date_end: datetime.date | None = None,
         refseq_only: bool = False,
     ) -> list[Accession]:
         """Fetch all accessions associated with the given ``taxid``.
@@ -236,12 +234,10 @@ class NCBIClient:
         :param taxid: A Taxonomy ID
         :param sequence_min_length: The minimum length of a fetched sequence.
         :param sequence_max_length: The maximum length of a fetched sequence.
-        :param modification_date_start: The earliest a sequence's latest modification date can be.::
-        :param modification_date_end: The latest a sequence's latest modification date can be.::
         :param refseq_only: Only fetch accessions from NCBI RefSeq database.:
         :return: A list of Accession objects
         """
-        logger = base_logger.bind(taxid=taxid)
+        log = logger.bind(taxid=taxid)
 
         page = 1
         accessions = []
@@ -256,21 +252,12 @@ class NCBIClient:
                 )
             )
 
-        if modification_date_start is not None:
-            search_terms.append(
-                NCBIClient.generate_date_filter_string(
-                    filter_type="MDAT",
-                    start_date=modification_date_start,
-                    end_date=modification_date_end,
-                )
-            )
-
         if refseq_only:
             search_terms.append("refseq[filter]")
 
         search_term_string = " AND ".join(search_terms)
 
-        logger.debug(
+        log.debug(
             "Fetching NCBI Nucleotide accessions associated with NCBI Taxonomy ID...",
             search_string=search_term_string,
         )
@@ -300,7 +287,7 @@ class NCBIClient:
             if result_count - retstart <= ESEARCH_PAGE_SIZE:
                 break
 
-            logger.debug(
+            log.debug(
                 "Large fetch. May take longer than expected...",
                 result_count=result_count,
                 page=page,
@@ -329,7 +316,7 @@ class NCBIClient:
                 clean_records.append(NCBIGenbank.model_validate(record))
 
             except ValidationError as exc:
-                base_logger.debug(
+                logger.debug(
                     "Encountered validation errors",
                     accession=accession,
                     count=exc.error_count(),
@@ -349,7 +336,7 @@ class NCBIClient:
         :return: A validated NCBI Taxonomy record NCBITaxonomy if possible,
             else None
         """
-        logger = base_logger.bind(taxid=taxid)
+        log = logger.bind(taxid=taxid)
 
         record = None if self.ignore_cache else self.cache.load_taxonomy(taxid)
 
@@ -367,7 +354,7 @@ class NCBIClient:
             try:
                 records = Entrez.read(handle)
             except RuntimeError:
-                logger.exception("NCBI returned unparseable data.")
+                log.exception("NCBI returned unparseable data.")
                 return None
 
             if records:
@@ -381,7 +368,7 @@ class NCBIClient:
 
         except ValidationError as e:
             for error in e.errors():
-                logger.warning(
+                log.warning(
                     "ValidationError",
                     msg=error["msg"],
                     loc=error["loc"],
@@ -393,55 +380,101 @@ class NCBIClient:
 
         return None
 
+    def fetch_descendant_taxids(self, species_taxid: int) -> list[int]:
+        """Fetch all descendant taxids under a species.
+
+        Uses NCBI taxonomy subtree search to find all taxa under the given species.
+        Returns only subspecific taxids (isolate, "no rank" ranks).
+
+        :param species_taxid: A NCBI species-level Taxonomy id
+        :return: A list of subspecific taxids under the species
+        """
+        log = logger.bind(species_taxid=species_taxid)
+
+        log.debug("Fetching descendant taxids...")
+
+        with log_http_error():
+            handle = Entrez.esearch(
+                db=NCBIDatabase.TAXONOMY,
+                term=f"txid{species_taxid}[Subtree]",
+                retmax=10000,
+            )
+
+        result = Entrez.read(handle)
+
+        if not result["IdList"]:
+            return []
+
+        descendant_taxids = [int(tid) for tid in result["IdList"]]
+
+        subspecific_taxids = []
+        for taxid in descendant_taxids:
+            if taxid == species_taxid:
+                continue
+
+            tax_record = self.fetch_taxonomy_record(taxid)
+            if tax_record and tax_record.rank in (NCBIRank.ISOLATE, NCBIRank.NO_RANK):
+                subspecific_taxids.append(taxid)
+
+        log.debug(
+            "Found subspecific descendants",
+            count=len(subspecific_taxids),
+            taxids=subspecific_taxids,
+        )
+
+        return subspecific_taxids
+
     def fetch_lineage(self, taxid: int) -> Lineage:
-        """Fetch a complete lineage from species down to the target taxon.
+        """Fetch a complete lineage from species including all descendant taxids.
 
         Fetches the taxonomy record for the given taxid and builds a lineage
-        from species level down to the target taxon. Each taxon in the lineage
-        includes full details (acronyms, synonyms) fetched from NCBI.
+        from species level including ALL subspecific descendants. This ensures
+        that any isolate under the species can be added to an OTU without
+        validation errors.
 
         :param taxid: A NCBI Taxonomy id
-        :return: A Lineage object with complete details for each taxon
+        :return: A Lineage object with species and all subspecific descendants
         """
-        logger = base_logger.bind(taxid=taxid)
+        log = logger.bind(taxid=taxid)
 
         taxonomy = self.fetch_taxonomy_record(taxid)
 
         if taxonomy is None:
             raise ValueError(f"Could not fetch taxonomy record for taxid {taxid}")
 
-        # If not at species level, fetch the species-level taxonomy
-        if taxonomy.rank != NCBIRank.SPECIES:
-            species_taxonomy = self.fetch_taxonomy_record(taxonomy.species.id)
-            if species_taxonomy is None:
-                raise ValueError(
-                    f"Could not fetch species taxonomy for taxid {taxonomy.species.id}"
-                )
-        else:
-            species_taxonomy = taxonomy
+        species_taxonomy = self.fetch_taxonomy_record(taxonomy.species.id)
+        if species_taxonomy is None:
+            raise ValueError(
+                f"Could not fetch species taxonomy for taxid {taxonomy.species.id}"
+            )
 
-        # Build list of taxa from target down to species
-        taxa_to_fetch = []
+        species_taxon = Taxon(
+            id=species_taxonomy.id,
+            name=species_taxonomy.name,
+            parent=None,
+            rank=species_taxonomy.rank,
+            other_names=TaxonOtherNames(
+                acronym=species_taxonomy.other_names.acronym,
+                synonyms=species_taxonomy.other_names.equivalent_name,
+            ),
+        )
 
-        # Add the target taxon if it's not species level
-        if taxonomy.rank != NCBIRank.SPECIES:
-            taxa_to_fetch.append(taxonomy.id)
+        descendant_taxids = self.fetch_descendant_taxids(species_taxonomy.id)
 
-        # Always add the species
-        taxa_to_fetch.append(species_taxonomy.id)
+        taxon_objects = [species_taxon]
 
-        # Fetch complete details for each taxon and build Taxon objects
-        taxon_objects = []
-
-        for i, tid in enumerate(taxa_to_fetch):
-            tax_record = self.fetch_taxonomy_record(tid)
-
+        for descendant_taxid in descendant_taxids:
+            tax_record = self.fetch_taxonomy_record(descendant_taxid)
             if tax_record is None:
-                logger.warning("Could not fetch taxonomy record", taxid=tid)
+                log.warning("Could not fetch taxonomy record", taxid=descendant_taxid)
                 continue
 
-            # Determine parent (None for species, otherwise next in list)
-            parent_id = None if i == len(taxa_to_fetch) - 1 else taxa_to_fetch[i + 1]
+            parent_id = species_taxonomy.id
+            for lineage_item in tax_record.lineage:
+                if lineage_item.rank in ("no rank", "isolate"):
+                    if lineage_item.id in descendant_taxids:
+                        parent_id = lineage_item.id
+                        break
 
             taxon = Taxon(
                 id=tax_record.id,
@@ -537,7 +570,7 @@ def log_http_error() -> None:
     try:
         yield
     except HTTPError as e:
-        base_logger.exception(
+        logger.exception(
             "HTTPError raised",
             body=e.read(),
             code=e.code,

@@ -42,15 +42,16 @@ def isolate_create(
 
 @isolate.command(name="delete")
 @click.argument("ISOLATE_ID", type=UUID)
+@click.option("-m", "--message", required=True, help="Reason for deletion")
 @pass_repo
-def isolate_delete(repo: Repo, isolate_id: UUID) -> None:
+def isolate_delete(repo: Repo, isolate_id: UUID, message: str) -> None:
     """Delete an isolate by UUID.
 
     ISOLATE_ID is the isolate UUID.
     """
     services = Services(repo, NCBIClient(False))
 
-    if services.isolate.delete(isolate_id):
+    if services.isolate.delete(isolate_id, message):
         click.echo("Isolate deleted.")
     else:
         sys.exit(1)

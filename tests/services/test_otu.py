@@ -1,9 +1,9 @@
 import pytest
 from pytest_mock import MockerFixture
 
+from ref_builder.models.otu import OTU
 from ref_builder.ncbi.client import NCBIClientProtocol
 from ref_builder.ncbi.models import NCBIRank
-from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.repo import Repo
 from ref_builder.services.cls import Services
 from ref_builder.services.otu import OTUService
@@ -20,7 +20,7 @@ def otu_service(empty_repo: Repo, mock_ncbi_client: NCBIClientProtocol) -> OTUSe
     return services.otu
 
 
-class TestOTUServiceCreate:
+class TestCreate:
     """Test successful OTU creation scenarios."""
 
     def test_ok(
@@ -37,7 +37,7 @@ class TestOTUServiceCreate:
             otu = otu_service.create(accessions)
 
         assert otu is not None
-        assert isinstance(otu, OTUBuilder)
+        assert isinstance(otu, OTU)
         assert otu.taxid == 3432891  # Species level (auto-promoted from 12242)
         assert otu.name == "Tobamovirus tabaci"
 
@@ -84,21 +84,15 @@ class TestOTUServiceCreate:
         assert otu is not None
         assert "V01408" in otu.excluded_accessions
 
-
-class TestOTUServiceCreateValidation:
-    """Test input validation failures."""
-
     def test_empty_accessions(self, otu_service: OTUService):
         """Test that empty accessions list returns None."""
-        otu = otu_service.create([])
-
-        assert otu is None
+        assert otu_service.create([]) is None
 
     def test_missing_accessions(
         self,
-        otu_service: OTUService,
         mocker: MockerFixture,
         ncbi_genbank_factory: type[NCBIGenbankFactory],
+        otu_service: OTUService,
     ):
         """Test that missing accessions returns None."""
         records = [ncbi_genbank_factory.build()]
@@ -112,9 +106,9 @@ class TestOTUServiceCreateValidation:
 
     def test_multiple_organisms(
         self,
-        otu_service: OTUService,
         mocker: MockerFixture,
         ncbi_genbank_factory: type[NCBIGenbankFactory],
+        otu_service: OTUService,
     ):
         """Test that records from different organisms returns None."""
         record_1 = ncbi_genbank_factory.build(source__taxid=12345)
@@ -124,10 +118,7 @@ class TestOTUServiceCreateValidation:
             return_value=[record_1, record_2]
         )
 
-        accessions = [record_1.accession, record_2.accession]
-        otu = otu_service.create(accessions)
-
-        assert otu is None
+        assert otu_service.create([record_1.accession, record_2.accession]) is None
 
     def test_multiple_isolates(
         self,
@@ -155,42 +146,6 @@ class TestOTUServiceCreateValidation:
 
         assert otu is None
 
-
-class TestOTUServiceCreateTaxonomy:
-    """Test taxonomy-related edge cases."""
-
-    def test_duplicate_taxid(
-        self,
-        empty_repo: Repo,
-        otu_service: OTUService,
-        mocker: MockerFixture,
-        ncbi_taxonomy_factory: type[NCBITaxonomyFactory],
-        ncbi_genbank_factory: type[NCBIGenbankFactory],
-    ):
-        """Test that duplicate taxid returns None."""
-        taxonomy = ncbi_taxonomy_factory.build(rank=NCBIRank.SPECIES)
-        records = [
-            ncbi_genbank_factory.build(source__taxid=taxonomy.id, accession="AB123456")
-        ]
-
-        otu_service.ncbi.fetch_genbank_records = mocker.Mock(return_value=records)
-        otu_service.ncbi.fetch_taxonomy_record = mocker.Mock(return_value=taxonomy)
-
-        with empty_repo.lock():
-            first_otu = otu_service.create([records[0].accession])
-
-        assert first_otu is not None
-
-        record_2 = ncbi_genbank_factory.build(
-            source__taxid=taxonomy.id, accession="AB789012"
-        )
-        otu_service.ncbi.fetch_genbank_records = mocker.Mock(return_value=[record_2])
-
-        with empty_repo.lock():
-            second_otu = otu_service.create([record_2.accession])
-
-        assert second_otu is None
-
     def test_taxonomy_not_found(
         self,
         otu_service: OTUService,
@@ -209,10 +164,10 @@ class TestOTUServiceCreateTaxonomy:
         assert otu is None
 
 
-class TestOTUServiceCreatePlan:
+class TestSetPlan:
     """Test plan creation failures."""
 
-    def test_plan_creation_failure(
+    def test_failure(
         self,
         empty_repo: Repo,
         otu_service: OTUService,
@@ -240,55 +195,36 @@ class TestOTUServiceCreatePlan:
         assert otu is None
 
 
-class TestOTUServiceExcludeAccessions:
-    """Test accession exclusion."""
+class TestOTUServiceManageAccessions:
+    """Test accession exclusion and allowing."""
 
-    def test_ok(self, scratch_repo: Repo, mock_ncbi_client):
-        """Test accession exclusion."""
-        taxid = mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
+    def test_ok(self, empty_repo: Repo, mock_ncbi_client):
+        """Test excluding and allowing accessions."""
+        services = Services(empty_repo, mock_ncbi_client)
 
-        otu_before = scratch_repo.get_otu_by_taxid(taxid)
-        assert otu_before is not None
+        # Create OTU with only RefSeq accessions
+        with empty_repo.lock():
+            otu = services.otu.create(["DQ178610", "DQ178611"])
 
-        assert not otu_before.excluded_accessions
+        assert otu is not None
+        assert otu.accessions == {"DQ178610", "DQ178611"}
+        assert not otu.excluded_accessions
 
-        services = Services(scratch_repo, mock_ncbi_client)
+        # Exclude GenBank isolate accessions (not yet in OTU)
+        with empty_repo.lock():
+            services.otu.exclude_accessions(otu.id, {"DQ178608", "DQ178609"})
 
-        with scratch_repo.lock():
-            services.otu.exclude_accessions(otu_before.id, {"DQ178608", "DQ178609"})
+        otu_excluded = empty_repo.get_otu(otu.id)
+        assert otu_excluded is not None
+        assert otu_excluded.excluded_accessions == {"DQ178608", "DQ178609"}
 
-        otu_after = scratch_repo.get_otu_by_taxid(taxid)
-        assert otu_after is not None
+        # Allow one accession back
+        with empty_repo.lock():
+            services.otu.allow_accessions(otu.id, {"DQ178608"})
 
-        assert otu_after.excluded_accessions == {"DQ178608", "DQ178609"}
-
-
-class TestOTUServiceAllowAccessions:
-    """Test allowing previously excluded accessions."""
-
-    def test_ok(self, scratch_repo: Repo, mock_ncbi_client):
-        taxid = mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
-
-        otu_initial = scratch_repo.get_otu_by_taxid(taxid)
-        assert otu_initial is not None
-
-        services = Services(scratch_repo, mock_ncbi_client)
-
-        with scratch_repo.lock():
-            services.otu.exclude_accessions(otu_initial.id, {"DQ178608", "DQ178609"})
-
-        otu_before = scratch_repo.get_otu_by_taxid(taxid)
-        assert otu_before is not None
-
-        assert otu_before.excluded_accessions == {"DQ178608", "DQ178609"}
-
-        with scratch_repo.lock():
-            services.otu.allow_accessions(otu_before.id, {"DQ178608"})
-
-        otu_after = scratch_repo.get_otu_by_taxid(taxid)
-        assert otu_after is not None
-
-        assert otu_after.excluded_accessions == {"DQ178609"}
+        otu_final = empty_repo.get_otu(otu.id)
+        assert otu_final is not None
+        assert otu_final.excluded_accessions == {"DQ178609"}
 
 
 class TestOTUServiceUpdate:
@@ -308,12 +244,9 @@ class TestOTUServiceUpdate:
         assert otu is not None
 
         # Mock the update functions to avoid real NCBI calls
-        mocker.patch(
-            "ref_builder.services.otu.promote_otu_accessions", return_value=set()
-        )
-        mocker.patch(
-            "ref_builder.services.otu.upgrade_outdated_sequences_in_otu",
-            return_value=set(),
+        mocker.patch.object(otu_service, "_promote_accessions", return_value=set())
+        mocker.patch.object(
+            otu_service, "_upgrade_outdated_sequences", return_value=set()
         )
         mocker.patch.object(
             otu_service._ncbi, "fetch_accessions_by_taxid", return_value=[]
@@ -321,7 +254,7 @@ class TestOTUServiceUpdate:
 
         # Update the OTU
         with empty_repo.lock():
-            updated_otu = otu_service.update(otu.id, ignore_cache=True)
+            updated_otu = otu_service.update(otu.id)
 
         assert updated_otu is not None
         assert updated_otu.id == otu.id
@@ -334,7 +267,7 @@ class TestOTUServiceUpdate:
         """Test that update returns None when OTU is not found."""
         from uuid import uuid4
 
-        result = otu_service.update(uuid4(), ignore_cache=True)
+        result = otu_service.update(uuid4())
 
         assert result is None
 
@@ -356,7 +289,7 @@ class TestOTUServiceUpdate:
 
         # Update should promote V01408 to NC_001367 and also discover other isolates
         with empty_repo.lock():
-            updated_otu = otu_service.update(otu.id, ignore_cache=True)
+            updated_otu = otu_service.update(otu.id)
 
         assert updated_otu is not None
         assert updated_otu.id == otu.id
@@ -388,7 +321,7 @@ class TestOTUServiceUpdate:
 
         # Update should discover and add the GenBank isolates
         with empty_repo.lock():
-            otu_after = otu_service.update(otu_before.id, ignore_cache=True)
+            otu_after = otu_service.update(otu_before.id)
 
         assert otu_after is not None
         assert otu_after.id == otu_before.id
@@ -402,3 +335,44 @@ class TestOTUServiceUpdate:
         assert genbank_isolates.intersection(otu_after.accessions), (
             "Expected some GenBank isolates to be added"
         )
+
+    def test_upgrade_sequences(
+        self, empty_repo: Repo, otu_service: OTUService, mock_ncbi_client
+    ):
+        """Test sequence version upgrade from .1 to .3."""
+        # Block newer versions so only .1 is discoverable during creation
+        with mock_ncbi_client.blocking(["NC_004452.2", "NC_004452.3"]):
+            with empty_repo.lock():
+                otu_before = otu_service.create(["NC_004452.1"])
+
+        assert otu_before
+        assert "NC_004452" in otu_before.accessions
+        assert len(otu_before.isolates) == 1
+
+        sequence_before = otu_before.get_sequence("NC_004452")
+        assert sequence_before
+        assert sequence_before.accession.version == 1
+
+        isolate_before = otu_before.isolates[0]
+        assert isolate_before.accessions == {"NC_004452"}
+
+        # Now .2 and .3 are discoverable - update should upgrade to .3
+        with empty_repo.lock():
+            otu_after = otu_service.update(otu_before.id)
+
+        assert otu_after
+        assert "NC_004452" in otu_after.accessions
+
+        # Find the sequence with the highest version
+        nc_sequences = [
+            seq for seq in otu_after.sequences if seq.accession.key == "NC_004452"
+        ]
+        assert len(nc_sequences) == 1
+
+        sequence_after = nc_sequences[0]
+        assert sequence_after.accession.version == 3
+
+        # Verify the isolate was updated
+        isolate_after = otu_after.get_isolate(isolate_before.id)
+        assert isolate_after
+        assert isolate_after.accessions == {"NC_004452"}

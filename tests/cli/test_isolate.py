@@ -2,8 +2,8 @@ from click.testing import CliRunner
 
 from ref_builder.cli.isolate import isolate as isolate_command_group
 from ref_builder.cli.otu import otu as otu_command_group
-from ref_builder.models.isolate import IsolateName, IsolateNameType
 from ref_builder.repo import Repo
+from tests.fixtures.mock_ncbi_client import MockNCBIClient
 
 runner = CliRunner()
 
@@ -72,7 +72,7 @@ class TestIsolateCreateCommand:
 class TestIsolateGetCommand:
     """Test `ref-builder isolate get ISOLATE_ID`` works as expected."""
 
-    def test_ok(self, scratch_repo: Repo, mock_ncbi_client):
+    def test_ok(self, scratch_repo: Repo, mock_ncbi_client: MockNCBIClient):
         """Test basic command functionality."""
         otu_id = scratch_repo.get_otu_id_by_taxid(
             mock_ncbi_client.otus.wasabi_mottle_virus.taxid
@@ -85,7 +85,6 @@ class TestIsolateGetCommand:
         assert otu
 
         for isolate_id in otu.isolate_ids:
-            print({"isolate_id": isolate_id})
             result = runner.invoke(
                 isolate_command_group,
                 [
@@ -116,23 +115,31 @@ class TestIsolateGetCommand:
 class TestIsolateDeleteCommand:
     """Test `ref-builder isolate delete ISOLATE_ID`` works as expected."""
 
-    def test_ok(self, scratch_repo: Repo, mock_ncbi_client):
+    def test_ok(self, scratch_repo: Repo, mock_ncbi_client: MockNCBIClient):
         """Test basic command functionality."""
         otu = scratch_repo.get_otu_by_taxid(
             mock_ncbi_client.otus.wasabi_mottle_virus.taxid
         )
 
         assert otu
+        assert len(otu.isolates) > 0
 
-        isolate_id = otu.get_isolate_id_by_name(
-            IsolateName(type=IsolateNameType.ISOLATE, value="WMoV-6.3"),
-        )
+        # Get the first isolate to test deletion
+        isolate = otu.isolates[0]
+        isolate_id = isolate.id
 
         assert isolate_id in otu.isolate_ids
 
         result = runner.invoke(
             isolate_command_group,
-            ["--path", str(scratch_repo.path), "delete", str(isolate_id)],
+            [
+                "--path",
+                str(scratch_repo.path),
+                "delete",
+                str(isolate_id),
+                "--message",
+                "Test deletion",
+            ],
         )
 
         assert result.exit_code == 0

@@ -32,7 +32,7 @@ class Taxon(BaseModel):
 class Lineage(BaseModel):
     """An OTU subspecific lineage.
 
-    Species is the root (parent=None), with isolates/strains as leaves.
+    Ordered from species (root) to isolates/strains (leaves).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -44,25 +44,25 @@ class Lineage(BaseModel):
     def validate_taxa(cls, taxa: list[Taxon]) -> list[Taxon]:
         """Validate the taxa in this lineage.
 
-        - Ensure taxa are linked contiguously.
-        - Ensure species is the root (last position with parent=None).
+        - Ensure species is the root (first position with parent=None).
+        - Ensure all taxa reference valid parents within the lineage.
         """
-        # Check contiguous linking
-        for i in range(len(taxa) - 1):
-            if taxa[i].parent != taxa[i + 1].id:
-                raise ValueError(
-                    f"Taxa not linked contiguously: {taxa[i].name} "
-                    f"(parent={taxa[i].parent}) != {taxa[i + 1].name} (id={taxa[i + 1].id})"
-                )
+        if taxa[0].rank != NCBIRank.SPECIES:
+            raise ValueError(f"Root must be species rank, got '{taxa[0].rank}'")
 
-        # Species must be the root at the end
-        if taxa[-1].rank != NCBIRank.SPECIES:
-            raise ValueError(f"Root must be species rank, got '{taxa[-1].rank}'")
-
-        if taxa[-1].parent is not None:
+        if taxa[0].parent is not None:
             raise ValueError(
-                f"Species root must have parent=None, got parent={taxa[-1].parent}"
+                f"Species root must have parent=None, got parent={taxa[0].parent}"
             )
+
+        taxon_ids = {taxon.id for taxon in taxa}
+
+        for i in range(1, len(taxa)):
+            if taxa[i].parent not in taxon_ids:
+                raise ValueError(
+                    f"Taxon {taxa[i].name} (id={taxa[i].id}) has parent={taxa[i].parent} "
+                    f"which is not in the lineage"
+                )
 
         return taxa
 
@@ -70,10 +70,10 @@ class Lineage(BaseModel):
     def acronym(self) -> str:
         """Return first acronym found in lineage, searching from root to leaf.
 
-        Searches taxa from species (root at taxa[-1]) down to leaf (taxa[0]).
+        Searches taxa from species (root at taxa[0]) down to leaf (taxa[-1]).
         Returns empty string if no acronyms found.
         """
-        for taxon in reversed(self.taxa):
+        for taxon in self.taxa:
             if taxon.other_names.acronym:
                 return taxon.other_names.acronym[0]
         return ""
@@ -82,9 +82,9 @@ class Lineage(BaseModel):
     def name(self) -> str:
         """Return the species name from the lineage.
 
-        The root taxon (last position) is always species rank (enforced by validator).
+        The root taxon (first position) is always species rank (enforced by validator).
         """
-        return self.taxa[-1].name
+        return self.taxa[0].name
 
     @property
     def synonyms(self) -> set[str]:

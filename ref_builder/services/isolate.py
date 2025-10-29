@@ -1,22 +1,21 @@
 """Manage isolate data."""
 
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import structlog
 
-from ref_builder.errors import PlanConformationError
-from ref_builder.models.isolate import IsolateName
+from ref_builder.errors import PlanValidationError
+from ref_builder.models.accession import Accession
+from ref_builder.models.isolate import Isolate, IsolateName
+from ref_builder.models.otu import OTU
+from ref_builder.models.sequence import Sequence
 from ref_builder.ncbi.models import NCBIGenbank
-from ref_builder.otu.builders.isolate import IsolateBuilder
-from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.promote import promote_otu_accessions_from_records
-from ref_builder.otu.utils import (
-    DeleteRationale,
-    assign_records_to_segments,
-    create_sequence_from_record,
+from ref_builder.ncbi.utils import (
     group_genbank_records_by_isolate,
     parse_refseq_comment,
 )
+from ref_builder.otu import assign_records_to_segments
+from ref_builder.promote import promote_otu_from_records
 from ref_builder.services import Service
 from ref_builder.utils import filter_accessions
 
@@ -29,7 +28,7 @@ class IsolateService(Service):
     def create(
         self,
         accessions: list[str],
-    ) -> IsolateBuilder | None:
+    ) -> Isolate | None:
         """Create a new isolate from a list of accessions.
 
         The isolate name is extracted from GenBank record metadata. If the records
@@ -70,7 +69,7 @@ class IsolateService(Service):
             log.error("No OTU found for taxid")
             return None
 
-        otu_logger = log.bind(otu_id=str(otu.id), otu_name=otu.name)
+        log = log.bind(otu_id=str(otu.id), otu_name=otu.name)
 
         # Filter out blocked accessions
         eligible_accessions = filter_accessions(
@@ -79,7 +78,7 @@ class IsolateService(Service):
         )
 
         if not eligible_accessions:
-            otu_logger.error("All fetched accessions are blocked for this OTU")
+            log.error("All fetched accessions are blocked for this OTU")
             return None
 
         records = [r for r in fetched_records if r.accession in eligible_accessions]
@@ -88,7 +87,7 @@ class IsolateService(Service):
         if any(record.refseq for record in records) and not all(
             record.refseq for record in records
         ):
-            otu_logger.error(
+            log.error(
                 "Cannot mix RefSeq and non-RefSeq sequences in multipartite isolate."
             )
             return None
@@ -96,48 +95,37 @@ class IsolateService(Service):
         binned_records = group_genbank_records_by_isolate(records)
 
         if len(binned_records) != 1:
-            otu_logger.error(
-                "More than one isolate name found in requested accessions."
-            )
+            log.error("More than one isolate name found in requested accessions.")
             return None
 
         isolate_name, _ = next(iter(binned_records.items()))
 
-        # Check for existing isolate with same name
-        if (isolate_id := otu.get_isolate_id_by_name(isolate_name)) is not None:
-            otu_logger.warning(
-                "Isolate name already exists in this OTU.", name=isolate_name
-            )
+        # Try to promote sequences if all records are RefSeq
+        if all(record.refseq for record in records):
+            log.info("Checking for promotable sequences")
 
-            # Try to promote sequences if all records are RefSeq
-            if all(record.refseq for record in records):
-                otu_logger.info("Attempting to promote sequences to RefSeq")
+            promoted_accessions = promote_otu_from_records(self._repo, otu, records)
 
-                promoted_accessions = promote_otu_accessions_from_records(
-                    self._repo, otu, records
-                )
+            if promoted_accessions:
+                otu = self._repo.get_otu(otu.id)
+                # Find the isolate by one of the promoted accessions
+                promoted_accession = next(iter(promoted_accessions))
+                isolate = otu.get_isolate_by_accession(promoted_accession)
 
-                if promoted_accessions:
-                    otu = self._repo.get_otu(otu.id)
-                    isolate = otu.get_isolate(isolate_id)
-                    otu_logger.info(
+                if isolate:
+                    log.info(
                         "Sequences promoted",
                         promoted_accessions=sorted(promoted_accessions),
                     )
                     return isolate
 
-                otu_logger.warning("No promotable sequences found")
-
-            return None
+            log.warning("No promotable sequences found")
 
         # Create the isolate
-        with self._repo.use_transaction() as transaction:
-            isolate = self._write_isolate(otu, isolate_name, records)
+        isolate = self._write_isolate(otu, isolate_name, records)
 
-            if isolate:
-                return isolate
-
-            transaction.abort()
+        if isolate:
+            return isolate
 
         return None
 
@@ -146,7 +134,7 @@ class IsolateService(Service):
         otu_id: UUID,
         isolate_name: IsolateName | None,
         records: list[NCBIGenbank],
-    ) -> IsolateBuilder | None:
+    ) -> Isolate | None:
         """Create a new isolate from pre-fetched GenBank records.
 
         Use this method when records are already fetched (e.g., in batch operations).
@@ -163,17 +151,14 @@ class IsolateService(Service):
             logger.error("OTU not found", otu_id=str(otu_id))
             return None
 
-        with self._repo.use_transaction() as transaction:
-            isolate = self._write_isolate(otu, isolate_name, records)
+        isolate = self._write_isolate(otu, isolate_name, records)
 
-            if isolate:
-                return isolate
-
-            transaction.abort()
+        if isolate:
+            return isolate
 
         return None
 
-    def delete(self, isolate_id: UUID) -> bool:
+    def delete(self, isolate_id: UUID, message: str) -> bool:
         """Delete an isolate.
 
         :param isolate_id: the isolate ID to delete
@@ -193,14 +178,11 @@ class IsolateService(Service):
 
         otu = self._repo.get_otu(otu_id)
 
-        otu_logger = logger.bind(otu_id=str(otu.id), taxid=otu.taxid)
+        log = logger.bind(otu_id=str(otu.id), taxid=otu.taxid)
 
-        with self._repo.use_transaction():
-            self._repo.delete_isolate(
-                otu.id, isolate.id, rationale=DeleteRationale.USER
-            )
+        self._repo.delete_isolate(otu.id, isolate.id, message)
 
-        otu_logger.info(
+        log.info(
             "Isolate removed.",
             name=isolate.name,
             removed_isolate_id=str(isolate_id),
@@ -213,10 +195,10 @@ class IsolateService(Service):
 
     def _write_isolate(
         self,
-        otu: OTUBuilder,
+        otu: OTU,
         isolate_name: IsolateName | None,
         records: list[NCBIGenbank],
-    ) -> IsolateBuilder | None:
+    ) -> Isolate | None:
         """Create a new isolate and its sequences in the repository.
 
         :param otu: the OTU to add the isolate to
@@ -245,6 +227,7 @@ class IsolateService(Service):
 
         # Validate taxid exists in OTU lineage
         lineage_taxids = {taxon.id for taxon in otu.lineage.taxa}
+
         if taxid not in lineage_taxids:
             log.error(
                 "Taxid not found in OTU lineage.",
@@ -255,7 +238,7 @@ class IsolateService(Service):
 
         try:
             assigned = assign_records_to_segments(records, otu.plan)
-        except PlanConformationError as e:
+        except PlanValidationError as e:
             log.warning(
                 str(e),
                 segment_names=[str(segment.name) for segment in otu.plan.segments],
@@ -263,20 +246,27 @@ class IsolateService(Service):
 
             return None
 
+        isolate_id = uuid4()
+
+        sequences = [
+            Sequence(
+                accession=Accession.from_string(record.accession_version),
+                definition=record.definition,
+                segment=segment_id,
+                sequence=record.sequence,
+            )
+            for segment_id, record in assigned.items()
+        ]
+
         isolate = self._repo.create_isolate(
-            otu.id,
+            otu_id=otu.id,
+            isolate_id=isolate_id,
             name=isolate_name,
             taxid=taxid,
+            sequences=sequences,
         )
 
-        for segment_id, record in assigned.items():
-            if (sequence := otu.get_sequence_by_accession(record.accession)) is None:
-                sequence = create_sequence_from_record(
-                    self._repo, otu, record, segment_id
-                )
-
-            self._repo.link_sequence(otu.id, isolate.id, sequence.id)
-
+        for record in assigned.values():
             if record.refseq:
                 _, old_accession = parse_refseq_comment(record.comment)
 
@@ -285,39 +275,6 @@ class IsolateService(Service):
                     [old_accession],
                 )
 
-        log.info("Isolate created", id=str(isolate.id))
+        log.info("Isolate created", id=str(isolate_id))
 
-        return self._repo.get_isolate(isolate.id)
-
-
-def _fetch_records(
-    accessions: list | set,
-    blocked_accessions: set,
-    ncbi_client,
-) -> list[NCBIGenbank]:
-    """Fetch GenBank records from a list of accessions.
-
-    Don't fetch accessions in ``blocked_accessions``.
-
-    :param accessions: A list of accessions to fetch.
-    :param blocked_accessions: A set of accessions to ignore.
-    :param ncbi_client: NCBI client to use for fetching records.
-    """
-    log = logger.bind(
-        requested=sorted(accessions),
-        blocked=sorted(blocked_accessions),
-    )
-
-    eligible = set(accessions) - blocked_accessions
-
-    if not eligible:
-        log.error("None of the requested accessions were eligible for inclusion.")
-        return []
-
-    log.debug(
-        "Fetching accessions.",
-        accessions=sorted(eligible),
-        count=len(eligible),
-    )
-
-    return ncbi_client.fetch_genbank_records(eligible)
+        return isolate

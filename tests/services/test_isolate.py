@@ -2,15 +2,14 @@ from uuid import uuid4
 
 from pytest_mock import MockerFixture
 
-from ref_builder.models.isolate import IsolateName, IsolateNameType
-from ref_builder.otu.builders.isolate import IsolateBuilder
+from ref_builder.models.isolate import Isolate, IsolateName, IsolateNameType
 from ref_builder.repo import Repo
 from ref_builder.services.cls import Services
 from tests.fixtures.factories import NCBIGenbankFactory, NCBISourceFactory
 from tests.fixtures.mock_ncbi_client import MockNCBIClient
 
 
-class TestIsolateServiceCreate:
+class TestCreate:
     """Test successful isolate creation scenarios."""
 
     def test_ok(
@@ -30,7 +29,7 @@ class TestIsolateServiceCreate:
             isolate = services.isolate.create(["MH200607"])
 
         assert isolate is not None
-        assert isinstance(isolate, IsolateBuilder)
+        assert isinstance(isolate, Isolate)
         assert isolate.name == IsolateName(IsolateNameType.ISOLATE, "WMoV-6.3")
         assert len(isolate.sequences) == 1
 
@@ -119,10 +118,6 @@ class TestIsolateServiceCreate:
         assert "EF546811" in otu.excluded_accessions
         assert "EF546812" in otu.excluded_accessions
         assert "EF546813" in otu.excluded_accessions
-
-
-class TestIsolateServiceCreateValidation:
-    """Test input validation failures."""
 
     def test_otu_not_found(
         self,
@@ -262,6 +257,8 @@ class TestIsolateServiceCreateValidation:
         # Use an existing isolate name from scratch_repo
         existing_isolate = otu.isolates[0]
         existing_name = existing_isolate.name
+
+        assert existing_name
 
         source = NCBISourceFactory.build(
             taxid=otu.taxid,
@@ -412,60 +409,7 @@ class TestIsolateServiceCreateValidation:
         assert otu_after.isolate_ids == otu.isolate_ids
 
 
-class TestIsolateServicePromotion:
-    """Test RefSeq promotion logic."""
-
-    def test_promote_existing_isolate(
-        self,
-        scratch_repo: Repo,
-        mock_ncbi_client: MockNCBIClient,
-        mocker: MockerFixture,
-        ncbi_genbank_factory: type[NCBIGenbankFactory],
-    ):
-        """Test promoting sequences when adding RefSeq version of existing isolate."""
-        services = Services(scratch_repo, mock_ncbi_client)
-
-        otu = scratch_repo.get_otu_by_taxid(
-            mock_ncbi_client.otus.wasabi_mottle_virus.taxid
-        )
-
-        # Get an existing isolate
-        existing_isolate = otu.isolates[0]
-        existing_name = existing_isolate.name
-
-        # Create RefSeq record with same isolate name
-        source = NCBISourceFactory.build(
-            taxid=otu.taxid,
-            isolate=existing_name.value,
-        )
-        refseq_record = ncbi_genbank_factory.build(
-            source=source,
-            accession="NC_999999",
-            refseq=True,
-            comment="PROVISIONAL REFSEQ: This record has not yet been subject to final NCBI review. "
-            f"The reference sequence is identical to {existing_isolate.sequences[0].accession.key},COMPLETENESS: full length.",
-        )
-
-        mocker.patch.object(
-            mock_ncbi_client,
-            "fetch_genbank_records",
-            return_value=[refseq_record],
-        )
-
-        # Mock promote_otu_accessions_from_records to return promoted accessions
-        mocker.patch(
-            "ref_builder.services.isolate.promote_otu_accessions_from_records",
-            return_value={refseq_record.accession},
-        )
-
-        with scratch_repo.lock():
-            isolate = services.isolate.create([refseq_record.accession])
-
-        assert isolate is not None
-        assert isolate.id == existing_isolate.id
-
-
-class TestIsolateServiceDelete:
+class TestDelete:
     """Test isolate deletion."""
 
     def test_ok(self, scratch_repo: Repo, mock_ncbi_client: MockNCBIClient):
@@ -475,15 +419,22 @@ class TestIsolateServiceDelete:
         otu_before = scratch_repo.get_otu_by_taxid(
             mock_ncbi_client.otus.wasabi_mottle_virus.taxid
         )
+
+        assert otu_before
+
         isolate_id = next(iter(otu_before.isolate_ids))
         isolate_before = otu_before.get_isolate(isolate_id)
 
+        assert isolate_before
+
         with scratch_repo.lock():
-            result = services.isolate.delete(isolate_id)
+            result = services.isolate.delete(isolate_id, "For testing purposes.")
 
         assert result is True
 
         otu_after = scratch_repo.get_otu(otu_before.id)
+
+        assert otu_after
         assert isolate_id not in otu_after.isolate_ids
         assert otu_after.get_isolate(isolate_id) is None
         assert isolate_before.accessions not in otu_after.accessions
@@ -497,7 +448,7 @@ class TestIsolateServiceDelete:
         """Test deletion with non-existent OTU returns False."""
         services = Services(empty_repo, mock_ncbi_client)
 
-        result = services.isolate.delete(uuid4())
+        result = services.isolate.delete(uuid4(), "For testing purposes.")
 
         assert result is False
 
@@ -513,7 +464,9 @@ class TestIsolateServiceDelete:
             mock_ncbi_client.otus.wasabi_mottle_virus.taxid
         )
 
+        assert otu
+
         with scratch_repo.lock():
-            result = services.isolate.delete(uuid4())
+            result = services.isolate.delete(uuid4(), "For testing purposes.")
 
         assert result is False

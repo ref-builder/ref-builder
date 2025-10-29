@@ -1,24 +1,21 @@
 from collections.abc import Generator
 from pathlib import Path
 
-from orjson import orjson
+import orjson
 
 from ref_builder.events.base import Event
 from ref_builder.events.isolate import (
     CreateIsolate,
     DeleteIsolate,
-    LinkSequence,
-    UnlinkSequence,
+    PromoteIsolate,
 )
 from ref_builder.events.otu import (
     CreateOTU,
-    CreatePlan,
-    PromoteSequence,
+    SetPlan,
     UpdateExcludedAccessions,
-    UpdateSequence,
 )
 from ref_builder.events.repo import CreateRepo
-from ref_builder.events.sequence import CreateSequence, DeleteSequence
+from ref_builder.events.sequence import UpdateSequence
 from ref_builder.utils import pad_zeroes
 
 
@@ -124,13 +121,9 @@ class EventStore:
                     "CreateRepo": CreateRepo,
                     "CreateOTU": CreateOTU,
                     "CreateIsolate": CreateIsolate,
-                    "CreateSequence": CreateSequence,
-                    "LinkSequence": LinkSequence,
-                    "UnlinkSequence": UnlinkSequence,
                     "DeleteIsolate": DeleteIsolate,
-                    "DeleteSequence": DeleteSequence,
-                    "CreatePlan": CreatePlan,
-                    "PromoteSequence": PromoteSequence,
+                    "PromoteIsolate": PromoteIsolate,
+                    "SetPlan": SetPlan,
                     "UpdateExcludedAccessions": UpdateExcludedAccessions,
                     "UpdateSequence": UpdateSequence,
                 }[loaded["type"]]

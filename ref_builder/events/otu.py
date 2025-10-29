@@ -1,10 +1,17 @@
 from pydantic import UUID4, ConfigDict, field_serializer
 
-from ref_builder.events.base import ApplicableEvent, Event, EventData, OTUQuery
+from ref_builder.events.base import (
+    ApplicableEvent,
+    Event,
+    EventData,
+    OTUQuery,
+)
+from ref_builder.events.isolate import CreateIsolateData
+from ref_builder.models.isolate import Isolate
 from ref_builder.models.lineage import Lineage
 from ref_builder.models.molecule import Molecule
+from ref_builder.models.otu import OTU
 from ref_builder.models.plan import Plan
-from ref_builder.otu.builders.otu import OTUBuilder
 from ref_builder.utils import ExcludedAccessionAction
 
 
@@ -12,6 +19,8 @@ class CreateOTUData(EventData):
     """The data for a :class:`CreateOTU` event."""
 
     id: UUID4
+    excluded_accessions: set[str]
+    isolate: CreateIsolateData
     lineage: Lineage
     molecule: Molecule
     plan: Plan
@@ -20,31 +29,38 @@ class CreateOTUData(EventData):
 class CreateOTU(Event[CreateOTUData, OTUQuery]):
     """An event that creates a new OTU."""
 
-    def apply(self) -> OTUBuilder:
+    def apply(self) -> OTU:
         """Apply and OTU creation event.
 
         Instantiates and returns and OTU builder.
         """
-        return OTUBuilder(
+        return OTU(
             id=self.query.otu_id,
-            excluded_accessions=set(),
-            isolates=[],
+            excluded_accessions=self.data.excluded_accessions,
+            isolates=[
+                Isolate(
+                    id=self.data.isolate.id,
+                    name=self.data.isolate.name,
+                    sequences=self.data.isolate.sequences,
+                    taxid=self.data.isolate.taxid,
+                )
+            ],
             lineage=self.data.lineage,
             molecule=self.data.molecule,
             plan=self.data.plan,
         )
 
 
-class CreatePlanData(EventData):
-    """The data for a :class:`CreatePlan` event."""
+class SetPlanData(EventData):
+    """The data for a :class:`SetPlan` event."""
 
     plan: Plan
 
 
-class CreatePlan(ApplicableEvent[CreatePlanData, OTUQuery]):
+class SetPlan(ApplicableEvent[SetPlanData, OTUQuery]):
     """An event that sets the isolate plan for an OTU."""
 
-    def apply(self, otu: OTUBuilder) -> OTUBuilder:
+    def apply(self, otu: OTU) -> OTU:
         """Apply changed plan to OTU and return."""
         otu.plan = self.data.plan
 
@@ -71,7 +87,7 @@ class UpdateExcludedAccessions(ApplicableEvent[UpdateExcludedAccessionsData, OTU
     allowed or disallowed from inclusion in the reference.
     """
 
-    def apply(self, otu: OTUBuilder) -> OTUBuilder:
+    def apply(self, otu: OTU) -> OTU:
         """Add accession allowance changes to OTU and return."""
         if self.data.action == ExcludedAccessionAction.ALLOW:
             for accession in self.data.accessions:
@@ -80,73 +96,5 @@ class UpdateExcludedAccessions(ApplicableEvent[UpdateExcludedAccessionsData, OTU
         else:
             for accession in self.data.accessions:
                 otu.excluded_accessions.add(accession)
-
-        return otu
-
-
-class PromoteSequenceData(EventData):
-    """Data for a sequence promotion event."""
-
-    old_sequence_id: UUID4
-    new_sequence_id: UUID4
-
-
-class PromoteSequence(ApplicableEvent[PromoteSequenceData, OTUQuery]):
-    """An event that promotes a GenBank sequence to its RefSeq equivalent.
-
-    This event replaces an old sequence with a new sequence across all isolates
-    where the old sequence is linked, deletes the old sequence, and excludes
-    the old accession from future fetches.
-    """
-
-    def apply(self, otu: OTUBuilder) -> OTUBuilder:
-        """Apply promotion by replacing sequence wherever it exists."""
-        old_sequence = otu.get_sequence_by_id(self.data.old_sequence_id)
-
-        if old_sequence is None:
-            return otu
-
-        old_accession = old_sequence.accession.key
-
-        for isolate in otu.isolates:
-            if any(s.id == self.data.old_sequence_id for s in isolate.sequences):
-                otu.unlink_sequence(isolate.id, self.data.old_sequence_id)
-                otu.link_sequence(isolate.id, self.data.new_sequence_id)
-
-        otu.delete_sequence(self.data.old_sequence_id)
-        otu.excluded_accessions.add(old_accession)
-
-        return otu
-
-
-class UpdateSequenceData(EventData):
-    """Data for a sequence version update event."""
-
-    old_sequence_id: UUID4
-    new_sequence_id: UUID4
-
-
-class UpdateSequence(ApplicableEvent[UpdateSequenceData, OTUQuery]):
-    """An event that updates a sequence to a newer version.
-
-    This event replaces an old sequence with a new sequence across all isolates
-    where the old sequence is linked and deletes the old sequence. Unlike
-    PromoteSequence, this does NOT exclude accessions since the accession key
-    remains the same (only the version changes).
-    """
-
-    def apply(self, otu: OTUBuilder) -> OTUBuilder:
-        """Apply update by replacing sequence wherever it exists."""
-        old_sequence = otu.get_sequence_by_id(self.data.old_sequence_id)
-
-        if old_sequence is None:
-            return otu
-
-        for isolate in otu.isolates:
-            if any(s.id == self.data.old_sequence_id for s in isolate.sequences):
-                otu.unlink_sequence(isolate.id, self.data.old_sequence_id)
-                otu.link_sequence(isolate.id, self.data.new_sequence_id)
-
-        otu.delete_sequence(self.data.old_sequence_id)
 
         return otu

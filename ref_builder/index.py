@@ -9,8 +9,7 @@ from pathlib import Path
 from uuid import UUID
 
 from ref_builder.events.base import EventMetadata
-from ref_builder.models.otu import OTUMinimal
-from ref_builder.otu.builders.otu import OTUBuilder
+from ref_builder.models.otu import OTU, OTUMinimal
 
 
 @dataclass
@@ -31,7 +30,7 @@ class Snapshot:
     at_event: int
     """The event at which the snapshot was taken."""
 
-    otu: OTUBuilder
+    otu: OTU
     """The OTU that was snapshotted."""
 
 
@@ -117,7 +116,7 @@ class Index:
         self.con.execute(
             """
             CREATE TABLE IF NOT EXISTS sequences (
-                id TEXT PRIMARY KEY,
+                accession TEXT PRIMARY KEY,
                 crc TEXT,
                 otu_id TEXT,
                 sequence TEXT
@@ -397,19 +396,21 @@ class Index:
 
         at_event, otu_json = result
 
-        otu = OTUBuilder.model_validate_json(otu_json)
+        otu = OTU.model_validate_json(otu_json)
 
-        sequence_ids = [
-            sequence.id for isolate in otu.isolates for sequence in isolate.sequences
+        accessions = [
+            str(sequence.accession)
+            for isolate in otu.isolates
+            for sequence in isolate.sequences
         ]
 
         # Fetch all sequences in a single query
-        placeholders = ",".join("?" for _ in sequence_ids)
+        placeholders = ",".join("?" for _ in accessions)
 
         sequence_map = dict(
             self.con.execute(
-                f"SELECT id, sequence FROM sequences WHERE id IN ({placeholders})",
-                sequence_ids,
+                f"SELECT accession, sequence FROM sequences WHERE accession IN ({placeholders})",
+                accessions,
             ).fetchall(),
         )
 
@@ -418,12 +419,12 @@ class Index:
 
         for isolate in otu.isolates:
             for sequence in isolate.sequences:
-                sequence_id = str(sequence.id)
+                accession = str(sequence.accession)
 
-                if sequence_id in sequence_map:
-                    sequence.sequence = sequence_map[sequence_id]
+                if accession in sequence_map:
+                    sequence.sequence = sequence_map[accession]
                 else:
-                    missing_sequences.append(str(sequence_id))
+                    missing_sequences.append(accession)
 
         # Raise an error if any sequences are missing
         if missing_sequences:
@@ -431,10 +432,10 @@ class Index:
 
         return Snapshot(
             at_event=at_event,
-            otu=OTUBuilder.model_validate(otu),
+            otu=OTU.model_validate(otu),
         )
 
-    def upsert_otu(self, otu: OTUBuilder, at_event: int) -> None:
+    def upsert_otu(self, otu: OTU, at_event: int) -> None:
         """Update the index based on a list of OTUs.
 
         OTUs that aren't already in the index will be added, and those that are will be
@@ -442,16 +443,20 @@ class Index:
 
         Only sequences that have changed will be updated.
         """
-        sequence_ids = {seq.id for isolate in otu.isolates for seq in isolate.sequences}
+        accessions = {
+            str(sequence.accession)
+            for isolate in otu.isolates
+            for sequence in isolate.sequences
+        }
 
-        placeholders = ",".join("?" for _ in sequence_ids)
+        placeholders = ",".join("?" for _ in accessions)
 
         # Delete any sequences that are no longer in the OTU.
         self.con.execute(
             f"""
-            DELETE FROM sequences WHERE otu_id = ? AND NOT id IN ({placeholders});
+            DELETE FROM sequences WHERE otu_id = ? AND NOT accession IN ({placeholders});
             """,
-            (otu.id, *sequence_ids),
+            (otu.id, *accessions),
         )
 
         batch = []
@@ -471,17 +476,16 @@ class Index:
                 crc = _calculate_crc32(sequence.sequence)
                 batch.append(
                     (
-                        sequence.id,
+                        str(sequence.accession),
                         crc,
                         otu.id,
                         sequence.sequence,
                     ),
                 )
 
-        # Perform batch insert
         self.con.executemany(
             """
-            INSERT OR REPLACE INTO sequences (id, crc, otu_id, sequence)
+            INSERT OR REPLACE INTO sequences (accession, crc, otu_id, sequence)
             VALUES (?, ?, ?, ?)
             """,
             batch,
@@ -492,7 +496,7 @@ class Index:
             """
             UPDATE sequences
             SET crc = ?, otu_id = ?, sequence = ?
-            WHERE id = ? AND crc != ?
+            WHERE accession = ? AND crc != ?
             """,
             [(crc, otu_id, seq, seq_id, crc) for seq_id, crc, otu_id, seq in batch],
         )

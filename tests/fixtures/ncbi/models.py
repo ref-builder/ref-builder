@@ -93,7 +93,19 @@ class OTURegistry:
             json_path = self._data_dir / f"{attr_name}.json"
             data = json.loads(json_path.read_text())
             genbank_accessions = list(data["genbank"].keys())
-            refseq_in_data = [acc for acc in genbank_accessions if acc in attr.refseq]
+
+            # Match manifest entries (versioned or unversioned) to data
+            refseq_in_data = []
+            for manifest_acc in attr.refseq:
+                # Exact match (for versioned entries like "NC_004452.1")
+                if manifest_acc in genbank_accessions:
+                    refseq_in_data.append(manifest_acc)
+                # Unversioned match (for entries like "NC_001367" matching "NC_001367.1")
+                else:
+                    for data_acc in genbank_accessions:
+                        if data_acc.startswith(f"{manifest_acc}."):
+                            refseq_in_data.append(data_acc)
+                            break
 
             if sorted(attr.refseq) != sorted(refseq_in_data):
                 raise RuntimeError(

@@ -9,17 +9,15 @@ from pydantic import (
     ConfigDict,
     Field,
     RootModel,
-    ValidationError,
     field_serializer,
     field_validator,
 )
 
+from ref_builder.models.isolate import Isolate
 from ref_builder.models.molecule import Molecule, Strandedness
+from ref_builder.models.otu import OTU
 from ref_builder.models.plan import Plan, Segment, SegmentName, SegmentRule
-from ref_builder.otu.validate import get_validated_otu
-from ref_builder.otu.validators.isolate import Isolate
-from ref_builder.otu.validators.otu import OTU
-from ref_builder.otu.validators.sequence import Sequence
+from ref_builder.models.sequence import Sequence
 from ref_builder.repo import Repo
 
 
@@ -137,7 +135,7 @@ class ProductionSequence(ProductionResource):
     host: str = ""
 
     @classmethod
-    def build_from_validated_sequence_and_plan(
+    def from_validated_sequence_and_plan(
         cls,
         validated_sequence: Sequence,
         otu_plan: Plan,
@@ -145,7 +143,7 @@ class ProductionSequence(ProductionResource):
         segment = otu_plan.get_segment_by_id(validated_sequence.segment)
 
         return ProductionSequence(
-            id=str(validated_sequence.id),
+            id=str(validated_sequence.accession),
             accession=str(validated_sequence.accession),
             definition=validated_sequence.definition,
             host="",
@@ -164,14 +162,14 @@ class ProductionIsolate(ProductionResource):
     source_type: str = "unknown"
 
     @classmethod
-    def build_from_validated_isolate(
+    def from_validated_isolate(
         cls, validated_isolate: Isolate, plan: Plan, is_default: bool = False
     ) -> "ProductionIsolate":
         return ProductionIsolate(
             id=str(validated_isolate.id),
             default=is_default,
             sequences=[
-                ProductionSequence.build_from_validated_sequence_and_plan(
+                ProductionSequence.from_validated_sequence_and_plan(
                     validated_sequence, plan
                 )
                 for validated_sequence in validated_isolate.sequences
@@ -214,7 +212,7 @@ class ProductionOTU(ProductionResource):
             id=str(validated_otu.id),
             abbreviation=validated_otu.acronym,
             isolates=[
-                ProductionIsolate.build_from_validated_isolate(
+                ProductionIsolate.from_validated_isolate(
                     validated_isolate,
                     plan=validated_otu.plan,
                     is_default=(validated_isolate.id == longest_isolate_id),
@@ -271,13 +269,8 @@ def build_json(output_path: Path, path: Path, version: str) -> Path:
 
     otus = []
 
-    for unvalidated_otu in repo.iter_otus():
-        try:
-            validated_otu = get_validated_otu(unvalidated_otu)
-        except ValidationError:
-            continue
-
-        otus.append(ProductionOTU.build_from_validated_otu(validated_otu))
+    for otu in repo.iter_otus():
+        otus.append(ProductionOTU.build_from_validated_otu(otu))
 
     production_reference = ProductionReference(
         created_at=arrow.utcnow().datetime,

@@ -1,11 +1,24 @@
+import math
+import warnings
 from uuid import UUID
 
-from pydantic import UUID4, BaseModel, field_serializer, field_validator
+from pydantic import (
+    UUID4,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
+from pydantic_core import PydanticCustomError
 
 from ref_builder.models.accession import Accession
+from ref_builder.models.isolate import Isolate
 from ref_builder.models.lineage import Lineage
 from ref_builder.models.molecule import Molecule
 from ref_builder.models.plan import Plan
+from ref_builder.models.sequence import Sequence
+from ref_builder.warnings import PlanWarning
 
 
 class OTUMinimal(BaseModel):
@@ -17,8 +30,19 @@ class OTUMinimal(BaseModel):
     taxid: int
 
 
-class OTUModel(BaseModel):
-    """A class representing the fields of an OTU."""
+class OTU(BaseModel):
+    """A validated OTU."""
+
+    model_config = ConfigDict(validate_assignment=True, revalidate_instances="always")
+
+    _isolates_by_accession: dict[str, Isolate]
+    """A dictionary of isolates indexed by accession key"""
+
+    _isolates_by_id: dict[UUID4, Isolate]
+    """A dictionary of isolates indexed by isolate UUID"""
+
+    _sequences_by_accession: dict[str, Sequence]
+    """A dictionary of sequences indexed by accession key"""
 
     id: UUID4
     """The OTU id."""
@@ -32,8 +56,62 @@ class OTUModel(BaseModel):
     molecule: Molecule
     """The type of molecular information contained in this OTU."""
 
+    isolates: list[Isolate] = Field(min_length=1)
+    """Isolate in the OTU."""
+
     plan: Plan
     """The plan for the OTU."""
+
+    @model_validator(mode="after")
+    def rebuild_lookups(self) -> "OTU":
+        """Rebuild lookup dictionaries when isolates change."""
+        self._isolates_by_accession = {
+            accession: isolate
+            for isolate in self.isolates
+            for accession in isolate.accessions
+        }
+        self._isolates_by_id = {isolate.id: isolate for isolate in self.isolates}
+        self._sequences_by_accession = {
+            sequence.accession.key: sequence
+            for isolate in self.isolates
+            for sequence in isolate.sequences
+        }
+        return self
+
+    def get_isolate(self, isolate_id: UUID4) -> Isolate | None:
+        """Get isolate associated with a given ID.
+
+        Returns None if no such isolate exists.
+
+        :param isolate_id: The UUID of the isolate to retrieve
+        :return: the isolate or ``None``
+        """
+        return self._isolates_by_id.get(isolate_id)
+
+    def get_isolate_by_accession(self, accession: str) -> Isolate | None:
+        """Get the isolate containing a sequence with the given accession.
+
+        Returns None if no such isolate exists.
+
+        :param accession: The accession key to search for
+        :return: The isolate containing the accession or ``None``
+        """
+        return self._isolates_by_accession.get(accession)
+
+    def get_sequence(self, accession: str) -> Sequence | None:
+        """Get the sequence with the given accession key.
+
+        Returns None if no such sequence exists.
+
+        :param accession: The accession key to search for
+        :return: The sequence or ``None``
+        """
+        return self._sequences_by_accession.get(accession)
+
+    @property
+    def accessions(self) -> set[str]:
+        """A set of accessions contained in this isolate."""
+        return {accession.key for accession in self.versioned_accessions}
 
     @property
     def acronym(self) -> str:
@@ -46,6 +124,25 @@ class OTUModel(BaseModel):
         return self.lineage.name
 
     @property
+    def blocked_accessions(self) -> set[str]:
+        """Accessions that should not be considered for addition to the OTU.
+
+        This includes accessions that already exist in the OTU and accessions that have
+        been explicitly excluded.
+        """
+        return self.accessions | self.excluded_accessions
+
+    @property
+    def isolate_ids(self) -> set[UUID4]:
+        """A set of UUIDs for isolates in the OTU."""
+        return set(self._isolates_by_id.keys())
+
+    @property
+    def sequences(self) -> list[Sequence]:
+        """Sequences contained in this OTU."""
+        return [sequence for isolate in self.isolates for sequence in isolate.sequences]
+
+    @property
     def synonyms(self) -> set[str]:
         """All possible names derived from the OTU's lineage.
 
@@ -56,41 +153,112 @@ class OTUModel(BaseModel):
     @property
     def taxid(self) -> int:
         """The NCBI Taxonomy ID for this OTU (species-level taxon from lineage)."""
-        return self.lineage.taxa[-1].id
+        return self.lineage.taxa[0].id
 
+    @property
+    def versioned_accessions(self) -> set[Accession]:
+        """A set of versioned accessions contained in this OTU."""
+        return {
+            sequence.accession
+            for isolate in self.isolates
+            for sequence in isolate.sequences
+        }
 
-class SequenceModel(BaseModel):
-    """A class representing the fields of a sequence."""
+    @field_validator("plan", mode="after")
+    def check_plan_required(cls, plan: Plan) -> Plan:
+        """Issue a warning if the plan has no required segments."""
+        if not plan.required_segments:
+            warnings.warn("Plan has no required segments.", PlanWarning, stacklevel=2)
 
-    id: UUID4
-    """The sequence id."""
+        return plan
 
-    accession: Accession
-    """The sequence accession."""
+    @model_validator(mode="after")
+    def check_excluded_accessions(self) -> "OTU":
+        """Ensure that excluded accessions are not in the OTU."""
+        if accessions := self.excluded_accessions & {
+            sequence.accession.key for sequence in self.sequences
+        }:
+            raise ValueError(
+                f"Excluded accessions found in the OTU: {', '.join(accessions)}"
+            )
 
-    definition: str
-    """The sequence definition."""
+        return self
 
-    sequence: str
-    """The sequence."""
+    @model_validator(mode="after")
+    def check_isolate_taxids(self) -> "OTU":
+        """Ensure that all isolate taxids are in the OTU's lineage."""
+        lineage_taxids = {taxon.id for taxon in self.lineage.taxa}
 
-    segment: UUID4
-    """The sequence segment."""
+        for isolate in self.isolates:
+            if isolate.taxid not in lineage_taxids:
+                raise PydanticCustomError(
+                    "isolate_taxid_not_in_lineage",
+                    "Isolate taxid {isolate_taxid} is not found in OTU lineage. "
+                    "Valid taxids: {lineage_taxids}",
+                    {
+                        "isolate_id": isolate.id,
+                        "isolate_taxid": isolate.taxid,
+                        "lineage_taxids": sorted(lineage_taxids),
+                    },
+                )
 
-    @field_validator("accession", mode="before")
-    @classmethod
-    def convert_accession(cls, value: Accession | str) -> Accession:
-        """Convert the accession to an Accession object."""
-        if isinstance(value, Accession):
-            return value
+        return self
 
-        if isinstance(value, str):
-            return Accession.from_string(value)
+    @model_validator(mode="after")
+    def check_isolates_against_plan(self) -> "OTU":
+        """Check that all isolates satisfy the OTU's plan."""
+        for isolate in self.isolates:
+            for sequence in isolate.sequences:
+                segment = self.plan.get_segment_by_id(sequence.segment)
+                if segment is None:
+                    raise PydanticCustomError(
+                        "segment_not_found",
+                        "Sequence segment {sequence_segment} was not found in "
+                        "the list of segments: {plan_segments}.",
+                        {
+                            "isolate_id": isolate.id,
+                            "sequence_segment": sequence.segment,
+                            "plan_segments": list(self.plan.segment_ids),
+                        },
+                    )
 
-        raise ValueError(f"Invalid type for accession: {type(value)}")
+                min_length = math.floor(
+                    segment.length * (1.0 - segment.length_tolerance)
+                )
+                max_length = math.ceil(
+                    segment.length * (1.0 + segment.length_tolerance)
+                )
 
-    @field_serializer("accession")
-    @classmethod
-    def serialize_accession(cls, accession: Accession) -> str:
-        """Serialize the accession to a string."""
-        return str(accession)
+                if len(sequence.sequence) < min_length:
+                    raise PydanticCustomError(
+                        "sequence_too_short",
+                        "Sequence based on {sequence_accession} does not pass validation "
+                        "against segment {segment_id} "
+                        "({sequence_length} < {min_sequence_length})",
+                        {
+                            "isolate_id": isolate.id,
+                            "sequence_accession": sequence.accession,
+                            "sequence_length": len(sequence.sequence),
+                            "segment_id": segment.id,
+                            "segment_reference_length": segment.length,
+                            "min_sequence_length": min_length,
+                        },
+                    )
+
+                if len(sequence.sequence) > max_length:
+                    raise PydanticCustomError(
+                        "sequence_too_long",
+                        "Sequence based on {sequence_accession} does not pass validation "
+                        "against segment {segment_id}"
+                        "({sequence_length} > {max_sequence_length})",
+                        {
+                            "isolate_id": isolate.id,
+                            "sequence_accession": sequence.accession,
+                            "sequence_length": len(sequence.sequence),
+                            "segment_id": segment.id,
+                            "segment_reference_length": segment.length,
+                            "max_sequence_length": max_length,
+                        },
+                    )
+
+        return self

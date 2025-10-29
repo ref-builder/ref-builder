@@ -5,10 +5,9 @@ from rich.table import Table
 from rich.text import Text
 
 from ref_builder.events.base import Event, EventMetadata
-from ref_builder.models.otu import OTUMinimal
+from ref_builder.models.isolate import Isolate
+from ref_builder.models.otu import OTU, OTUMinimal
 from ref_builder.models.plan import Plan, SegmentRule
-from ref_builder.otu.builders.isolate import IsolateBuilder
-from ref_builder.otu.builders.otu import OTUBuilder
 
 
 def _render_taxonomy_id_link(taxid: int) -> str:
@@ -19,12 +18,12 @@ def _render_nucleotide_link(accession: str) -> str:
     return f"[link=https://www.ncbi.nlm.nih.gov/nuccore/{accession}]{accession}[/link]"
 
 
-def print_isolate_as_json(isolate: IsolateBuilder) -> None:
+def print_isolate_as_json(isolate: Isolate) -> None:
     """Print the isolate data to the console as JSON."""
     console.print(isolate.model_dump_json())
 
 
-def print_isolate(isolate: IsolateBuilder, plan: Plan) -> None:
+def print_isolate(isolate: Isolate, plan: Plan) -> None:
     """Print an isolate to console."""
     max_accession_length = max(
         len(str(sequence.accession)) for sequence in isolate.sequences
@@ -35,12 +34,12 @@ def print_isolate(isolate: IsolateBuilder, plan: Plan) -> None:
     _print_isolate(isolate, plan, max_accession_length, max_segment_name_length)
 
 
-def print_otu_as_json(otu: OTUBuilder) -> None:
+def print_otu_as_json(otu: OTU) -> None:
     """Print the OTU data to the console as JSON."""
     console.print(otu.model_dump_json())
 
 
-def print_otu(otu: OTUBuilder) -> None:
+def print_otu(otu: OTU) -> None:
     """Print the details for an OTU to the console.
 
     :param otu: The OTU to print.
@@ -71,6 +70,27 @@ def print_otu(otu: OTUBuilder) -> None:
     console.print(table)
 
     console.line()
+    console.print("[bold]LINEAGE[/bold]")
+    console.line()
+
+    lineage_table = Table(box=None)
+
+    lineage_table.add_column("RANK")
+    lineage_table.add_column("NAME")
+    lineage_table.add_column("TAXID")
+    lineage_table.add_column("ACRONYMS")
+
+    for taxon in otu.lineage.taxa:
+        lineage_table.add_row(
+            taxon.rank.value.upper(),
+            taxon.name,
+            _render_taxonomy_id_link(taxon.id),
+            ", ".join(taxon.other_names.acronym) if taxon.other_names.acronym else "",
+        )
+
+    console.print(lineage_table)
+
+    console.line()
     console.print("[bold]PLAN[/bold]")
     console.line()
 
@@ -97,8 +117,6 @@ def print_otu(otu: OTUBuilder) -> None:
 
     console.line()
     console.print("[bold]ISOLATES[/bold]")
-
-    index_by_segment_id = {segment.id: i for i, segment in enumerate(otu.plan.segments)}
 
     for isolate in otu.isolates:
         console.line()
@@ -227,7 +245,7 @@ def print_event_as_json(event: Event) -> None:
 
 
 def _print_isolate(
-    isolate: IsolateBuilder,
+    isolate: Isolate,
     plan: Plan,
     max_accession_length: int,
     max_segment_name_length: int,

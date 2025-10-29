@@ -22,10 +22,7 @@ import arrow
 from structlog import get_logger
 
 from ref_builder.errors import (
-    LockRequiredError,
     OTUDeletedError,
-    TransactionExistsError,
-    TransactionRequiredError,
 )
 from ref_builder.events.base import (
     ApplicableEvent,
@@ -43,44 +40,33 @@ from ref_builder.events.isolate import (
     CreateIsolateData,
     DeleteIsolate,
     DeleteIsolateData,
-    LinkSequence,
-    LinkSequenceData,
+    PromoteIsolate,
+    PromoteIsolateData,
 )
 from ref_builder.events.otu import (
     CreateOTU,
     CreateOTUData,
-    CreatePlan,
-    CreatePlanData,
-    PromoteSequence,
-    PromoteSequenceData,
+    SetPlan,
+    SetPlanData,
     UpdateExcludedAccessions,
     UpdateExcludedAccessionsData,
-    UpdateSequence,
-    UpdateSequenceData,
 )
 from ref_builder.events.repo import (
     CreateRepo,
     CreateRepoData,
 )
-from ref_builder.events.sequence import (
-    CreateSequence,
-    CreateSequenceData,
-)
+from ref_builder.events.sequence import UpdateSequence, UpdateSequenceData
 from ref_builder.index import Index
 from ref_builder.lock import Lock
 from ref_builder.models.accession import Accession
-from ref_builder.models.isolate import IsolateName
+from ref_builder.models.isolate import Isolate, IsolateName
 from ref_builder.models.lineage import Lineage
 from ref_builder.models.molecule import Molecule
-from ref_builder.models.otu import OTUMinimal
+from ref_builder.models.otu import OTU, OTUMinimal
 from ref_builder.models.plan import Plan
 from ref_builder.models.repo import RepoMeta, RepoSettings
-from ref_builder.otu.builders.isolate import IsolateBuilder
-from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.builders.sequence import SequenceBuilder
-from ref_builder.otu.validate import check_otu_is_valid
+from ref_builder.models.sequence import Sequence
 from ref_builder.store import EventStore
-from ref_builder.transaction import AbortTransactionError, Transaction
 from ref_builder.utils import (
     ExcludedAccessionAction,
     get_accession_key,
@@ -112,17 +98,6 @@ class Repo:
 
         self._lock = Lock(self.path)
         """A lock for the repository."""
-
-        self._transaction: Transaction | None = None
-        """The current transaction, if one is active."""
-
-        try:
-            with open(self.path / "head") as f:
-                self._head_id = int(f.read())
-        except FileNotFoundError:
-            self._head_id = self.last_id
-
-        self._prune_events()
 
         # Populate the index if it is empty.
         if not self._index.otu_ids:
@@ -157,7 +132,7 @@ class Repo:
 
         repo_id = uuid.uuid4()
 
-        event = EventStore(path).write_event(
+        EventStore(path).write_event(
             CreateRepo(
                 id=1,
                 data=CreateRepoData(
@@ -173,15 +148,7 @@ class Repo:
             )
         )
 
-        with open(path / "head", "w") as f:
-            f.write(str(event.id))
-
         return Repo(path)
-
-    @property
-    def head_id(self) -> int:
-        """The id of the validated event most recently  added to the repository."""
-        return self._head_id
 
     @property
     def last_id(self) -> int:
@@ -218,83 +185,6 @@ class Repo:
             yield
         finally:
             self._lock.unlock()
-
-    @contextmanager
-    def use_transaction(self) -> Generator[Transaction]:
-        """Lock the repository during modification.
-
-        This prevents writes from  other ``ref-builder`` processes.
-        """
-        if self._transaction:
-            raise TransactionExistsError
-
-        self.prune()
-
-        if self.last_id != self.head_id:
-            logger.error(
-                "Head ID and last event ID do not match.",
-                head_id=self.head_id,
-                last_id=self.last_id,
-            )
-
-            raise TransactionExistsError
-
-        if not self._lock.locked:
-            raise LockRequiredError
-
-        self._transaction = Transaction()
-
-        try:
-            yield self._transaction
-
-            for otu_id in self._transaction.affected_otu_ids:
-                with warnings.catch_warnings(
-                    category=OTUDeletedWarning, record=True
-                ) as warning_list:
-                    otu = self.get_otu(otu_id)
-
-                if otu is None:
-                    if warning_list:
-                        continue
-                    else:
-                        self._transaction.abort()
-
-                if not check_otu_is_valid(otu):
-                    self._transaction.abort()
-
-        except AbortTransactionError:
-            logger.debug("Transaction aborted. Pruning events...")
-
-            self.prune()
-
-        except Exception as e:
-            logger.debug(
-                "Error encountered mid-transaction. Pruning events...",
-                message=str(e),
-                head_id=self.head_id,
-                last_id=self.last_id,
-            )
-
-            self.prune()
-
-            raise
-
-        else:
-            self._head_id = self.last_id
-
-            with open(self.path / "head", "w") as f:
-                f.write(str(self._head_id))
-
-        finally:
-            self._transaction = None
-
-    def prune(self) -> None:
-        """Prune an events ahead of the head.
-
-        This removes the events from the store and updates the index accordingly.
-        """
-        self._index.prune(self.head_id)
-        self._event_store.prune(self.head_id)
 
     def clear_index(self) -> bool:
         """Delete and replace the repository read index."""
@@ -335,13 +225,13 @@ class Repo:
         """
         return self._index.iter_minimal_otus()
 
-    def iter_otus(self) -> Iterator[OTUBuilder]:
+    def iter_otus(self) -> Iterator[OTU]:
         """Iterate over the OTUs in the repository."""
         for otu_id in self._index.otu_ids:
             if (otu := self.get_otu(otu_id)) is not None:
                 yield otu
 
-    def iter_otus_from_events(self) -> Iterator[OTUBuilder]:
+    def iter_otus_from_events(self) -> Iterator[OTU]:
         """Iterate over the OTUs, bypassing the index."""
         event_ids_by_otu = defaultdict(list)
 
@@ -360,10 +250,12 @@ class Repo:
 
     def create_otu(
         self,
+        excluded_accessions: set[str],
+        isolate: CreateIsolateData,
         lineage: Lineage,
         molecule: Molecule,
         plan: Plan,
-    ) -> OTUBuilder | None:
+    ) -> OTU | None:
         """Create an OTU."""
         for taxon in lineage.taxa:
             if (otu_id := self.get_otu_id_by_taxid(taxon.id)) is not None:
@@ -371,7 +263,7 @@ class Repo:
                 msg = f"OTU {otu.id} already contains taxid {taxon.id} ({taxon.name})"
                 raise ValueError(msg)
 
-        taxid = lineage.taxa[-1].id
+        taxid = lineage.taxa[0].id
 
         logger.info("Creating new OTU.", taxid=taxid, name=lineage.name)
 
@@ -381,6 +273,8 @@ class Repo:
             CreateOTU,
             CreateOTUData(
                 id=otu_id,
+                excluded_accessions=excluded_accessions,
+                isolate=isolate,
                 lineage=lineage,
                 molecule=molecule,
                 plan=plan,
@@ -393,29 +287,38 @@ class Repo:
     def create_isolate(
         self,
         otu_id: uuid.UUID,
+        isolate_id: uuid.UUID,
         name: IsolateName | None,
         taxid: int,
-    ) -> IsolateBuilder | None:
-        """Create and isolate for the OTU with ``otu_id``.
+        sequences: list,
+    ) -> Isolate:
+        """Create an isolate with sequences atomically.
 
-        If the isolate name already exists, return None.
+        :param otu_id: the OTU ID
+        :param isolate_id: the isolate ID
+        :param name: the isolate name
+        :param taxid: the taxid
+        :param sequences: list of SequenceData objects
+        :return: the created isolate
         """
-        otu = self.get_otu(otu_id)
-
-        isolate_id = uuid.uuid4()
-
         event = self._write_event(
             CreateIsolate,
-            CreateIsolateData(id=isolate_id, name=name, taxid=taxid),
+            CreateIsolateData(
+                id=isolate_id,
+                name=name,
+                sequences=sequences,
+                taxid=taxid,
+            ),
             IsolateQuery(isolate_id=isolate_id, otu_id=otu_id),
         )
 
         logger.debug(
-            "Isolate written",
+            "Isolate with sequences written",
             event_id=event.id,
             isolate_id=str(isolate_id),
             name=str(name) if name is not None else None,
             taxid=taxid,
+            sequence_count=len(sequences),
         )
 
         return self.get_otu(otu_id).get_isolate(isolate_id)
@@ -424,7 +327,7 @@ class Repo:
         self,
         otu_id: uuid.UUID,
         isolate_id: uuid.UUID,
-        rationale: str,
+        message: str,
     ) -> None:
         """Delete an existing isolate from a given OTU."""
         if (otu_ := self.get_otu(otu_id)) is None:
@@ -435,95 +338,46 @@ class Repo:
 
         self._write_event(
             DeleteIsolate,
-            DeleteIsolateData(rationale=rationale),
+            DeleteIsolateData(message=message),
             IsolateQuery(otu_id=otu_id, isolate_id=isolate_id),
         )
 
-    def create_sequence(
+    def promote_isolate(
         self,
         otu_id: uuid.UUID,
-        accession: str | Accession,
-        definition: str,
-        segment: uuid.UUID,
-        sequence: str,
-    ) -> SequenceBuilder | None:
-        """Create and return a new sequence within the given OTU.
-        If the accession already exists in this OTU, return None.
-        """
-        otu = self.get_otu(otu_id)
-
-        if isinstance(accession, Accession):
-            versioned_accession = accession
-        else:
-            versioned_accession = Accession.from_string(accession)
-
-        if versioned_accession in otu.versioned_accessions:
-            raise ValueError(
-                f"Accession {versioned_accession} already exists in the OTU.",
-            )
-
-        sequence_id = uuid.uuid4()
-
-        event = self._write_event(
-            CreateSequence,
-            CreateSequenceData(
-                id=sequence_id,
-                accession=versioned_accession,
-                definition=definition,
-                segment=segment,
-                sequence=sequence,
-            ),
-            SequenceQuery(
-                otu_id=otu_id,
-                sequence_id=sequence_id,
-            ),
-        )
-
-        logger.debug(
-            "Sequence written",
-            event_id=event.id,
-            sequence_id=str(sequence_id),
-            accession=str(versioned_accession),
-        )
-
-        return self.get_otu(otu_id).get_sequence_by_id(sequence_id)
-
-    def promote_sequence(
-        self,
-        otu_id: uuid.UUID,
-        old_sequence_id: uuid.UUID,
-        new_sequence_id: uuid.UUID,
+        isolate_id: uuid.UUID,
+        accession_map: dict,
     ) -> None:
-        """Promote a GenBank sequence to its RefSeq equivalent.
+        """Promote GenBank sequences to RefSeq in an isolate.
 
-        This replaces the old sequence with the new sequence across all isolates
-        where the old sequence is linked, deletes the old sequence, and excludes
-        the old accession from future fetches.
+        All sequences in an isolate must be promoted together to maintain consistency.
+        If one sequence is RefSeq, all must be RefSeq.
+
+        :param otu_id: The OTU ID
+        :param isolate_id: The isolate ID
+        :param accession_map: A dict mapping old accessions to new SequenceData
         """
         otu = self.get_otu(otu_id)
 
-        old_sequence = otu.get_sequence_by_id(old_sequence_id)
-        if old_sequence is None:
-            raise ValueError(f"Old sequence does not exist: {old_sequence_id}")
+        if otu is None:
+            raise ValueError(f"OTU does not exist: {otu_id}")
 
-        new_sequence = otu.get_sequence_by_id(new_sequence_id)
-        if new_sequence is None:
-            raise ValueError(f"New sequence does not exist: {new_sequence_id}")
+        isolate = otu.get_isolate(isolate_id)
+
+        if isolate is None:
+            raise ValueError(f"Isolate does not exist: {isolate_id}")
 
         self._write_event(
-            PromoteSequence,
-            PromoteSequenceData(
-                old_sequence_id=old_sequence_id,
-                new_sequence_id=new_sequence_id,
-            ),
-            OTUQuery(otu_id=otu_id),
+            PromoteIsolate,
+            PromoteIsolateData(map=accession_map),
+            IsolateQuery(otu_id=otu_id, isolate_id=isolate_id),
         )
 
     def update_sequence(
         self,
         otu_id: uuid.UUID,
-        old_sequence_id: uuid.UUID,
-        new_sequence_id: uuid.UUID,
+        old_accession: Accession,
+        new_sequence: Sequence,
     ) -> None:
         """Update a sequence to a newer version.
 
@@ -531,94 +385,21 @@ class Repo:
         where the old sequence is linked and deletes the old sequence. Does not
         exclude accessions since the accession key remains the same.
         """
-        otu = self.get_otu(otu_id)
-
-        old_sequence = otu.get_sequence_by_id(old_sequence_id)
-        if old_sequence is None:
-            raise ValueError(f"Old sequence does not exist: {old_sequence_id}")
-
-        new_sequence = otu.get_sequence_by_id(new_sequence_id)
-        if new_sequence is None:
-            raise ValueError(f"New sequence does not exist: {new_sequence_id}")
-
         self._write_event(
             UpdateSequence,
-            UpdateSequenceData(
-                old_sequence_id=old_sequence_id,
-                new_sequence_id=new_sequence_id,
-            ),
-            OTUQuery(otu_id=otu_id),
+            UpdateSequenceData(sequence=new_sequence),
+            SequenceQuery(otu_id=otu_id, accession=old_accession),
         )
 
     def set_plan(self, otu_id: uuid.UUID, plan: Plan) -> Plan:
         """Set the isolate plan for an OTU."""
         self._write_event(
-            CreatePlan,
-            CreatePlanData(plan=plan),
+            SetPlan,
+            SetPlanData(plan=plan),
             OTUQuery(otu_id=otu_id),
         )
 
         return self.get_otu(otu_id).plan
-
-    def link_sequence(
-        self, otu_id: uuid.UUID, isolate_id: uuid.UUID, sequence_id: uuid.UUID
-    ) -> SequenceBuilder | None:
-        """Link an existing sequence to an existing isolate."""
-        log = logger.bind(otu_id=str(otu_id))
-
-        otu = self.get_otu(otu_id)
-
-        if otu is None:
-            log.error("OTU not found.")
-            return None
-
-        isolate = otu.get_isolate(isolate_id)
-
-        if isolate is None:
-            log.error("Isolate not found.", isolate_id=str(isolate_id))
-            return None
-
-        if sequence_id in {s.id for s in isolate.sequences}:
-            log.warning(
-                "Sequence is already linked to isolate.", sequence_id=str(sequence_id)
-            )
-            return None
-
-        sequence = otu.get_sequence_by_id(sequence_id)
-
-        if sequence is None:
-            log.error("Sequence not found.", sequence_id=str(sequence_id))
-            return None
-
-        if sequence.segment in {s.segment for s in isolate.sequences}:
-            log.warning(
-                "Segment is already linked to isolate.",
-                segment_id=str(sequence.segment),
-                sequence_id=str(sequence_id),
-            )
-            return None
-
-        event = self._write_event(
-            LinkSequence,
-            LinkSequenceData(sequence_id=sequence_id),
-            IsolateQuery(
-                otu_id=otu_id,
-                isolate_id=isolate_id,
-            ),
-        )
-
-        log.debug(
-            "Sequence linked to isolate",
-            event_id=event.id,
-            sequence_id=str(sequence_id),
-            isolate_id=str(isolate_id),
-            isolate_name=str(isolate.name),
-            accession=str(sequence.accession),
-        )
-
-        return (
-            self.get_otu(otu_id).get_isolate(isolate_id).get_sequence_by_id(sequence_id)
-        )
 
     def exclude_accessions(
         self,
@@ -726,7 +507,7 @@ class Repo:
         """Get an OTU ID from an isolate ID that belongs to it."""
         return self._index.get_id_by_isolate_id(isolate_id)
 
-    def get_otu(self, otu_id: uuid.UUID) -> OTUBuilder | None:
+    def get_otu(self, otu_id: uuid.UUID) -> OTU | None:
         """Get the OTU with the given ``otu_id``.
 
         If the OTU does not exist, ``None`` is returned.
@@ -780,7 +561,7 @@ class Repo:
         """Iterate through the event metadata of all events."""
         yield from self._index.iter_event_metadata()
 
-    def get_otu_by_taxid(self, taxid: int) -> OTUBuilder | None:
+    def get_otu_by_taxid(self, taxid: int) -> OTU | None:
         """Return the OTU with the given ``taxid``.
 
         If no OTU is found, return None.
@@ -805,7 +586,7 @@ class Repo:
         """
         return self._index.get_id_by_taxid(taxid)
 
-    def get_isolate(self, isolate_id: uuid.UUID) -> IsolateBuilder | None:
+    def get_isolate(self, isolate_id: uuid.UUID) -> Isolate | None:
         """Return the isolate with the given id if it exists, else None."""
         if otu_id := self.get_otu_id_by_isolate_id(isolate_id):
             return self.get_otu(otu_id).get_isolate(isolate_id)
@@ -856,7 +637,7 @@ class Repo:
             return None
 
     @staticmethod
-    def _rehydrate_otu(events: Iterator[Event]) -> OTUBuilder:
+    def _rehydrate_otu(events: Iterator[Event]) -> OTU:
         """Rehydrate an OTU from an event iterator."""
         event = next(events)
 
@@ -876,6 +657,7 @@ class Repo:
                     )
 
                 otu = event.apply(otu)
+                otu = OTU.model_validate(otu)
 
         for warning_msg in warning_list:
             logger.warning(
@@ -893,45 +675,64 @@ class Repo:
         for isolate in otu.isolates:
             isolate.sequences.sort(key=lambda s: s.accession)
 
-        return otu
+        # Validate to rebuild OTU lookup dictionaries after all mutations
+        return OTU.model_validate(otu)
 
-    def _prune_events(self) -> None:
-        """Prune events beyond the ID in the head file."""
-        head_path = self.path / "head"
+    def _write_event(
+        self, cls: type[Event], data: EventData, query: EventQuery
+    ) -> Event:
+        """Write an event after validating it would produce a valid state.
 
-        if not head_path.exists():
-            return
+        For OTU events, validation is performed by applying the event to an in-memory
+        copy of the OTU. If the event would produce an invalid OTU, a ValueError is
+        raised and no event is written.
 
-        with open(head_path) as f:
-            head_id = int(f.read())
-
-        self._event_store.prune(head_id)
-        self._index.prune(head_id)
-
-    def _write_event(self, cls: type[Event], data: EventData, query: EventQuery):
-        """Write an event to the repository."""
-        if self._transaction is None:
-            raise TransactionRequiredError
-
-        event = self._event_store.write_event(
-            cls(
-                id=self.last_id + 1,
-                data=data,
-                query=query,
-                timestamp=arrow.utcnow().naive,
-            )
+        :param cls: The event class
+        :param data: The event data
+        :param query: The event query
+        :return: The written event
+        :raises ValueError: If the event would create invalid state
+        """
+        # Create event object (not yet written to disk)
+        event = cls(
+            id=self.last_id + 1,
+            data=data,
+            query=query,
+            timestamp=arrow.utcnow().naive,
         )
 
+        # Validate OTU events by applying in-memory
+        if hasattr(event.query, "otu_id"):
+            # CreateOTU is always valid (creates new OTU with validated data)
+            if not isinstance(event, CreateOTU):
+                # Get current OTU state
+                otu = self.get_otu(event.query.otu_id)
+
+                if otu is None:
+                    msg = f"Cannot apply event to non-existent OTU {event.query.otu_id}"
+                    raise ValueError(msg)
+
+                # Apply event to validate it produces valid state
+                if isinstance(event, ApplicableEvent):
+                    try:
+                        otu = event.apply(otu)
+                        otu = OTU.model_validate(otu)
+                    except Exception as e:
+                        msg = f"Event validation failed: {e}"
+                        raise ValueError(msg) from e
+
+        # Validation passed - write to disk
+        written_event = self._event_store.write_event(event)
+
+        # Update index
         if hasattr(event.query, "otu_id"):
             self._index.add_event_id(
-                event.id,
+                written_event.id,
                 event.query.otu_id,
-                event.timestamp,
+                written_event.timestamp,
             )
 
-            self._transaction.add_otu_id(event.query.otu_id)
-
-        return event
+        return written_event
 
 
 @contextmanager

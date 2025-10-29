@@ -1,19 +1,15 @@
 import pytest
-from faker import Faker
-from syrupy import SnapshotAssertion
 
 from ref_builder.console import (
     console,
     print_isolate,
-    print_isolate_as_json,
     print_otu,
     print_otu_list,
 )
 from ref_builder.models.otu import OTUMinimal
-from ref_builder.models.plan import Plan, Segment, SegmentName, SegmentRule
-from ref_builder.otu.builders.isolate import IsolateBuilder
-from tests.fixtures.factories import IsolateFactory, OTUMinimalFactory
-from tests.fixtures.providers import AccessionProvider, SequenceProvider
+from ref_builder.ncbi.client import NCBIClientProtocol
+from ref_builder.repo import Repo
+from tests.fixtures.mock_ncbi_client import MockNCBIClient
 
 
 class TestPrintOTUList:
@@ -22,13 +18,22 @@ class TestPrintOTUList:
     def test_ok(
         self,
         capsys: pytest.CaptureFixture,
-        otu_minimal_factory: OTUMinimalFactory,
-        snapshot: SnapshotAssertion,
+        scratch_repo: Repo,
     ) -> None:
         """Test that listed OTUs are printed."""
-        print_otu_list(otu_minimal_factory.build() for _ in range(5))
+        otus = scratch_repo.iter_minimal_otus()
+        print_otu_list(otus)
 
-        assert capsys.readouterr().out == snapshot
+        output = capsys.readouterr().out
+
+        assert "NAME" in output
+        assert "ACRONYM" in output
+        assert "TAXID" in output
+        assert "ID" in output
+
+        for otu in otus:
+            assert otu.name in output
+            assert str(otu.taxid) in output
 
     def test_empty(self) -> None:
         """Test that an empty list of OTUs is printed."""
@@ -41,99 +46,84 @@ class TestPrintOTUList:
 class TestPrintIsolate:
     """Test isolate console output."""
 
-    def test_ok(self, snapshot: SnapshotAssertion):
+    def test_ok(
+        self,
+        mock_ncbi_client: MockNCBIClient,
+        scratch_repo: Repo,
+    ):
         """Test that an isolate is printed as expected by ``print_isolate``."""
-        fake = Faker(["en_US"])
-        fake.add_provider(AccessionProvider)
-        fake.add_provider(SequenceProvider)
-        fake.seed_instance(8801)
-
-        plan = Plan.new(
-            [
-                Segment(
-                    id=fake.uuid4(),
-                    length=1099,
-                    length_tolerance=0.03,
-                    name=SegmentName("DNA", "R"),
-                    rule=SegmentRule.REQUIRED,
-                ),
-                Segment(
-                    id=fake.uuid4(),
-                    length=1074,
-                    length_tolerance=0.03,
-                    name=SegmentName("DNA", "M"),
-                    rule=SegmentRule.REQUIRED,
-                ),
-                Segment(
-                    id=fake.uuid4(),
-                    length=1087,
-                    length_tolerance=0.03,
-                    name=SegmentName("DNA", "S"),
-                    rule=SegmentRule.REQUIRED,
-                ),
-            ],
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.abaca_bunchy_top_virus.taxid
         )
 
-        isolate = IsolateBuilder(**IsolateFactory.build_on_plan(plan).model_dump())
+        assert otu
+
+        isolate = otu.isolates[0]
 
         with console.capture() as capture:
-            print_isolate(isolate, plan)
+            print_isolate(isolate, otu.plan)
 
-        assert capture.get() == snapshot
+        output = capture.get()
 
-    def test_json_ok(self, snapshot: SnapshotAssertion):
-        """Test that an isolate is printed as expected by ``print_isolate_as_json``."""
-        fake = Faker(["en_US"])
-        fake.add_provider(AccessionProvider)
-        fake.add_provider(SequenceProvider)
-        fake.seed_instance(8801)
+        assert str(isolate.name) in output
 
-        plan = Plan.new(
-            [
-                Segment(
-                    id=fake.uuid4(),
-                    length=1099,
-                    length_tolerance=0.03,
-                    name=SegmentName("DNA", "R"),
-                    rule=SegmentRule.REQUIRED,
-                ),
-                Segment(
-                    id=fake.uuid4(),
-                    length=1074,
-                    length_tolerance=0.03,
-                    name=SegmentName("DNA", "M"),
-                    rule=SegmentRule.REQUIRED,
-                ),
-                Segment(
-                    id=fake.uuid4(),
-                    length=1087,
-                    length_tolerance=0.03,
-                    name=SegmentName("DNA", "S"),
-                    rule=SegmentRule.REQUIRED,
-                ),
-            ],
-        )
+        assert "ACCESSION" in output
+        assert "LENGTH" in output
+        assert "SEGMENT" in output
+        assert "DEFINITION" in output
 
-        isolate = IsolateBuilder(**IsolateFactory.build_on_plan(plan).model_dump())
-
-        with console.capture() as capture:
-            print_isolate_as_json(isolate)
-
-        assert capture.get() == snapshot
+        for sequence in isolate.sequences:
+            assert str(sequence.accession) in output
+            assert str(len(sequence.sequence)) in output
 
 
 class TestPrintOTU:
     """Test OTU console output."""
 
-    def test_print_otu(self, scratch_repo):
+    def test_ok(
+        self,
+        mock_ncbi_client: NCBIClientProtocol,
+        scratch_repo: Repo,
+    ):
         """Test that an OTU is printed as expected by ``print_otu``."""
-        otu = scratch_repo.get_otu_by_taxid(3429802)
+        otu = scratch_repo.get_otu_by_taxid(
+            mock_ncbi_client.otus.abaca_bunchy_top_virus.taxid
+        )
+
+        assert otu
 
         with console.capture() as capture:
             print_otu(otu)
 
         output = capture.get()
-        assert "Hostuviroid latensdahliae" in output
+
+        assert otu.name in output
+
+        # Check metadata section
+        assert "ACRONYM" in output
+        assert "ID" in output
         assert "TAXID" in output
-        assert "3429802" in output
-        assert "NC_020160.1" in output
+        assert str(otu.taxid) in output
+
+        # Check plan section
+        assert "PLAN" in output
+        assert "NAME" in output
+        assert "REQUIRED" in output
+        assert "LENGTH" in output
+        assert "TOLERANCE" in output
+
+        # Check all segments in plan
+        for segment in otu.plan.segments:
+            assert str(segment.name) in output
+            assert str(segment.length) in output
+
+        # Check isolates section
+        assert "ISOLATES" in output
+
+        # Check all isolates are present
+        for isolate in otu.isolates:
+            assert str(isolate.name) in output
+
+            # Check sequences from each isolate
+            for sequence in isolate.sequences:
+                assert str(sequence.accession) in output

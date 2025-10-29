@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from pydantic import ValidationError
-from syrupy import SnapshotAssertion
+from syrupy.assertion import SnapshotAssertion
 
 from ref_builder.models.plan import (
     Plan,
@@ -130,10 +130,10 @@ class TestPlan:
 
         plan = Plan.model_validate(self.example)
 
-        assert (
-            plan.get_segment_by_id(segment["id"]).model_dump()
-            == Segment.model_validate(segment).model_dump()
-        )
+        segment = plan.get_segment_by_id(segment["id"])
+
+        assert segment
+        assert segment.model_dump() == Segment.model_validate(segment).model_dump()
 
     def test_get_segment_by_nonexistent_id(self):
         """Test that None is returned when a segment is not found by its ID."""
@@ -252,14 +252,14 @@ class TestExtractSegmentNameFromRecord:
     @pytest.mark.parametrize(
         "mol_type", [NCBISourceMolType.GENOMIC_RNA, NCBISourceMolType.GENOMIC_DNA]
     )
-    def test_no_delimiter_ok(
+    def test_no_delimiter(
         self,
         key: str,
         mol_type: NCBISourceMolType,
         ncbi_genbank_factory: NCBIGenbankFactory,
         ncbi_source_factory: NCBISourceFactory,
     ):
-        """Test that extract_segment_name_from_record() can handle undelimited segment names."""
+        """Test that the function can handle undelimited segment names."""
         match mol_type:
             case NCBISourceMolType.GENOMIC_DNA:
                 prefix = "DNA"
@@ -307,7 +307,7 @@ class TesttExtractSegmentNameFromRecordWithPlanInference:
     plan: Plan
 
     @pytest.fixture(autouse=True)
-    def _setup(
+    def setup(
         self,
         ncbi_genbank_factory: NCBIGenbankFactory,
         ncbi_source_factory: NCBISourceFactory,
