@@ -1,14 +1,15 @@
 import pytest
-from syrupy import SnapshotAssertion
+from syrupy.assertion import SnapshotAssertion
 from syrupy.filters import props
 
 from ref_builder.models.plan import Plan
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.ncbi.models import NCBISourceMolType
-from ref_builder.otu.utils import assign_records_to_segments
+from ref_builder.otu import assign_records_to_segments
+from ref_builder.plan import create_plan_from_records
 from ref_builder.repo import Repo
-from ref_builder.services.otu import create_plan_from_records
 from tests.fixtures.factories import NCBIGenbankFactory, NCBISourceFactory
+from tests.fixtures.mock_ncbi_client import MockNCBIClient
 from tests.fixtures.utils import uuid_matcher
 
 
@@ -18,12 +19,9 @@ class TestCreatePlanFromRecords:
     def test_monopartite(
         self,
         ncbi_genbank_factory: NCBIGenbankFactory,
-        scratch_ncbi_client: NCBIClient,
         snapshot: SnapshotAssertion,
     ):
         """Test that a monopartite plan is created from a single Genbank record."""
-        records = scratch_ncbi_client.fetch_genbank_records(["NC_024301"])
-
         record = ncbi_genbank_factory.build()
 
         plan = create_plan_from_records([record], 0.03)
@@ -85,13 +83,13 @@ class TestAssignRecordsToSegments:
 
     def test_ok(
         self,
+        mock_ncbi_client: MockNCBIClient,
         ncbi_genbank_factory: NCBIGenbankFactory,
         ncbi_source_factory: NCBISourceFactory,
         scratch_repo: Repo,
         snapshot: SnapshotAssertion,
-        mock_ncbi_client,
     ):
-        """Test that a list of records generated to match the OTU plan"""
+        """Test that a list of records generated to match the OTU plan."""
         otu = scratch_repo.get_otu_by_taxid(
             mock_ncbi_client.otus.cabbage_leaf_curl_jamaica_virus.taxid
         )
@@ -123,10 +121,10 @@ class TestAssignRecordsToSegments:
 
     def test_names_not_in_plan(
         self,
+        mock_ncbi_client: MockNCBIClient,
         ncbi_genbank_factory: NCBIGenbankFactory,
         scratch_repo: Repo,
         snapshot: SnapshotAssertion,
-        mock_ncbi_client,
     ):
         """Test that a randomly generated list of records raises a ValueError."""
         otu = scratch_repo.get_otu_by_taxid(

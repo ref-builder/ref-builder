@@ -31,13 +31,6 @@ class TestLineage:
         lineage = Lineage(
             taxa=[
                 Taxon(
-                    id=12242,
-                    name="Tobacco mosaic virus",
-                    parent=3432891,
-                    rank=NCBIRank.NO_RANK,
-                    other_names=TaxonOtherNames(acronym=["TMV"], synonyms=["TMV-U1"]),
-                ),
-                Taxon(
                     id=3432891,
                     name="Tobamovirus tabaci",
                     parent=None,
@@ -45,6 +38,13 @@ class TestLineage:
                     other_names=TaxonOtherNames(
                         acronym=[], synonyms=["Tobacco mosaic tobamovirus"]
                     ),
+                ),
+                Taxon(
+                    id=12242,
+                    name="Tobacco mosaic virus",
+                    parent=3432891,
+                    rank=NCBIRank.NO_RANK,
+                    other_names=TaxonOtherNames(acronym=["TMV"], synonyms=["TMV-U1"]),
                 ),
             ]
         )
@@ -79,18 +79,18 @@ class TestLineage:
         lineage = Lineage(
             taxa=[
                 Taxon(
-                    id=1,
-                    name="Virus A",
-                    parent=2,
-                    rank=NCBIRank.NO_RANK,
-                    other_names=TaxonOtherNames(acronym=["VA"], synonyms=["Virus A"]),
-                ),
-                Taxon(
                     id=2,
                     name="Virus A",
                     parent=None,
                     rank=NCBIRank.SPECIES,
                     other_names=TaxonOtherNames(acronym=["VA"], synonyms=[]),
+                ),
+                Taxon(
+                    id=1,
+                    name="Virus A",
+                    parent=2,
+                    rank=NCBIRank.NO_RANK,
+                    other_names=TaxonOtherNames(acronym=["VA"], synonyms=["Virus A"]),
                 ),
             ]
         )
@@ -102,17 +102,17 @@ class TestLineage:
         lineage = Lineage(
             taxa=[
                 Taxon(
-                    id=1,
-                    name="Strain X",
-                    parent=2,
-                    rank=NCBIRank.NO_RANK,
-                    other_names=TaxonOtherNames(acronym=[], synonyms=[]),
-                ),
-                Taxon(
                     id=2,
                     name="Species Y",
                     parent=None,
                     rank=NCBIRank.SPECIES,
+                    other_names=TaxonOtherNames(acronym=[], synonyms=[]),
+                ),
+                Taxon(
+                    id=1,
+                    name="Strain X",
+                    parent=2,
+                    rank=NCBIRank.NO_RANK,
                     other_names=TaxonOtherNames(acronym=[], synonyms=[]),
                 ),
             ]
@@ -125,18 +125,18 @@ class TestLineage:
         lineage = Lineage(
             taxa=[
                 Taxon(
-                    id=1,
-                    name="Strain X",
-                    parent=2,
-                    rank=NCBIRank.NO_RANK,
-                    other_names=TaxonOtherNames(acronym=["SX"], synonyms=[]),
-                ),
-                Taxon(
                     id=2,
                     name="Species Y",
                     parent=None,
                     rank=NCBIRank.SPECIES,
                     other_names=TaxonOtherNames(acronym=["SY"], synonyms=[]),
+                ),
+                Taxon(
+                    id=1,
+                    name="Strain X",
+                    parent=2,
+                    rank=NCBIRank.NO_RANK,
+                    other_names=TaxonOtherNames(acronym=["SX"], synonyms=[]),
                 ),
             ]
         )
@@ -190,22 +190,22 @@ class TestLineage:
             )
 
     def test_validation_non_contiguous_taxa(self):
-        """Test that validation fails if taxa are not linked contiguously."""
-        with pytest.raises(ValidationError, match="Taxa not linked contiguously"):
+        """Test that validation fails if taxa reference invalid parents."""
+        with pytest.raises(ValidationError, match="which is not in the lineage"):
             Lineage(
                 taxa=[
-                    Taxon(
-                        id=1,
-                        name="Child",
-                        parent=999,
-                        rank=NCBIRank.NO_RANK,
-                        other_names=TaxonOtherNames(acronym=[], synonyms=[]),
-                    ),
                     Taxon(
                         id=2,
                         name="Parent",
                         parent=None,
                         rank=NCBIRank.SPECIES,
+                        other_names=TaxonOtherNames(acronym=[], synonyms=[]),
+                    ),
+                    Taxon(
+                        id=1,
+                        name="Child",
+                        parent=999,
+                        rank=NCBIRank.NO_RANK,
                         other_names=TaxonOtherNames(acronym=[], synonyms=[]),
                     ),
                 ]

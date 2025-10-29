@@ -14,9 +14,12 @@ from ref_builder.cli.options import (
     path_option,
 )
 from ref_builder.cli.otu import otu
+from ref_builder.cli.utils import pass_repo
 from ref_builder.console import console
 from ref_builder.logs import configure_logger
+from ref_builder.ncbi.client import NCBIClient
 from ref_builder.repo import Repo
+from ref_builder.services.cls import Services
 
 logger = structlog.get_logger()
 
@@ -33,9 +36,9 @@ def entry(debug: bool, verbosity: int, no_color: bool) -> None:
     configure_logger(verbosity, no_color)
 
 
-@entry.command()
+@entry.command(name="status")
 @path_option
-def status(path: Path) -> None:
+def repo_status(path: Path) -> None:
     """Show the status of the reference repository."""
     repo = Repo(path)
 
@@ -48,15 +51,11 @@ def status(path: Path) -> None:
     table.add_row("Path", str(path.absolute()))
     table.add_row("Organism", repo.meta.organism)
     table.add_row("Events", str(repo.last_id))
-    table.add_row(
-        "Valid",
-        "[green]Yes[/green]" if repo.last_id == repo.head_id else "[red]No[/red]",
-    )
 
     console.print(table)
 
 
-@entry.command()
+@entry.command(name="init")
 @click.option(
     "--name",
     help="A name for the reference",
@@ -75,7 +74,7 @@ def status(path: Path) -> None:
     help="The path to initialize the repository at",
     type=click.Path(path_type=Path),
 )
-def init(name: str, organism: str, path: Path) -> None:
+def repo_init(name: str, organism: str, path: Path) -> None:
     """Create a new reference repository.
 
     If a path is not provided, the repository will be created in the current directory.
@@ -85,13 +84,15 @@ def init(name: str, organism: str, path: Path) -> None:
     Repo.new(name, path, organism)
 
 
-entry.add_command(otu)
-entry.add_command(isolate)
-entry.add_command(event)
-entry.add_command(dev)
+@entry.command(name="update")
+@pass_repo
+def repo_update(repo: Repo) -> None:
+    """Update all OTUs with the latest data from NCBI."""
+    services = Services(repo, NCBIClient(False))
+    services.repo.update()
 
 
-@entry.command()
+@entry.command(name="build")
 @click.option(
     "-V",
     "--version",
@@ -107,6 +108,12 @@ entry.add_command(dev)
     help="The path to write the reference.json file to",
 )
 @path_option
-def build(path: Path, target_path: Path, version: str) -> None:
+def repo_build(path: Path, target_path: Path, version: str) -> None:
     """Build a Virtool reference.json file from the reference repository."""
     build_json(target_path, path, version)
+
+
+entry.add_command(otu)
+entry.add_command(isolate)
+entry.add_command(event)
+entry.add_command(dev)

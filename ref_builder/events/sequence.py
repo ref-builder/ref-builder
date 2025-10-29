@@ -1,59 +1,54 @@
-from pydantic import UUID4
-
+from ref_builder.errors import HydrationIsolateError, HydrationSequenceError
 from ref_builder.events.base import (
     ApplicableEvent,
     EventData,
     SequenceQuery,
 )
-from ref_builder.models.accession import Accession
-from ref_builder.otu.builders.otu import OTUBuilder
-from ref_builder.otu.builders.sequence import SequenceBuilder
+from ref_builder.models.otu import OTU
+from ref_builder.models.sequence import Sequence
 
 
-class CreateSequenceData(EventData):
-    """The data for a :class:`CreateSequence` event."""
+class UpdateSequenceData(EventData):
+    """Data for a sequence version update event."""
 
-    id: UUID4
-    accession: Accession
-    definition: str
-    segment: UUID4
-    sequence: str
+    sequence: Sequence
+    """The new sequence to replace the old one with."""
 
 
-class CreateSequence(ApplicableEvent[CreateSequenceData, SequenceQuery]):
-    """An event that creates a sequence for a specific isolate and OTU."""
+class UpdateSequence(ApplicableEvent[UpdateSequenceData, SequenceQuery]):
+    """An event that updates a sequence to a newer version.
 
-    def apply(self, otu: OTUBuilder) -> OTUBuilder:
-        """Create sequence in OTU and return."""
-        otu.add_sequence(
-            SequenceBuilder(
-                id=self.data.id,
-                accession=self.data.accession,
-                definition=self.data.definition,
-                segment=self.data.segment,
-                sequence=self.data.sequence,
-            ),
-        )
-
-        return otu
-
-
-class DeleteSequenceData(EventData):
-    """The data for a :class:`DeleteSequence` event."""
-
-    sequence_id: UUID4
-    replacement: UUID4
-    rationale: str
-
-
-class DeleteSequence(ApplicableEvent[DeleteSequenceData, SequenceQuery]):
-    """An event that deletes a sequence.
-
-    The second part of a sequence replacement.
+    The sequence is identified by its accession in the query.
     """
 
-    def apply(self, otu: OTUBuilder) -> OTUBuilder:
-        """Delete sequence from OTU and return."""
-        otu.delete_sequence(self.data.sequence_id)
+    def apply(self, otu: OTU) -> OTU:
+        """Apply update by replacing the targeted sequence with the new one.
 
-        return otu
+        1. Find the isolate containing the sequence (by accession)
+        2. Remove the old sequence from the isolate
+        3. Add the new sequence to the isolate
+        4. Mark the old accession as excluded
+        """
+        isolate = None
+
+        for iso in otu.isolates:
+            if iso.get_sequence(self.query.accession) is not None:
+                isolate = iso
+                break
+
+        if isolate is None:
+            raise HydrationIsolateError("Could not find isolate")
+
+        old_sequence = isolate.get_sequence(self.query.accession)
+
+        if old_sequence is None:
+            raise HydrationSequenceError(
+                "Could not find referenced sequence accession."
+            )
+
+        isolate.sequences = [
+            seq for seq in isolate.sequences if seq.accession != self.query.accession
+        ]
+        isolate.sequences.append(self.data.sequence)
+
+        return otu.model_validate(otu)

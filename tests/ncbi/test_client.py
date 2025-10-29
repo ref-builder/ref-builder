@@ -1,7 +1,5 @@
-import datetime
-
 import pytest
-from syrupy import SnapshotAssertion
+from syrupy.assertion import SnapshotAssertion
 
 from ref_builder.models.accession import Accession
 from ref_builder.ncbi.client import NCBIClient, TaxonLevelError
@@ -150,12 +148,10 @@ class TestFetchAccessionsByTaxid:
         )
 
         assert all(
-            [
-                segment_length - 6 <= len(record.sequence) <= segment_length + 6
-                for record in uncached_ncbi_client.fetch_genbank_records(
-                    wide_filtered_accessions
-                )
-            ]
+            segment_length - 6 <= len(record.sequence) <= segment_length + 6
+            for record in uncached_ncbi_client.fetch_genbank_records(
+                wide_filtered_accessions
+            )
         )
 
         narrow_filtered_accessions = set(
@@ -167,47 +163,13 @@ class TestFetchAccessionsByTaxid:
         )
 
         assert all(
-            [
-                segment_length - 1 <= len(record.sequence) <= segment_length + 1
-                for record in uncached_ncbi_client.fetch_genbank_records(
-                    narrow_filtered_accessions
-                )
-            ]
+            segment_length - 1 <= len(record.sequence) <= segment_length + 1
+            for record in uncached_ncbi_client.fetch_genbank_records(
+                narrow_filtered_accessions
+            )
         )
-
         assert narrow_filtered_accessions.issubset(wide_filtered_accessions)
-
         assert wide_filtered_accessions - narrow_filtered_accessions
-
-    def test_esearch_limit_by_date(self, uncached_ncbi_client: NCBIClient):
-        """Test that a more recent modification date search term fetches a smaller subset of accessions"""
-        taxid = 12232
-
-        unfiltered_accessions = set(
-            uncached_ncbi_client.fetch_accessions_by_taxid(taxid)
-        )
-
-        after_2024_accessions = set(
-            NCBIClient.fetch_accessions_by_taxid(
-                taxid,
-                modification_date_start=datetime.date(year=2024, month=1, day=1),
-            )
-        )
-
-        assert len(after_2024_accessions) < len(unfiltered_accessions)
-
-        assert after_2024_accessions.issubset(unfiltered_accessions)
-
-        after_2025_accessions = set(
-            NCBIClient.fetch_accessions_by_taxid(
-                taxid,
-                modification_date_start=datetime.date(year=2025, month=1, day=1),
-            )
-        )
-
-        assert len(after_2025_accessions) < len(after_2024_accessions)
-
-        assert after_2025_accessions.issubset(after_2024_accessions)
 
 
 class TestFetchTaxonomy:
@@ -220,12 +182,10 @@ class TestFetchTaxonomy:
         # Make sure the taxid is not cached.
         assert uncached_ncbi_client.cache.load_taxonomy(1198450) is None
 
-        # Fetch the taxonomy record and check its contents.
-        assert (
-            uncached_ncbi_client.fetch_taxonomy_record(1198450).model_dump() == snapshot
-        )
+        record = uncached_ncbi_client.fetch_taxonomy_record(1198450)
 
-        # Make sure the taxid is now cached.
+        assert record
+        assert record.model_dump() == snapshot
         assert uncached_ncbi_client.cache.load_taxonomy(1198450)
 
     def test_not_found(self, uncached_ncbi_client: NCBIClient):

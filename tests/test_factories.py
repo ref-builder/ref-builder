@@ -3,18 +3,14 @@
 import uuid
 from uuid import uuid4
 
-from syrupy import SnapshotAssertion
+from syrupy.assertion import SnapshotAssertion
 
 from ref_builder.models.accession import Accession
+from ref_builder.models.sequence import Sequence
 from ref_builder.ncbi.models import NCBISource
-from ref_builder.otu.builders.sequence import SequenceBuilder
-from ref_builder.otu.validators.isolate import Isolate
-from ref_builder.otu.validators.sequence import Sequence
 from tests.fixtures.factories import (
-    IsolateFactory,
     NCBIGenbankFactory,
     NCBISourceFactory,
-    SequenceFactory,
 )
 
 
@@ -33,7 +29,7 @@ def test_ncbi_genbank_factory(
     records = list(ncbi_genbank_factory.coverage())
 
     assert [
-        SequenceBuilder(
+        Sequence(
             id=uuid4(),
             accession=Accession.from_string(record.accession_version),
             definition=record.definition,
@@ -193,19 +189,3 @@ class TestNCBIGenbankFactoryBuildIsolate:
         )
 
         assert [record.model_dump() for record in records] == snapshot
-
-
-def test_sequence_factory(sequence_factory: SequenceFactory):
-    """Test that SequenceFactory creates valid mock sequence data."""
-    assert all(
-        Sequence.model_validate(sequence.model_dump())
-        for sequence in sequence_factory.coverage()
-    )
-
-
-def test_isolate_factory():
-    """Test that IsolateFactory creates valid mock isolate data."""
-    assert all(
-        Isolate.model_validate(isolate.model_dump())
-        for isolate in IsolateFactory.coverage()
-    )

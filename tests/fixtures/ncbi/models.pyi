@@ -1,10 +1,17 @@
-from tests.fixtures.ncbi.models import OTUHandle
+from dataclasses import dataclass
+
+@dataclass
+class OTUHandle:
+    name: str
+    taxid: int
 
 class OTURegistry:
     @property
     def abaca_bunchy_top_virus(self) -> OTUHandle: ...
     @property
     def babaco_mosaic_virus(self) -> OTUHandle: ...
+    @property
+    def beet_black_scorch_virus(self) -> OTUHandle: ...
     @property
     def cabbage_leaf_curl_jamaica_virus(self) -> OTUHandle: ...
     @property

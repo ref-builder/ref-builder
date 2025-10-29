@@ -1,6 +1,6 @@
 import pytest
 
-from ref_builder.otu.utils import parse_refseq_comment
+from ref_builder.ncbi.utils import parse_refseq_comment
 from ref_builder.utils import get_accession_key, pad_zeroes
 
 
@@ -43,14 +43,15 @@ class TestRefSeqCommentParser:
 
         assert extracted_status == status
 
-    def test_fail(self):
+    def test_missing_comment(self):
+        """Test that an exception is raised if no REFSEQ information can be parsed."""
         with pytest.raises(ValueError, match="Invalid RefSeq comment"):
             parse_refseq_comment("AGSDHJFKLDSFEU")
 
 
 class TestGetAccessionKey:
     @pytest.mark.parametrize(
-        ("raw_string", "expected_accession"),
+        ("string", "expected_accession"),
         [
             ("EF546808", "EF546808"),
             ("EF546808.1", "EF546808"),
@@ -58,12 +59,14 @@ class TestGetAccessionKey:
             ("NC_123456.1", "NC_123456"),
         ],
     )
-    def test_ok(self, raw_string: str, expected_accession: str):
-        assert get_accession_key(raw_string) == expected_accession
+    def test_ok(self, string: str, expected_accession: str):
+        """Test that keys are extracted from various valid accession strings."""
+        assert get_accession_key(string) == expected_accession
 
     @pytest.mark.parametrize(
-        "raw_string", ["CLOCKTOWER", "AC269481.3.5", "123453.1", "123453"]
+        "string", ["CLOCKTOWER", "AC269481.3.5", "123453.1", "123453"]
     )
-    def test_fail(self, raw_string: str):
+    def test_bad_input(self, string: str):
+        """Test that an exception is raised for various bad inputs."""
         with pytest.raises(ValueError):
-            get_accession_key(raw_string)
+            get_accession_key(string)

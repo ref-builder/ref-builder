@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from syrupy import SnapshotAssertion
+from syrupy.assertion import SnapshotAssertion
 
 from ref_builder.ncbi.cache import NCBICache
 from ref_builder.ncbi.models import NCBIGenbank, NCBILineage, NCBIRank, NCBITaxonomy
@@ -19,7 +19,7 @@ class TestParseGenbank:
     ):
         """Test that multiple valid records can be parsed successfully."""
         record = scratch_ncbi_cache.load_genbank_record(accession)
-        assert NCBIGenbank(**record).model_dump() == snapshot
+        assert NCBIGenbank.model_validate(record).model_dump() == snapshot
 
     def test_source(
         self,
@@ -28,7 +28,7 @@ class TestParseGenbank:
     ):
         """Test that the source table is correctly extracted from the feature table."""
         record = scratch_ncbi_cache.load_genbank_record("AB017504")
-        assert NCBIGenbank(**record).source.model_dump() == snapshot
+        assert NCBIGenbank.model_validate(record).source.model_dump() == snapshot
 
     def test_taxid(
         self,
@@ -42,12 +42,13 @@ class TestParseGenbank:
         """Test that validation fails when the sequence contains invalid characters."""
         record = scratch_ncbi_cache.load_genbank_record("AB017504")
 
-        assert NCBIGenbank(**record)
+        assert record
+        assert NCBIGenbank.model_validate(record)
 
         record["GBSeq_sequence"] = "naa"
 
         try:
-            NCBIGenbank(**record)
+            NCBIGenbank.model_validate(record)
         except ValidationError as exc:
             for error in exc.errors():
                 assert "GBSeq_sequence" in error["loc"]
@@ -64,7 +65,9 @@ class TestParseTaxonomy:
         """Test that multiple valid records can be parsed successfully."""
         record = scratch_ncbi_cache.load_taxonomy(taxid)
 
-        taxonomy = NCBITaxonomy(**record)
+        assert record
+
+        taxonomy = NCBITaxonomy.model_validate(record)
 
         assert type(taxonomy) is NCBITaxonomy
         assert taxonomy.model_dump() == snapshot
@@ -79,9 +82,9 @@ class TestParseTaxonomy:
         """
         record = scratch_ncbi_cache.load_taxonomy(1016856)
 
-        assert NCBITaxonomy(**record).rank == NCBIRank.NO_RANK
+        assert NCBITaxonomy.model_validate(record).rank == NCBIRank.NO_RANK
 
-        taxonomy = NCBITaxonomy(rank=NCBIRank.ISOLATE, **record)
+        taxonomy = NCBITaxonomy.model_validate({"rank": NCBIRank.ISOLATE, **record})
 
         assert taxonomy.rank == NCBIRank.ISOLATE
         assert taxonomy.model_dump() == snapshot
@@ -95,7 +98,7 @@ def test_create_lineage_item_alias():
         "Rank": "kingdom",
     }
 
-    assert NCBILineage(**lineage_data_with_aliases) == NCBILineage(
+    assert NCBILineage.model_validate(lineage_data_with_aliases) == NCBILineage(
         id=2732397,
         name="Pararnavirae",
         rank="kingdom",

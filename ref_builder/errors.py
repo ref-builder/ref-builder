@@ -1,6 +1,18 @@
 from uuid import UUID
 
 
+class HydrationError(Exception):
+    """Raised when a hydration fails."""
+
+
+class HydrationIsolateError(HydrationError):
+    """Raised when there is a problem hydrating a isolate."""
+
+
+class HydrationSequenceError(HydrationError):
+    """Raised when there is a problem hydrating a sequence."""
+
+
 class LockConflictError(Exception):
     """Raised when a lock is attempted on a locked repository."""
 
@@ -9,24 +21,10 @@ class LockConflictError(Exception):
 
 
 class LockRequiredError(Exception):
-    """Raised when a transaction is attempted without a lock."""
+    """Raised when an operation is attempted without a lock."""
 
     def __init__(self) -> None:
-        super().__init__("Repository must be locked to use a transaction.")
-
-
-class TransactionExistsError(Exception):
-    """Raised when an error occurs during a transaction."""
-
-    def __init__(self) -> None:
-        super().__init__("An active transaction already exists.")
-
-
-class TransactionRequiredError(Exception):
-    """Raised when an error occurs during a transaction."""
-
-    def __init__(self) -> None:
-        super().__init__("Writing events requires a transaction and none was found.")
+        super().__init__("Repository must be locked for this operation.")
 
 
 class InvalidInputError(Exception):
@@ -45,7 +43,9 @@ class OTUDeletedError(Exception):
         super().__init__(f"OTU {otu_id} has been marked for deletion.")
 
 
-class PlanConformationError(ValueError):
-    """Raised when potential new sequences do not pass validation against
-    the OTU plan.
-    """
+class PlanCreationError(ValueError):
+    """Raised when a plan cannot be created from provided parameters."""
+
+
+class PlanValidationError(ValueError):
+    """Raised when an isolate does not pass plan validation."""

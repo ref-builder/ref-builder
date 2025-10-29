@@ -61,19 +61,13 @@ def list_otus() -> None:
 
 
 @dev.command(name="refresh")
-@click.option(
-    "--output-dir",
-    type=click.Path(path_type=Path),
-    default="tests/fixtures/ncbi/otus",
-    help="Output directory for generated JSON/FASTA files",
-)
-def refresh(output_dir: Path) -> None:
+def refresh() -> None:
     """Regenerate mock NCBI data from manifest by fetching from NCBI.
 
     Reads OTUManifest and fetches real data from NCBI for each OTU.
     Generates JSON (taxonomy + genbank) and FASTA files.
     """
-    output_path = Path(output_dir)
+    output_path = Path("tests/fixtures/ncbi/otus")
     output_path.mkdir(parents=True, exist_ok=True)
 
     # Initialize NCBI client (ignore cache to get fresh data)
@@ -100,14 +94,19 @@ def refresh(output_dir: Path) -> None:
             click.echo(f"  Warning: No GenBank records found for {attr_name}", err=True)
             continue
 
-        # Build genbank dict keyed by accession
+        # Build genbank dict keyed by versioned accession
         genbank_dict = {
-            record.accession: record.model_dump() for record in genbank_records
+            record.accession_version: record.model_dump() for record in genbank_records
         }
 
         # Fetch taxonomy from first refseq accession
         first_refseq_record = next(
-            (r for r in genbank_records if r.accession in attr.refseq), None
+            (
+                r
+                for r in genbank_records
+                if r.accession_version in attr.refseq or r.accession in attr.refseq
+            ),
+            None,
         )
 
         if not first_refseq_record:
@@ -134,9 +133,15 @@ def refresh(output_dir: Path) -> None:
         generated_count += 1
 
     # Generate type stub
-    stub_path = Path("tests/fixtures/ncbi/otus.pyi")
+    stub_path = Path("tests/fixtures/ncbi/models.pyi")
     stub_lines = [
-        "from tests.fixtures.ncbi.models import OTUHandle",
+        "from dataclasses import dataclass",
+        "",
+        "",
+        "@dataclass",
+        "class OTUHandle:",
+        "    name: str",
+        "    taxid: int",
         "",
         "",
         "class OTURegistry:",

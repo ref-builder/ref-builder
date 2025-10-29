@@ -3,7 +3,8 @@ from typing import Generic, TypeVar
 
 from pydantic import UUID4, BaseModel, computed_field
 
-from ref_builder.otu.builders.otu import OTUBuilder
+from ref_builder.models.accession import Accession
+from ref_builder.models.otu import OTU
 
 TEventData = TypeVar("TEventData", bound="EventData")
 TEventQuery = TypeVar("TEventQuery", bound="EventQuery")
@@ -43,7 +44,7 @@ class Event(BaseModel, Generic[TEventData, TEventQuery]):
 
 
 class ApplicableEvent(Event[TEventData, TEventQuery]):
-    def apply(self, otu: OTUBuilder) -> OTUBuilder:
+    def apply(self, otu: OTU) -> OTU:
         return otu
 
 
@@ -66,19 +67,9 @@ class IsolateQuery(OTUQuery):
 
 
 class SequenceQuery(OTUQuery):
-    """An event query that targets an event at a sequence in a specific isolate and
-    OTU.
-    """
+    """An event query that targets a specific sequence by its accession."""
 
-    sequence_id: UUID4
-
-
-class LinkSequenceQuery(IsolateQuery):
-    """An event query that targets an event at a sequence in a specific isolate and
-    OTU.
-    """
-
-    sequence_id: UUID4
+    accession: Accession
 
 
 class EventMetadata(BaseModel):

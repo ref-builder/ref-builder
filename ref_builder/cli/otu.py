@@ -1,4 +1,3 @@
-import datetime
 import sys
 from pathlib import Path
 
@@ -15,7 +14,6 @@ from ref_builder.console import (
     print_otu_list,
 )
 from ref_builder.ncbi.client import NCBIClient
-from ref_builder.otu.update import batch_update_repo
 from ref_builder.repo import Repo, locked_repo
 from ref_builder.services.cls import Services
 
@@ -123,32 +121,11 @@ def otu_event_logs(repo: Repo, identifier: str) -> None:
     print_otu_event_log(list(repo.iter_otu_events(otu_.id)))
 
 
-@otu.command(name="batch-update")
-@click.option(
-    "--start-date",
-    type=click.DateTime(["%Y-%m-%d", "%Y/%m/%d"]),
-    help="Exclude records edited before this date",
-)
-@ignore_cache_option
-@pass_repo
-def otu_batch_auto_update(
-    repo: Repo,
-    ignore_cache: bool,
-    start_date: datetime.date | None,
-) -> None:
-    """Update all OTUs with the latest data from NCBI."""
-    batch_update_repo(
-        repo,
-        start_date=start_date,
-        ignore_cache=ignore_cache,
-    )
-
-
 @otu.command(name="update")
 @click.argument("IDENTIFIER", type=str)
 @ignore_cache_option
 @pass_repo
-def otu_auto_update(
+def otu_update(
     repo: Repo,
     identifier: str,
     ignore_cache: bool,
@@ -167,7 +144,7 @@ def otu_auto_update(
         click.echo("OTU not found.", err=True)
         sys.exit(1)
 
-    services.otu.update(otu_.id, ignore_cache=ignore_cache)
+    services.otu.update(otu_.id)
 
 
 @otu.command(name="exclude-accessions")  # type: ignore

@@ -3,15 +3,12 @@
 from typing import Literal
 
 from faker.providers import lorem
-from polyfactory import PostGenerated, Use
+from polyfactory import Use
 from polyfactory.decorators import post_generated
 from polyfactory.factories.pydantic_factory import ModelFactory
 
-from ref_builder.models.accession import Accession
-from ref_builder.models.isolate import IsolateName, IsolateNameType
 from ref_builder.models.molecule import Molecule, MoleculeType
-from ref_builder.models.otu import OTUMinimal
-from ref_builder.models.plan import Plan, Segment, SegmentName, SegmentRule
+from ref_builder.models.plan import Plan
 from ref_builder.ncbi.models import (
     NCBIGenbank,
     NCBILineage,
@@ -21,9 +18,7 @@ from ref_builder.ncbi.models import (
     NCBITaxonomy,
     NCBITaxonomyOtherNames,
 )
-from ref_builder.otu.utils import get_segments_max_length, get_segments_min_length
-from ref_builder.otu.validators.isolate import IsolateBase
-from ref_builder.otu.validators.sequence import SequenceBase
+from ref_builder.plan import get_segments_max_length, get_segments_min_length
 from tests.fixtures.providers import (
     AccessionProvider,
     OrganismProvider,
@@ -410,170 +405,6 @@ class NCBIGenbankFactory(ModelFactory[NCBIGenbank]):
             records.append(record)
 
         return records
-
-
-def derive_acronym(_: str, values: dict[str, str]) -> str:
-    """Derive an acronym from an OTU name."""
-    name = values["name"]
-    return "".join([part[0].upper() for part in name.split(" ")])
-
-
-class SegmentFactory(ModelFactory[Segment]):
-    """Segment Factory with quasi-realistic data."""
-
-    ModelFactory.__faker__.add_provider(SequenceProvider)
-
-    length = Use(ModelFactory.__faker__.sequence_length)
-    """Generate a quasi-realistic length for a sequence."""
-
-    @classmethod
-    def name(cls) -> SegmentName | None:
-        """Generate a quasi-realistic segment name or null."""
-        if cls.__faker__.random_int(0, 10) > 5:
-            return SegmentName(
-                prefix=cls.__faker__.random_element(["DNA", "RNA"]),
-                key=cls.__faker__.segment_key(),
-            )
-
-        return None
-
-    @classmethod
-    def length_tolerance(cls) -> float:
-        """Generate a realistic length tolerance."""
-        return cls.__faker__.random_int(0, 5) * 0.01
-
-    @staticmethod
-    def build_series(n: int) -> list[Segment]:
-        """Generate a matching series of segments"""
-        segment_name_keys = "ABCDEF"
-
-        if n > len(segment_name_keys):
-            raise ValueError("Generation of over 6 segments is unsupported.")
-
-        return [
-            SegmentFactory.build(
-                name=SegmentName(prefix="DNA", key=segment_name_keys[i]),
-                required=SegmentRule.REQUIRED,
-            )
-            for i in range(n)
-        ]
-
-
-class PlanFactory(ModelFactory[Plan]):
-    """A Polyfactory that generates valid instances of :class:`Plan`.
-
-    The factory generates a random number of segments, with a 75% chance of generating a
-    monopartite plan.
-    """
-
-    @classmethod
-    def segments(cls) -> list[Segment]:
-        """Return a set of quasi-realistic segments."""
-        # The segment represents a monopartite OTU 75% of the time.
-        if cls.__faker__.random_int(0, 3):
-            return [SegmentFactory.build(name=None, rule=SegmentRule.REQUIRED)]
-
-        return SegmentFactory.build_series(cls.__faker__.random_int(2, 5))
-
-
-class SequenceFactory(ModelFactory[SequenceBase]):
-    """Sequence factory with quasi-realistic data."""
-
-    id = Use(ModelFactory.__faker__.uuid4)
-    """Generate a UUID."""
-
-    definition = Use(ModelFactory.__faker__.sentence)
-    """Generate a mock sentence to serve as the definition field."""
-
-    segment = Use(ModelFactory.__faker__.uuid4)
-    """Generate a quasi-realistic mock segment string."""
-
-    sequence = Use(ModelFactory.__faker__.sequence)
-    """Generate a quasi-realistic mock genomic sequence."""
-
-    @classmethod
-    def accession(cls) -> Accession:
-        """Generate a quasi-realistic accession."""
-        ModelFactory.__faker__.add_provider(AccessionProvider)
-        return Accession(key=ModelFactory.__faker__.accession(), version=1)
-
-    @classmethod
-    def build_on_segment(
-        cls, segment: Segment, accession: Accession | None = None
-    ) -> SequenceBase:
-        """Build a sequence based on a given segment. Takes an optional accession."""
-        min_length = get_segments_min_length([segment])
-        max_length = get_segments_max_length([segment])
-
-        if accession is None:
-            accession = Accession(key=ModelFactory.__faker__.accession(), version=1)
-
-        return SequenceFactory.build(
-            accession=accession,
-            sequence=cls.__faker__.sequence(min=min_length, max=max_length),
-            segment=segment.id,
-        )
-
-
-class IsolateFactory(ModelFactory[IsolateBase]):
-    """Isolate factory with quasi-realistic data."""
-
-    id = Use(ModelFactory.__faker__.uuid4, cast_to=None)
-    """Generate a UUID."""
-
-    taxid = Use(ModelFactory.__faker__.random_int, min=1000, max=999999)
-    """A realistic taxonomy ID."""
-
-    @classmethod
-    def name(cls) -> IsolateName:
-        """Generate a quasi-realistic isolate name."""
-        return IsolateName(
-            type=IsolateNameType.ISOLATE,
-            value=cls.__faker__.word(part_of_speech="noun").capitalize(),
-        )
-
-    @classmethod
-    def sequences(cls) -> list[SequenceBase]:
-        """Generate between 1 and 6 sequences with numerically sequential accessions."""
-        sequence_count = cls.__faker__.random_int(1, 6)
-
-        return [
-            SequenceFactory.build(accession=Accession(key=accession, version=1))
-            for accession in cls.__faker__.accessions(sequence_count)
-        ]
-
-    @classmethod
-    def build_on_plan(cls, plan: Plan, refseq: bool = False):
-        """Take a plan and return a matching isolate."""
-        if refseq:
-            sequential_accessions = cls.__faker__.refseq_accessions(len(plan.segments))
-        else:
-            sequential_accessions = cls.__faker__.genbank_accessions(len(plan.segments))
-
-        return IsolateFactory.build(
-            sequences=[
-                SequenceFactory.build_on_segment(
-                    segment=plan.segments[counter],
-                    accession=Accession(sequential_accessions[counter], 1),
-                )
-                for counter in range(len(plan.segments))
-            ]
-        )
-
-
-class OTUMinimalFactory(ModelFactory[OTUMinimal]):
-    """OTUMinimal Factory with quasi-realistic data."""
-
-    ModelFactory.__faker__.add_provider(OrganismProvider)
-
-    acronym = PostGenerated(derive_acronym)
-    """An acronym for the OTU derived from its name."""
-
-    name = Use(ModelFactory.__faker__.organism)
-    """Generate a realistic name for the OTU."""
-
-    taxid = Use(ModelFactory.__faker__.random_int, min=1000, max=999999)
-    """A realistic taxonomy ID."""
 
 
 class NCBILineageFactory(ModelFactory[NCBILineage]):

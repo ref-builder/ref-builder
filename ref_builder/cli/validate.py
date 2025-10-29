@@ -1,6 +1,5 @@
 """Validation utilities for Click commands."""
 
-from collections.abc import Sequence
 from typing import TypeVar
 
 import click
@@ -10,8 +9,8 @@ T = TypeVar("T")
 
 
 def validate_no_duplicate_accessions(
-    _ctx: Context, _param: Parameter, value: Sequence[str]
-) -> Sequence[str]:
+    _ctx: Context, _param: Parameter, value: list[str]
+) -> list[str]:
     """Validate that a sequence of accessions does not contain duplicate values.
 
     Intended to be used as a callback for Click validation.
