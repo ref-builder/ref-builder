@@ -112,12 +112,12 @@ class TestCreate:
         otu = empty_repo.get_otu(otu.id)
 
         assert otu
-        assert "EF546808" in otu.excluded_accessions
-        assert "EF546809" in otu.excluded_accessions
-        assert "EF546810" in otu.excluded_accessions
-        assert "EF546811" in otu.excluded_accessions
-        assert "EF546812" in otu.excluded_accessions
-        assert "EF546813" in otu.excluded_accessions
+        assert "EF546808" in otu.promoted_accessions
+        assert "EF546809" in otu.promoted_accessions
+        assert "EF546810" in otu.promoted_accessions
+        assert "EF546811" in otu.promoted_accessions
+        assert "EF546812" in otu.promoted_accessions
+        assert "EF546813" in otu.promoted_accessions
 
     def test_otu_not_found(
         self,

@@ -80,7 +80,6 @@ def initialized_repo(tmp_path: Path):
         )
 
         otu = repo.create_otu(
-            excluded_accessions=set(),
             isolate=isolate_data,
             lineage=TMV_LINEAGE,
             molecule=Molecule(
@@ -89,6 +88,7 @@ def initialized_repo(tmp_path: Path):
                 topology=Topology.LINEAR,
             ),
             plan=plan,
+            promoted_accessions=set(),
         )
 
         assert otu is not None
@@ -116,7 +116,6 @@ def init_otu(repo: Repo) -> OTU:
     )
 
     result = repo.create_otu(
-        excluded_accessions=set(),
         isolate=isolate_data,
         lineage=TMV_LINEAGE,
         molecule=Molecule(
@@ -125,6 +124,7 @@ def init_otu(repo: Repo) -> OTU:
             topology=Topology.LINEAR,
         ),
         plan=plan,
+        promoted_accessions=set(),
     )
     assert result is not None
     return result
@@ -185,7 +185,6 @@ class TestCreateOTU:
 
         with empty_repo.lock():
             otu = empty_repo.create_otu(
-                excluded_accessions=set(),
                 isolate=isolate_data,
                 lineage=TMV_LINEAGE,
                 molecule=Molecule(
@@ -194,13 +193,15 @@ class TestCreateOTU:
                     topology=Topology.LINEAR,
                 ),
                 plan=plan,
+                promoted_accessions=set(),
             )
-            assert otu is not None
 
+            assert otu
             assert otu == OTU.model_validate(
                 {
                     "id": otu.id,
                     "excluded_accessions": set(),
+                    "promoted_accessions": set(),
                     "lineage": TMV_LINEAGE,
                     "molecule": Molecule(
                         strandedness=Strandedness.SINGLE,
@@ -238,7 +239,6 @@ class TestCreateOTU:
             assert event == {
                 "data": {
                     "id": str(otu.id),
-                    "excluded_accessions": [],
                     "isolate": {
                         "id": str(isolate_data.id),
                         "name": None,
@@ -287,6 +287,7 @@ class TestCreateOTU:
                             }
                         ],
                     },
+                    "promoted_accessions": [],
                 },
                 "id": 2,
                 "query": {
@@ -308,7 +309,6 @@ class TestCreateOTU:
             )
 
             empty_repo.create_otu(
-                excluded_accessions=set(),
                 isolate=isolate_data,
                 lineage=TMV_LINEAGE,
                 molecule=Molecule(
@@ -325,6 +325,7 @@ class TestCreateOTU:
                         )
                     ]
                 ),
+                promoted_accessions=set(),
             )
 
             isolate_data_2 = CreateIsolateData(
@@ -339,7 +340,6 @@ class TestCreateOTU:
                 match="already contains taxid",
             ):
                 empty_repo.create_otu(
-                    excluded_accessions=set(),
                     isolate=isolate_data_2,
                     lineage=TMV_LINEAGE,
                     molecule=Molecule(
@@ -356,6 +356,7 @@ class TestCreateOTU:
                             )
                         ]
                     ),
+                    promoted_accessions=set(),
                 )
 
     def test_plan_required_segment_warning(self, empty_repo: Repo):
@@ -384,7 +385,6 @@ class TestCreateOTU:
             empty_repo.lock(),
         ):
             otu = empty_repo.create_otu(
-                excluded_accessions=set(),
                 isolate=isolate_data,
                 lineage=TMV_LINEAGE,
                 molecule=Molecule(
@@ -393,6 +393,7 @@ class TestCreateOTU:
                     topology=Topology.LINEAR,
                 ),
                 plan=plan,
+                promoted_accessions=set(),
             )
 
             assert otu
@@ -520,7 +521,6 @@ class TestGetOTU:
 
         with empty_repo.lock():
             otu = empty_repo.create_otu(
-                excluded_accessions=set(),
                 isolate=isolate_data,
                 lineage=TMV_LINEAGE,
                 molecule=Molecule(
@@ -529,6 +529,7 @@ class TestGetOTU:
                     topology=Topology.LINEAR,
                 ),
                 plan=monopartite_plan,
+                promoted_accessions=set(),
             )
 
             assert otu
@@ -611,6 +612,7 @@ class TestGetOTU:
                 {
                     "id": otu.id,
                     "excluded_accessions": set(),
+                    "promoted_accessions": set(),
                     "lineage": TMV_LINEAGE,
                     "molecule": Molecule(
                         strandedness=Strandedness.SINGLE,

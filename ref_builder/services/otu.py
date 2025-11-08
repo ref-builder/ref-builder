@@ -171,11 +171,11 @@ class OTUService(Service):
             for segment_id, record in assigned.items()
         ]
 
-        excluded_accessions = set()
+        promoted_accessions = set()
         for record in assigned.values():
             if record.refseq:
                 _, old_accession = parse_refseq_comment(record.comment)
-                excluded_accessions.add(old_accession)
+                promoted_accessions.add(old_accession)
 
         isolate_data = CreateIsolateData(
             id=isolate_id,
@@ -185,11 +185,11 @@ class OTUService(Service):
         )
 
         otu = self._repo.create_otu(
-            excluded_accessions=excluded_accessions,
             isolate=isolate_data,
             lineage=lineage,
             molecule=molecule,
             plan=plan,
+            promoted_accessions=promoted_accessions,
         )
 
         if otu is None:
@@ -374,7 +374,7 @@ class OTUService(Service):
                     "Retrieving existing sequence",
                     accession=record.accession,
                 )
-                new_sequence = otu.get_sequence_by_accession(record.accession)
+                new_sequence = otu.get_sequence(record.accession)
 
             try:
                 self._repo.update_sequence(
@@ -429,6 +429,7 @@ class OTUService(Service):
 
         # Step 2: Upgrade outdated sequence versions
         upgraded_accessions = self._upgrade_outdated_sequences(otu)
+
         if upgraded_accessions:
             log.info("Upgraded sequences", count=len(upgraded_accessions))
             otu = self._repo.get_otu(otu.id)

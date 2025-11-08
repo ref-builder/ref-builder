@@ -7,6 +7,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PrivateAttr,
     field_validator,
     model_validator,
 )
@@ -35,13 +36,13 @@ class OTU(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True, revalidate_instances="always")
 
-    _isolates_by_accession: dict[str, Isolate]
+    _isolates_by_accession: dict[str, Isolate] = PrivateAttr()
     """A dictionary of isolates indexed by accession key"""
 
-    _isolates_by_id: dict[UUID4, Isolate]
+    _isolates_by_id: dict[UUID4, Isolate] = PrivateAttr()
     """A dictionary of isolates indexed by isolate UUID"""
 
-    _sequences_by_accession: dict[str, Sequence]
+    _sequences_by_accession: dict[str, Sequence] = PrivateAttr()
     """A dictionary of sequences indexed by accession key"""
 
     id: UUID4
@@ -49,6 +50,9 @@ class OTU(BaseModel):
 
     excluded_accessions: set[str]
     """A set of accessions that should not be retrieved in future fetch operations."""
+
+    promoted_accessions: set[str]
+    """GenBank accessions that have been replaced by RefSeq equivalents during promotion."""
 
     lineage: Lineage
     """The taxonomic lineage from species down to the target taxon."""
@@ -127,10 +131,12 @@ class OTU(BaseModel):
     def blocked_accessions(self) -> set[str]:
         """Accessions that should not be considered for addition to the OTU.
 
-        This includes accessions that already exist in the OTU and accessions that have
-        been explicitly excluded.
+        This includes:
+        - Accessions that already exist in the OTU
+        - Accessions that have been explicitly excluded
+        - Accessions that have been promoted (replaced by RefSeq equivalents)
         """
-        return self.accessions | self.excluded_accessions
+        return self.accessions | self.excluded_accessions | self.promoted_accessions
 
     @property
     def isolate_ids(self) -> set[UUID4]:
@@ -180,6 +186,23 @@ class OTU(BaseModel):
         }:
             raise ValueError(
                 f"Excluded accessions found in the OTU: {', '.join(accessions)}"
+            )
+
+        return self
+
+    @model_validator(mode="after")
+    def check_promoted_accessions(self) -> "OTU":
+        """Ensure that promoted accessions are not in the OTU or excluded."""
+        if accessions := self.promoted_accessions & {
+            sequence.accession.key for sequence in self.sequences
+        }:
+            raise ValueError(
+                f"Promoted accessions found in the OTU: {', '.join(accessions)}"
+            )
+
+        if accessions := self.promoted_accessions & self.excluded_accessions:
+            raise ValueError(
+                f"Promoted accessions cannot be excluded: {', '.join(accessions)}"
             )
 
         return self

@@ -31,6 +31,7 @@ class TestOTU:
                 "id": uuid4(),
                 "acronym": "TMV",
                 "excluded_accessions": set(),
+                "promoted_accessions": set(),
                 "lineage": Lineage(
                     taxa=[
                         Taxon(
@@ -127,6 +128,7 @@ class TestOTU:
                 "id": uuid4(),
                 "acronym": "TMV",
                 "excluded_accessions": set(),
+                "promoted_accessions": set(),
                 "lineage": Lineage(
                     taxa=[
                         Taxon(

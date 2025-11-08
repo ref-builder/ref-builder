@@ -137,7 +137,7 @@ class PromoteIsolate(ApplicableEvent[PromoteIsolateData, IsolateQuery]):
                 seq for seq in isolate.sequences if seq.accession != old_accession
             ]
 
-            otu.excluded_accessions.add(old_accession.key)
+            otu.promoted_accessions.add(old_accession.key)
 
         # Trigger Pydantic validation to rebuild OTU lookup dictionaries
         return otu.model_validate(otu)
