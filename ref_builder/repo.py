@@ -250,11 +250,11 @@ class Repo:
 
     def create_otu(
         self,
-        excluded_accessions: set[str],
         isolate: CreateIsolateData,
         lineage: Lineage,
         molecule: Molecule,
         plan: Plan,
+        promoted_accessions: set[str],
     ) -> OTU | None:
         """Create an OTU."""
         for taxon in lineage.taxa:
@@ -273,11 +273,11 @@ class Repo:
             CreateOTU,
             CreateOTUData(
                 id=otu_id,
-                excluded_accessions=excluded_accessions,
                 isolate=isolate,
                 lineage=lineage,
                 molecule=molecule,
                 plan=plan,
+                promoted_accessions=promoted_accessions,
             ),
             OTUQuery(otu_id=otu_id),
         )

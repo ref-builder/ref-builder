@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 from pytest_mock import MockerFixture
 
@@ -74,7 +76,7 @@ class TestCreate:
         empty_repo: Repo,
         otu_service: OTUService,
     ):
-        """Test RefSeq comment parsing and old accession exclusion."""
+        """Test RefSeq comment parsing and promoted accessions tracking."""
         # Use TMV RefSeq which references V01408 in its comment
         accessions = ["NC_001367"]
 
@@ -82,7 +84,7 @@ class TestCreate:
             otu = otu_service.create(accessions)
 
         assert otu is not None
-        assert "V01408" in otu.excluded_accessions
+        assert "V01408" in otu.promoted_accessions
 
     def test_empty_accessions(self, otu_service: OTUService):
         """Test that empty accessions list returns None."""
@@ -227,7 +229,7 @@ class TestOTUServiceManageAccessions:
         assert otu_final.excluded_accessions == {"DQ178609"}
 
 
-class TestOTUServiceUpdate:
+class TestUpdate:
     """Test OTU update functionality."""
 
     def test_ok(
@@ -262,14 +264,9 @@ class TestOTUServiceUpdate:
     def test_otu_not_found(
         self,
         otu_service: OTUService,
-        mocker: MockerFixture,
     ):
         """Test that update returns None when OTU is not found."""
-        from uuid import uuid4
-
-        result = otu_service.update(uuid4())
-
-        assert result is None
+        assert otu_service.update(uuid4()) is None
 
     def test_promotion(
         self,
@@ -294,7 +291,7 @@ class TestOTUServiceUpdate:
         assert updated_otu is not None
         assert updated_otu.id == otu.id
         assert "NC_001367" in updated_otu.accessions
-        assert updated_otu.excluded_accessions == {"V01408"}
+        assert updated_otu.promoted_accessions == {"V01408"}
 
         # The original isolate should be promoted
         isolate_after = updated_otu.get_isolate(isolate_before.id)

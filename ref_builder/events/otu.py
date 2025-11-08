@@ -19,7 +19,7 @@ class CreateOTUData(EventData):
     """The data for a :class:`CreateOTU` event."""
 
     id: UUID4
-    excluded_accessions: set[str]
+    promoted_accessions: set[str]
     isolate: CreateIsolateData
     lineage: Lineage
     molecule: Molecule
@@ -36,7 +36,8 @@ class CreateOTU(Event[CreateOTUData, OTUQuery]):
         """
         return OTU(
             id=self.query.otu_id,
-            excluded_accessions=self.data.excluded_accessions,
+            excluded_accessions=set(),
+            promoted_accessions=self.data.promoted_accessions,
             isolates=[
                 Isolate(
                     id=self.data.isolate.id,

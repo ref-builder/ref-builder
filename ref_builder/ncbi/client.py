@@ -46,14 +46,11 @@ class NCBIClientProtocol(Protocol):
     def fetch_genbank_records(
         self,
         accessions: Collection[str | Accession],
-    ) -> list[NCBIGenbank]:
-        """Fetch GenBank records for the given accessions."""
+    ) -> list[NCBIGenbank]: ...
 
-    def fetch_taxonomy_record(self, taxid: int) -> NCBITaxonomy | None:
-        """Fetch taxonomy record for the given taxid."""
+    def fetch_taxonomy_record(self, taxid: int) -> NCBITaxonomy | None: ...
 
-    def fetch_descendant_taxids(self, species_taxid: int) -> list[int]:
-        """Fetch all descendant taxids under a species."""
+    def fetch_descendant_taxids(self, species_taxid: int) -> list[int]: ...
 
     @staticmethod
     def fetch_accessions_by_taxid(
@@ -61,12 +58,10 @@ class NCBIClientProtocol(Protocol):
         sequence_min_length: int = 0,
         sequence_max_length: int = 0,
         refseq_only: bool = False,
-    ) -> list[Accession]:
-        """Fetch all accessions associated with the given taxid."""
+    ) -> list[Accession]: ...
 
     @staticmethod
-    def filter_accessions(raw_accessions: Collection[str]) -> set[Accession]:
-        """Filter raw accession list and return a set of valid Accession objects."""
+    def filter_accessions(raw_accessions: Collection[str]) -> set[Accession]: ...
 
 
 class TaxonLevelError(ValueError):
