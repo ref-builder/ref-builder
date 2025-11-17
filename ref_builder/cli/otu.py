@@ -5,6 +5,7 @@ import click
 import structlog
 
 from ref_builder.cli.options import ignore_cache_option, path_option
+from ref_builder.errors import OTUExistsError
 from ref_builder.cli.utils import pass_repo
 from ref_builder.cli.validate import validate_no_duplicate_accessions
 from ref_builder.console import (
@@ -37,12 +38,19 @@ def otu(ctx: click.Context, path: Path) -> None:
     type=str,
     required=True,
 )
+@click.option(
+    "-i",
+    "--create-isolate",
+    is_flag=True,
+    help="If OTU exists for the taxonomy ID, create an isolate instead of failing.",
+)
 @pass_repo
 @ignore_cache_option
 def otu_create(
     repo: Repo,
     accessions_: list[str],
     ignore_cache: bool,
+    create_isolate: bool,
 ) -> None:
     """Create a new OTU.
 
@@ -57,6 +65,22 @@ def otu_create(
 
     try:
         otu_ = services.otu.create(accessions_)
+    except OTUExistsError as e:
+        if create_isolate:
+            # Try to create an isolate in the existing OTU instead
+            isolate = services.isolate.create(accessions_)
+            if isolate is None:
+                click.echo("Failed to create isolate in existing OTU.", err=True)
+                sys.exit(1)
+            otu_ = repo.get_otu(e.otu_id)
+            click.echo(f"Created isolate in existing OTU (taxid: {e.taxid})")
+        else:
+            click.echo(
+                f"OTU already exists for taxonomy ID {e.taxid}. "
+                f"Use -i/--create-isolate to create an isolate instead.",
+                err=True,
+            )
+            sys.exit(1)
     except ValueError as e:
         click.echo(e, err=True)
         sys.exit(1)
