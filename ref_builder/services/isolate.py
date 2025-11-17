@@ -94,11 +94,12 @@ class IsolateService(Service):
 
         binned_records = group_genbank_records_by_isolate(records)
 
-        if len(binned_records) != 1:
+        if len(binned_records) > 1:
             log.error("More than one isolate name found in requested accessions.")
             return None
 
-        isolate_name, _ = next(iter(binned_records.items()))
+        # Monopartite isolates can be unnamed and may not be binned.
+        isolate_name = next(iter(binned_records.keys())) if binned_records else None
 
         # Try to promote sequences if all records are RefSeq
         if all(record.refseq for record in records):

@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 import structlog
 
+from ref_builder.errors import OTUExistsError
 from ref_builder.events.isolate import CreateIsolateData
 from ref_builder.models.accession import Accession
 from ref_builder.models.isolate import IsolateName
@@ -113,11 +114,8 @@ class OTUService(Service):
             log.fatal("Could not retrieve data from NCBI Taxonomy", taxid=taxid)
             return None
 
-        if self._repo.get_otu_id_by_taxid(taxonomy.id):
-            log.error(
-                f"Taxonomy ID {taxonomy.id} has already been added to this reference."
-            )
-            return None
+        if otu_id := self._repo.get_otu_id_by_taxid(taxonomy.id):
+            raise OTUExistsError(taxonomy.id, otu_id)
 
         return self._write_otu(
             taxonomy,

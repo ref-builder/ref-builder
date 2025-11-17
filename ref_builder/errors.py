@@ -43,6 +43,15 @@ class OTUDeletedError(Exception):
         super().__init__(f"OTU {otu_id} has been marked for deletion.")
 
 
+class OTUExistsError(Exception):
+    """Raised when attempting to create an OTU with a taxonomy ID that already exists."""
+
+    def __init__(self, taxid: int, otu_id: UUID):
+        self.taxid = taxid
+        self.otu_id = otu_id
+        super().__init__(f"OTU already exists for taxonomy ID {taxid}")
+
+
 class PlanCreationError(ValueError):
     """Raised when a plan cannot be created from provided parameters."""
 
