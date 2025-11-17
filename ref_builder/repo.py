@@ -703,8 +703,14 @@ class Repo:
 
         # Validate OTU events by applying in-memory
         if hasattr(event.query, "otu_id"):
-            # CreateOTU is always valid (creates new OTU with validated data)
-            if not isinstance(event, CreateOTU):
+            if isinstance(event, CreateOTU):
+                try:
+                    otu = event.apply()
+                    otu = OTU.model_validate(otu)
+                except Exception as e:
+                    msg = f"Event validation failed: {e}"
+                    raise ValueError(msg) from e
+            else:
                 # Get current OTU state
                 otu = self.get_otu(event.query.otu_id)
 
