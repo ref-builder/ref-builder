@@ -5,7 +5,6 @@ import click
 import structlog
 
 from ref_builder.cli.options import ignore_cache_option, path_option
-from ref_builder.errors import OTUExistsError
 from ref_builder.cli.utils import pass_repo
 from ref_builder.cli.validate import validate_no_duplicate_accessions
 from ref_builder.console import (
@@ -14,6 +13,7 @@ from ref_builder.console import (
     print_otu_event_log,
     print_otu_list,
 )
+from ref_builder.errors import OTUExistsError
 from ref_builder.ncbi.client import NCBIClient
 from ref_builder.repo import Repo, locked_repo
 from ref_builder.services.cls import Services

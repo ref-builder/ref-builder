@@ -3,6 +3,7 @@ from uuid import uuid4
 import pytest
 from pytest_mock import MockerFixture
 
+from ref_builder.errors import OTUExistsError
 from ref_builder.models.otu import OTU
 from ref_builder.ncbi.client import NCBIClientProtocol
 from ref_builder.ncbi.models import NCBIRank
@@ -164,6 +165,30 @@ class TestCreate:
         otu = otu_service.create(accessions)
 
         assert otu is None
+
+    def test_duplicate_taxonomy_raises_otu_exists_error(
+        self,
+        empty_repo: Repo,
+        otu_service: OTUService,
+    ):
+        """Test that creating an OTU with duplicate taxonomy ID raises OTUExistsError."""
+        # Create first OTU with tobacco_mosaic_virus (taxid 3432891 after promotion)
+        accessions = ["NC_001367"]
+
+        with empty_repo.lock():
+            otu = otu_service.create(accessions)
+
+        assert otu is not None
+        assert otu.taxid == 3432891
+
+        # Try to create another OTU with the same taxonomy ID
+        # Using another accession from the same organism
+        with pytest.raises(OTUExistsError) as exc_info, empty_repo.lock():
+            otu_service.create(["V01408"])
+
+        # Verify the exception contains the correct information
+        assert exc_info.value.taxid == 3432891
+        assert exc_info.value.otu_id == otu.id
 
 
 class TestSetPlan:
