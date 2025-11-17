@@ -83,7 +83,6 @@ class IsolateService(Service):
 
         records = [r for r in fetched_records if r.accession in eligible_accessions]
 
-        # Validate that we don't mix RefSeq and non-RefSeq sequences
         if any(record.refseq for record in records) and not all(
             record.refseq for record in records
         ):
@@ -225,17 +224,6 @@ class IsolateService(Service):
             return None
 
         taxid = records[0].source.taxid
-
-        # Validate taxid exists in OTU lineage
-        lineage_taxids = {taxon.id for taxon in otu.lineage.taxa}
-
-        if taxid not in lineage_taxids:
-            log.error(
-                "Taxid not found in OTU lineage.",
-                taxid=taxid,
-                lineage_taxids=sorted(lineage_taxids),
-            )
-            return None
 
         try:
             assigned = assign_records_to_segments(records, otu.plan)

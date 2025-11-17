@@ -257,7 +257,6 @@ class NCBIClient:
             search_string=search_term_string,
         )
 
-        # If there are more than 1000 accessions, we need to paginate.
         while True:
             retstart = (page - 1) * ESEARCH_PAGE_SIZE
 
