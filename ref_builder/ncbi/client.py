@@ -106,6 +106,7 @@ class NCBIClient:
             return []
 
         records = []
+        cached_keys = set()
 
         log = logger.bind(accessions=accessions)
 
@@ -114,18 +115,22 @@ class NCBIClient:
 
             for accession in accessions:
                 if isinstance(accession, Accession):
+                    accession_key = accession.key
                     version = accession.version
                 else:
                     try:
                         versioned_accession = Accession.from_string(accession)
+                        accession_key = versioned_accession.key
                         version = versioned_accession.version
                     except ValueError:
+                        accession_key = accession
                         version = "*"
 
-                record = self.cache.load_genbank_record(accession, version)
+                record = self.cache.load_genbank_record(accession_key, version)
 
                 if record is not None:
                     records.append(record)
+                    cached_keys.add(accession_key)
 
             if records:
                 log.debug(
@@ -142,14 +147,25 @@ class NCBIClient:
                     uncached_accessions=uncached_accessions,
                 )
 
-        fetch_list = list(
-            set(accessions)
-            - {record.get(GenbankRecordKey.PRIMARY_ACCESSION) for record in records},
-        )
+        # Build list of accessions to fetch by excluding those found in cache
+        accessions_to_fetch = []
+        for accession in accessions:
+            if isinstance(accession, Accession):
+                key = accession.key
+            else:
+                try:
+                    key = Accession.from_string(accession).key
+                except ValueError:
+                    key = accession
 
-        if fetch_list:
-            log.debug("Fetching accessions...", fetch_list=fetch_list)
-            new_records = NCBIClient.fetch_unvalidated_genbank_records(fetch_list)
+            if key not in cached_keys:
+                accessions_to_fetch.append(accession)
+
+        if accessions_to_fetch:
+            log.debug("Fetching accessions...", fetch_list=accessions_to_fetch)
+            new_records = NCBIClient.fetch_unvalidated_genbank_records(
+                accessions_to_fetch
+            )
 
             for record in new_records:
                 versioned_accession = Accession.from_string(
