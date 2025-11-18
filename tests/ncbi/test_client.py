@@ -37,6 +37,37 @@ class TestFetchGenbank:
             == snapshot
         )
 
+    def test_fetch_versioned_accessions_from_cache(
+        self,
+        uncached_ncbi_client: NCBIClient,
+    ):
+        """Test that versioned accessions can be retrieved from cache.
+
+        This verifies that the cache lookup correctly extracts the accession key
+        when given a versioned accession string (e.g., "NC_036587.1").
+        """
+        versioned_accessions = ["NC_036587.1", "MT240513.1"]
+
+        # Fetch and cache the records
+        records = uncached_ncbi_client.fetch_genbank_records(versioned_accessions)
+        assert len(records) == 2
+
+        # Verify they were cached with the correct key
+        assert (
+            uncached_ncbi_client.cache.load_genbank_record("NC_036587", 1) is not None
+        )
+        assert uncached_ncbi_client.cache.load_genbank_record("MT240513", 1) is not None
+
+        # Fetch again - should come from cache this time
+        cached_records = uncached_ncbi_client.fetch_genbank_records(
+            versioned_accessions
+        )
+        assert len(cached_records) == 2
+
+        # Verify the correct accessions are returned (order may vary due to sorting)
+        accession_versions = {record.accession_version for record in cached_records}
+        assert accession_versions == {"NC_036587.1", "MT240513.1"}
+
     def test_fetch_partially_cached_genbank_records(
         self,
         snapshot: SnapshotAssertion,
