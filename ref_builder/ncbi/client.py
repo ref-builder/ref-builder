@@ -34,6 +34,9 @@ logger = get_logger("ncbi")
 ESEARCH_PAGE_SIZE = 1000
 """The number of results to fetch per page in an Entrez esearch query."""
 
+EFETCH_BATCH_SIZE = 500
+"""The number of records to fetch per batch in an Entrez efetch query."""
+
 DATE_TEMPLATE = "%Y/%m/%d"
 """The standard date format used by NCBI Entrez."""
 
@@ -162,23 +165,33 @@ class NCBIClient:
                 accessions_to_fetch.append(accession)
 
         if accessions_to_fetch:
-            log.debug("Fetching accessions...", fetch_list=accessions_to_fetch)
-            new_records = NCBIClient.fetch_unvalidated_genbank_records(
-                accessions_to_fetch
-            )
+            total_to_fetch = len(accessions_to_fetch)
 
-            for record in new_records:
-                versioned_accession = Accession.from_string(
-                    record[GenbankRecordKey.ACCESSION_VERSION],
-                )
-                self.cache.cache_genbank_record(
-                    record,
-                    versioned_accession.key,
-                    versioned_accession.version,
+            for batch_start in range(0, total_to_fetch, EFETCH_BATCH_SIZE):
+                batch_end = min(batch_start + EFETCH_BATCH_SIZE, total_to_fetch)
+                batch = accessions_to_fetch[batch_start:batch_end]
+
+                log.debug(
+                    "Fetching batch...",
+                    batch_number=batch_start // EFETCH_BATCH_SIZE + 1,
+                    batch_size=len(batch),
+                    progress=f"{batch_end}/{total_to_fetch}",
                 )
 
-            if new_records:
-                records.extend(new_records)
+                new_records = NCBIClient.fetch_unvalidated_genbank_records(batch)
+
+                for record in new_records:
+                    versioned_accession = Accession.from_string(
+                        record[GenbankRecordKey.ACCESSION_VERSION],
+                    )
+                    self.cache.cache_genbank_record(
+                        record,
+                        versioned_accession.key,
+                        versioned_accession.version,
+                    )
+
+                if new_records:
+                    records.extend(new_records)
 
         if records:
             return sorted(
