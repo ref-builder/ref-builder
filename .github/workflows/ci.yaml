@@ -25,17 +25,6 @@ jobs:
     name: "Test"
     runs-on: ubuntu-24.04
     steps:
-      - name: Check NCBI secrets
-        env:
-          secret_email: ${{ secrets.NCBI_EMAIL }}
-          secret_api_key: ${{ secrets.NCBI_API_KEY }}
-        run: |
-          if [ -z "$secret_email" ] || [ -z "$secret_api_key" ]; then
-            echo "NCBI authentication secret missing. Exiting."
-            exit 1
-          else
-            echo "NCBI authentication secrets are configured."
-          fi
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install uv
@@ -72,3 +61,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
+
