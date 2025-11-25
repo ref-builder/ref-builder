@@ -3,7 +3,7 @@ from pathlib import Path
 import arrow
 import orjson
 
-from ref_builder.build import build_json
+from ref_builder.build.virtool import build_json
 from ref_builder.repo import Repo
 
 

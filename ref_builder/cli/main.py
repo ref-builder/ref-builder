@@ -6,7 +6,7 @@ import click
 import structlog
 from rich.table import Table
 
-from ref_builder.build import build_json
+from ref_builder.cli.build import build
 from ref_builder.cli.dev import dev
 from ref_builder.cli.event import event
 from ref_builder.cli.isolate import isolate
@@ -92,27 +92,7 @@ def repo_update(repo: Repo) -> None:
     services.repo.update()
 
 
-@entry.command(name="build")
-@click.option(
-    "-V",
-    "--version",
-    default="",
-    type=str,
-    help="A version string to include in the output file",
-)
-@click.option(
-    "-o",
-    "--target-path",
-    required=True,
-    type=click.Path(exists=False, file_okay=True, path_type=Path),
-    help="The path to write the reference.json file to",
-)
-@path_option
-def repo_build(path: Path, target_path: Path, version: str) -> None:
-    """Build a Virtool reference.json file from the reference repository."""
-    build_json(target_path, path, version)
-
-
+entry.add_command(build)
 entry.add_command(otu)
 entry.add_command(isolate)
 entry.add_command(event)
