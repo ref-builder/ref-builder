@@ -46,6 +46,8 @@ jobs:
       - ruff-format
       - test
     runs-on: ubuntu-22.04
+    outputs:
+      git-tag: ${{ steps.semantic.outputs.git-tag }}
     permissions:
       contents: write
     steps:
@@ -56,9 +58,31 @@ jobs:
         with:
           node-version: 20
       - name: Install semantic-release
-        run: npm i semantic-release@v23.0.0 conventional-changelog-conventionalcommits@7.0.2
+        run: npm i semantic-release@v23.0.0 @semantic-release/exec@v6.0.3 conventional-changelog-conventionalcommits@7.0.2
       - name: Release
+        id: semantic
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
+
+  pypi:
+    name: "Publish / PyPI"
+    if: github.event_name == 'push' && needs.release.outputs.git-tag != ''
+    needs: release
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.git-tag }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - name: Version
+        run: uv version ${{ needs.release.outputs.git-tag }}
+      - name: Build
+        run: uv build
+      - name: Publish
+        run: uv publish --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_TOKEN }}
 
