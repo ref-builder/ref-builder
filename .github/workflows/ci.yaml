@@ -69,6 +69,8 @@ jobs:
     name: "Publish / PyPI"
     if: github.event_name == 'push' && needs.release.outputs.git-tag != ''
     needs: release
+    permissions:
+      id-token: write
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
