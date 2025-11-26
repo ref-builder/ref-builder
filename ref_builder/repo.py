@@ -425,13 +425,6 @@ class Repo:
 
             raise
 
-        if unremovable_accessions := excludable_accessions.intersection(otu.accessions):
-            logger.warning(
-                "Accessions currently in OTU cannot be removed.",
-                unremovable_accessions=sorted(unremovable_accessions),
-            )
-            excludable_accessions -= unremovable_accessions
-
         if (
             extant_requested_accessions := excludable_accessions
             & otu.excluded_accessions

@@ -794,34 +794,59 @@ class TestExcludeAccessions:
         assert otu_after_second.excluded_accessions == accessions | {"TM100024"}
 
     def test_existing_accession(self, initialized_repo: Repo):
-        """Test that the accession of a sequence already contained in the OTU cannot
-        be added to the excluded accessions.
-        """
-        assert (id_before_exclude := initialized_repo.last_id) == 2
-
+        """Test that excluding an accession moves its isolate to excluded_isolates."""
         otu = initialized_repo.get_otu_by_taxid(3432891)
-
         assert otu
         assert otu.excluded_accessions == set()
+        assert len(otu.isolates) == 1
+        assert len(otu.excluded_isolates) == 0
 
-        accession = next(iter(otu.accessions))
+        # Add a second isolate so we can exclude one without violating min_length=1
+        with initialized_repo.lock():
+            initialized_repo.create_isolate(
+                otu_id=otu.id,
+                isolate_id=uuid4(),
+                name=IsolateName(IsolateNameType.ISOLATE, "B"),
+                taxid=3432891,
+                sequences=[
+                    Sequence(
+                        accession=Accession(key="TN000001", version=1),
+                        definition="Second isolate",
+                        segment=otu.plan.segments[0].id,
+                        sequence="ACGTACGTACGTACG",
+                    )
+                ],
+            )
+
+        otu = initialized_repo.get_otu_by_taxid(3432891)
+        assert len(otu.isolates) == 2
+        assert len(otu.excluded_isolates) == 0
+
+        # Now exclude the first accession
+        accession_to_exclude = "TM000001"
+        id_before_exclude = initialized_repo.last_id
 
         with initialized_repo.lock():
-            initialized_repo.exclude_accessions(otu.id, {f"{accession}.1"})
+            initialized_repo.exclude_accessions(otu.id, {accession_to_exclude})
 
-        assert initialized_repo.last_id == id_before_exclude == 2
+        # Event should be written
+        assert initialized_repo.last_id == id_before_exclude + 1
 
         otu = initialized_repo.get_otu_by_taxid(3432891)
-
         assert otu
-        assert otu.excluded_accessions == set()
 
-        with open(
-            initialized_repo.path / "src" / f"{initialized_repo.last_id:08}.json"
-        ) as f:
-            event = orjson.loads(f.read())
+        # Verify the accession is excluded
+        assert accession_to_exclude in otu.excluded_accessions
 
-        assert event["type"] != "UpdateExcludedAccessions"
+        # Verify one isolate is active, one is excluded
+        assert len(otu.isolates) == 1
+        assert len(otu.excluded_isolates) == 1
+
+        # Verify the excluded isolate contains the excluded accession
+        assert accession_to_exclude in otu.excluded_isolates[0].accessions
+
+        # Verify the active isolate does not
+        assert accession_to_exclude not in otu.isolates[0].accessions
 
     def test_already_excluded(self, initialized_repo: Repo):
         """Test that an attempted redundant exclusion does not create a new event."""
@@ -1003,6 +1028,60 @@ class TestAllowAccessions:
         assert otu.excluded_accessions == set()
         assert initialized_repo.last_id == id_after_first_exclusion + 1 == 4
         assert initialized_repo.path.joinpath("src", "00000004.json").exists()
+
+    def test_restore_isolates(self, initialized_repo: Repo):
+        """Test that allowing an excluded accession restores its isolate."""
+        otu = initialized_repo.get_otu_by_taxid(3432891)
+        assert otu
+        assert len(otu.isolates) == 1
+        assert len(otu.excluded_isolates) == 0
+
+        # Add a second isolate
+        with initialized_repo.lock():
+            initialized_repo.create_isolate(
+                otu_id=otu.id,
+                isolate_id=uuid4(),
+                name=IsolateName(IsolateNameType.ISOLATE, "B"),
+                taxid=3432891,
+                sequences=[
+                    Sequence(
+                        accession=Accession(key="TN000001", version=1),
+                        definition="Second isolate",
+                        segment=otu.plan.segments[0].id,
+                        sequence="ACGTACGTACGTACG",
+                    )
+                ],
+            )
+
+        otu = initialized_repo.get_otu_by_taxid(3432891)
+        assert len(otu.isolates) == 2
+        assert len(otu.excluded_isolates) == 0
+
+        # Exclude one isolate
+        accession_to_exclude = "TM000001"
+        with initialized_repo.lock():
+            initialized_repo.exclude_accessions(otu.id, {accession_to_exclude})
+
+        otu = initialized_repo.get_otu_by_taxid(3432891)
+        assert len(otu.isolates) == 1
+        assert len(otu.excluded_isolates) == 1
+        assert accession_to_exclude in otu.excluded_accessions
+        assert accession_to_exclude in otu.excluded_isolates[0].accessions
+
+        # Allow the accession back
+        with initialized_repo.lock():
+            initialized_repo.allow_accessions(otu.id, [accession_to_exclude])
+
+        otu = initialized_repo.get_otu_by_taxid(3432891)
+
+        # Verify the isolate is restored
+        assert len(otu.isolates) == 2
+        assert len(otu.excluded_isolates) == 0
+        assert accession_to_exclude not in otu.excluded_accessions
+
+        # Verify both isolates are active
+        all_accessions = {acc for isolate in otu.isolates for acc in isolate.accessions}
+        assert accession_to_exclude in all_accessions
 
 
 class TestDeleteIsolate:
