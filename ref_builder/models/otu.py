@@ -63,6 +63,9 @@ class OTU(BaseModel):
     isolates: list[Isolate] = Field(min_length=1)
     """Isolate in the OTU."""
 
+    excluded_isolates: list[Isolate] = Field(default_factory=list)
+    """Isolates that contain excluded accessions."""
+
     plan: Plan
     """The plan for the OTU."""
 
@@ -177,18 +180,6 @@ class OTU(BaseModel):
             warnings.warn("Plan has no required segments.", PlanWarning, stacklevel=2)
 
         return plan
-
-    @model_validator(mode="after")
-    def check_excluded_accessions(self) -> "OTU":
-        """Ensure that excluded accessions are not in the OTU."""
-        if accessions := self.excluded_accessions & {
-            sequence.accession.key for sequence in self.sequences
-        }:
-            raise ValueError(
-                f"Excluded accessions found in the OTU: {', '.join(accessions)}"
-            )
-
-        return self
 
     @model_validator(mode="after")
     def check_promoted_accessions(self) -> "OTU":

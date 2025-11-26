@@ -46,6 +46,7 @@ class CreateOTU(Event[CreateOTUData, OTUQuery]):
                     taxid=self.data.isolate.taxid,
                 )
             ],
+            excluded_isolates=[],
             lineage=self.data.lineage,
             molecule=self.data.molecule,
             plan=self.data.plan,
@@ -94,8 +95,32 @@ class UpdateExcludedAccessions(ApplicableEvent[UpdateExcludedAccessionsData, OTU
             for accession in self.data.accessions:
                 otu.excluded_accessions.discard(accession)
 
+            # Move isolates from excluded_isolates to isolates if they no longer
+            # have any excluded accessions
+            to_restore = [
+                isolate
+                for isolate in otu.excluded_isolates
+                if not (isolate.accessions & otu.excluded_accessions)
+            ]
+
+            for isolate in to_restore:
+                otu.excluded_isolates.remove(isolate)
+                otu.isolates.append(isolate)
+
         else:
             for accession in self.data.accessions:
                 otu.excluded_accessions.add(accession)
+
+            # Move isolates from isolates to excluded_isolates if they contain
+            # any excluded accessions
+            to_exclude = [
+                isolate
+                for isolate in otu.isolates
+                if isolate.accessions & otu.excluded_accessions
+            ]
+
+            for isolate in to_exclude:
+                otu.isolates.remove(isolate)
+                otu.excluded_isolates.append(isolate)
 
         return otu

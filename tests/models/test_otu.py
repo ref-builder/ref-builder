@@ -185,19 +185,6 @@ class TestOTU:
         with pytest.warns(PlanWarning):
             OTU.model_validate(otu.model_dump())
 
-    def test_excluded_accessions(self):
-        """Test that validation fails if the OTU includes accessions that are included
-        in ``excluded_accessions``.
-        """
-        accession = self.otu.isolates[0].sequences[0].accession.key
-
-        self.otu.excluded_accessions.add(accession)
-
-        with pytest.raises(
-            ValueError, match=f"Excluded accessions found in the OTU: {accession}"
-        ):
-            assert OTU.model_validate(self.otu.model_dump())
-
     def test_no_isolates(self):
         """Test that validation fails if the OTU has no isolates."""
         otu_data = self.otu.model_dump()
