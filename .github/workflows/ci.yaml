@@ -84,5 +84,4 @@ jobs:
       - name: Build
         run: uv build
       - name: Publish
-        run: uv publish --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_TOKEN }}
-
+        run: uv publish
