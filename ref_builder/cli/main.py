@@ -1,5 +1,6 @@
 """Command-line interface for reference builder."""
 
+from contextlib import suppress
 from pathlib import Path
 
 import click
@@ -7,7 +8,6 @@ import structlog
 from rich.table import Table
 
 from ref_builder.cli.build import build
-from ref_builder.cli.dev import dev
 from ref_builder.cli.event import event
 from ref_builder.cli.isolate import isolate
 from ref_builder.cli.options import (
@@ -96,4 +96,9 @@ entry.add_command(build)
 entry.add_command(otu)
 entry.add_command(isolate)
 entry.add_command(event)
-entry.add_command(dev)
+
+# Only register dev commands in development (when tests directory exists)
+with suppress(ModuleNotFoundError):
+    from ref_builder.cli.dev import dev
+
+    entry.add_command(dev)
