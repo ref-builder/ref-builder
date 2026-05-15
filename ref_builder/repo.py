@@ -650,7 +650,7 @@ class Repo:
                     )
 
                 otu = event.apply(otu)
-                otu = OTU.model_validate(otu)
+                otu.rebuild_lookups()
 
         for warning_msg in warning_list:
             logger.warning(
