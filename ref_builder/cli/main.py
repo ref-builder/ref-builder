@@ -14,11 +14,10 @@ from ref_builder.cli.options import (
     path_option,
 )
 from ref_builder.cli.otu import otu
-from ref_builder.cli.utils import pass_repo
 from ref_builder.console import console
 from ref_builder.logs import configure_logger
 from ref_builder.ncbi.client import NCBIClient
-from ref_builder.repo import Repo
+from ref_builder.repo import Repo, locked_repo
 from ref_builder.services.cls import Services
 
 logger = structlog.get_logger()
@@ -85,11 +84,12 @@ def repo_init(name: str, organism: str, path: Path) -> None:
 
 
 @entry.command(name="update")
-@pass_repo
-def repo_update(repo: Repo) -> None:
+@path_option
+def repo_update(path: Path) -> None:
     """Update all OTUs with the latest data from NCBI."""
-    services = Services(repo, NCBIClient(False))
-    services.repo.update()
+    with locked_repo(path) as repo:
+        services = Services(repo, NCBIClient(False))
+        services.repo.update()
 
 
 entry.add_command(build)
