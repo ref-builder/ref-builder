@@ -52,6 +52,8 @@ class DeleteIsolate(ApplicableEvent[DeleteIsolateData, IsolateQuery]):
 
     def apply(self, otu: OTU) -> OTU:
         """Delete the specified isolate and return."""
+        otu.rebuild_lookups()
+
         if otu.get_isolate(self.query.isolate_id) is None:
             raise HydrationIsolateError("Could not find referenced isolate.")
 
@@ -112,6 +114,8 @@ class PromoteIsolate(ApplicableEvent[PromoteIsolateData, IsolateQuery]):
         4. Remove old GenBank sequences from the isolate
         5. Mark old accessions as excluded
         """
+        otu.rebuild_lookups()
+
         isolate = otu.get_isolate(self.query.isolate_id)
 
         if isolate is None:
