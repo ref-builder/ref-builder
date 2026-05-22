@@ -659,9 +659,9 @@ class Repo:
             )
 
         otu.isolates.sort(
-            key=lambda i: f"{i.name.type} {i.name.value}"
-            if type(i.name) is IsolateName
-            else "",
+            key=lambda i: (
+                f"{i.name.type} {i.name.value}" if type(i.name) is IsolateName else ""
+            ),
         )
 
         for isolate in otu.isolates:
