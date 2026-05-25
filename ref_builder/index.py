@@ -143,6 +143,15 @@ class Index:
             """,
         )
 
+        self.con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sequence_keys (
+                accession_key TEXT,
+                otu_id TEXT
+            );
+            """,
+        )
+
         for table, column in [
             ("events", "otu_id"),
             ("isolates", "id"),
@@ -154,6 +163,8 @@ class Index:
             ("otu_updates", "otu_id"),
             ("otu_taxids", "otu_id"),
             ("otu_taxids", "taxid"),
+            ("sequence_keys", "accession_key"),
+            ("sequence_keys", "otu_id"),
         ]:
             self.con.execute(
                 f"""
@@ -169,6 +180,23 @@ class Index:
         return {
             row[0] for row in self.con.execute('SELECT id AS "id [uuid]" FROM otus')
         }
+
+    @property
+    def needs_rebuild(self) -> bool:
+        """True if the index has OTUs but is missing populated derived tables.
+
+        Used to migrate older indexes that pre-date the ``sequence_keys`` table.
+        """
+        has_otus = self.con.execute("SELECT 1 FROM otus LIMIT 1").fetchone() is not None
+        if not has_otus:
+            return False
+
+        has_sequence_keys = (
+            self.con.execute("SELECT 1 FROM sequence_keys LIMIT 1").fetchone()
+            is not None
+        )
+
+        return not has_sequence_keys
 
     def add_event_id(
         self,
@@ -282,6 +310,32 @@ class Index:
 
         return None
 
+    def get_otu_id_by_accession_key(self, accession_key: str) -> UUID | None:
+        """Get the OTU ID that currently owns a given accession key.
+
+        Returns ``None`` if no OTU contains a sequence with this accession key.
+        If the repo is corrupt and the key is shared, an arbitrary owner is returned.
+        """
+        cursor = self.con.execute(
+            'SELECT otu_id AS "otu_id [uuid]" FROM sequence_keys '
+            "WHERE accession_key = ? LIMIT 1",
+            (accession_key,),
+        )
+
+        if result := cursor.fetchone():
+            return result[0]
+
+        return None
+
+    def iter_accession_keys(self) -> Iterator[tuple[str, UUID]]:
+        """Iterate over all (accession_key, otu_id) pairs in the index."""
+        cursor = self.con.execute(
+            'SELECT accession_key, otu_id AS "otu_id [uuid]" FROM sequence_keys',
+        )
+
+        for row in cursor:
+            yield row[0], row[1]
+
     def delete_otu(self, otu_id: UUID) -> None:
         """Remove an OTU from the index.
 
@@ -306,6 +360,11 @@ class Index:
 
         self.con.execute(
             "DELETE FROM otu_taxids WHERE otu_id = ?",
+            (otu_id,),
+        )
+
+        self.con.execute(
+            "DELETE FROM sequence_keys WHERE otu_id = ?",
             (otu_id,),
         )
 
@@ -525,6 +584,21 @@ class Index:
         self.con.executemany(
             "INSERT INTO otu_taxids (otu_id, taxid) VALUES (?, ?)",
             [(otu.id, taxon.id) for taxon in otu.lineage.taxa],
+        )
+
+        # Delete and re-insert accession keys for this OTU
+        self.con.execute(
+            "DELETE FROM sequence_keys WHERE otu_id = ?",
+            (otu.id,),
+        )
+
+        self.con.executemany(
+            "INSERT INTO sequence_keys (accession_key, otu_id) VALUES (?, ?)",
+            [
+                (sequence.accession.key, otu.id)
+                for isolate in otu.isolates
+                for sequence in isolate.sequences
+            ],
         )
 
         self.con.commit()

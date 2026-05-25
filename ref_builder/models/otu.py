@@ -70,8 +70,41 @@ class OTU(BaseModel):
     """The plan for the OTU."""
 
     @model_validator(mode="after")
+    def check_no_duplicate_accessions(self) -> "OTU":
+        """Ensure no accession key appears in more than one isolate."""
+        seen: dict[str, list[UUID]] = {}
+
+        for isolate in self.isolates:
+            for accession in isolate.accessions:
+                seen.setdefault(accession, []).append(isolate.id)
+
+        duplicates = {
+            accession: isolate_ids
+            for accession, isolate_ids in seen.items()
+            if len(isolate_ids) > 1
+        }
+
+        if duplicates:
+            raise PydanticCustomError(
+                "duplicate_accession_within_otu",
+                "Accession(s) appear in multiple isolates: {duplicates}",
+                {
+                    "duplicates": {
+                        accession: sorted(str(i) for i in isolate_ids)
+                        for accession, isolate_ids in duplicates.items()
+                    },
+                },
+            )
+
+        return self
+
+    @model_validator(mode="after")
     def rebuild_lookups(self) -> "OTU":
-        """Rebuild lookup dictionaries when isolates change."""
+        """Rebuild lookup dictionaries when isolates change.
+
+        Relies on ``check_no_duplicate_accessions`` having already enforced
+        per-accession uniqueness across isolates.
+        """
         self._isolates_by_accession = {
             accession: isolate
             for isolate in self.isolates

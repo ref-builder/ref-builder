@@ -71,10 +71,10 @@ class IsolateService(Service):
 
         log = log.bind(otu_id=str(otu.id), otu_name=otu.name)
 
-        # Filter out blocked accessions
+        # Filter out blocked accessions (per-OTU and anywhere else in the repo).
         eligible_accessions = filter_accessions(
             [r.accession for r in fetched_records],
-            otu.blocked_accessions,
+            otu.blocked_accessions | self._repo.accession_keys,
         )
 
         if not eligible_accessions:

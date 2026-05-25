@@ -14,6 +14,7 @@ from ref_builder.cli.options import (
     path_option,
 )
 from ref_builder.cli.otu import otu
+from ref_builder.cli.validate_cmd import validate
 from ref_builder.console import console
 from ref_builder.logs import configure_logger
 from ref_builder.ncbi.client import NCBIClient
@@ -96,6 +97,7 @@ entry.add_command(build)
 entry.add_command(otu)
 entry.add_command(isolate)
 entry.add_command(event)
+entry.add_command(validate)
 
 # Only register dev commands in development (when tests directory exists)
 with suppress(ModuleNotFoundError):

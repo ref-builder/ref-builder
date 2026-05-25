@@ -58,3 +58,19 @@ class PlanCreationError(ValueError):
 
 class PlanValidationError(ValueError):
     """Raised when an isolate does not pass plan validation."""
+
+
+class DuplicateAccessionError(Exception):
+    """Raised when an accession key is already owned by another OTU in the repo."""
+
+    def __init__(self, conflicts: dict[UUID, set[str]]):
+        self.conflicts = conflicts
+
+        parts = [
+            f"{', '.join(sorted(keys))} in OTU {otu_id}"
+            for otu_id, keys in conflicts.items()
+        ]
+
+        super().__init__(
+            "Accession(s) already exist in other OTUs: " + "; ".join(parts),
+        )
