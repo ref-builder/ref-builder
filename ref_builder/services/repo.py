@@ -59,7 +59,10 @@ class RepoService(Service):
             )
         )
 
-        batch_fetch_index = _fetch_new_accessions(otu_iterator)
+        batch_fetch_index = _fetch_new_accessions(
+            otu_iterator,
+            repo_blocked_accessions=self._repo.accession_keys,
+        )
 
         if not batch_fetch_index:
             logger.info("OTUs are up to date.")
@@ -184,9 +187,19 @@ def _otu_is_cooled(
 def _fetch_new_accessions(
     otus: Iterable[OTU],
     ignore_cache: bool = False,
+    repo_blocked_accessions: set[str] | None = None,
 ) -> dict[int, set[str]]:
-    """Check OTU iterator for new accessions and return results indexed by taxid."""
+    """Check OTU iterator for new accessions and return results indexed by taxid.
+
+    ``repo_blocked_accessions`` is a snapshot of every accession key currently
+    stored in the repo. Subtracting it here prevents re-fetching accessions that
+    already live in a different OTU (e.g. after a taxonomic reclassification at
+    NCBI). The write-time guard in ``Repo`` catches anything missed by this filter.
+    """
     ncbi = NCBIClient(ignore_cache)
+
+    if repo_blocked_accessions is None:
+        repo_blocked_accessions = set()
 
     otu_counter = 0
 
@@ -209,9 +222,11 @@ def _fetch_new_accessions(
             sequence_max_length=get_segments_max_length(otu.plan.segments),
         )
 
-        accessions_to_fetch = {
-            accession.key for accession in accessions
-        } - otu.blocked_accessions
+        accessions_to_fetch = (
+            {accession.key for accession in accessions}
+            - otu.blocked_accessions
+            - repo_blocked_accessions
+        )
 
         if accessions_to_fetch:
             log.debug(
