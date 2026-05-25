@@ -5,6 +5,7 @@ import orjson
 import pytest
 from structlog.testing import capture_logs
 
+from ref_builder.errors import DuplicateAccessionError
 from ref_builder.events.isolate import CreateIsolateData
 from ref_builder.models.accession import Accession
 from ref_builder.models.isolate import Isolate, IsolateName, IsolateNameType
@@ -40,6 +41,25 @@ TMV_LINEAGE = Lineage(
             parent=3432891,
             rank=NCBIRank.NO_RANK,
             other_names=TaxonOtherNames(acronym=[], synonyms=[]),
+        ),
+    ]
+)
+
+CMV_LINEAGE = Lineage(
+    taxa=[
+        Taxon(
+            id=12305,
+            name="Cucumovirus mosaiccucumeris",
+            parent=None,
+            rank=NCBIRank.SPECIES,
+            other_names=TaxonOtherNames(acronym=[], synonyms=[]),
+        ),
+        Taxon(
+            id=12306,
+            name="Cucumber mosaic virus",
+            parent=12305,
+            rank=NCBIRank.NO_RANK,
+            other_names=TaxonOtherNames(acronym=["CMV"], synonyms=[]),
         ),
     ]
 )
@@ -1191,3 +1211,161 @@ class TestMalformedEvent:
             ),
         ):
             initialized_repo.get_otu_by_taxid(3432891)
+
+
+def _make_cmv_isolate_data(plan: Plan, accession_key: str) -> CreateIsolateData:
+    return CreateIsolateData(
+        id=uuid4(),
+        name=IsolateName(IsolateNameType.ISOLATE, "Z"),
+        taxid=12306,
+        sequences=[
+            Sequence(
+                accession=Accession(key=accession_key, version=1),
+                definition="CMV",
+                segment=plan.segments[0].id,
+                sequence="ACGTACGTACGTACG",
+            )
+        ],
+    )
+
+
+def _make_plan(repo: Repo) -> Plan:
+    return Plan.new(
+        [
+            Segment.new(
+                length=SEGMENT_LENGTH,
+                length_tolerance=repo.settings.default_segment_length_tolerance,
+                name=None,
+            )
+        ]
+    )
+
+
+class TestDuplicateAccessions:
+    """Cross-OTU and within-OTU accession-conflict protection (issue #309)."""
+
+    def test_create_isolate_rejects_accession_in_other_otu(
+        self, initialized_repo: Repo
+    ):
+        """Creating an isolate whose accession already lives in another OTU
+        must raise DuplicateAccessionError.
+        """
+        existing_otu = initialized_repo.get_otu_by_taxid(3432891)
+        plan = _make_plan(initialized_repo)
+
+        with initialized_repo.lock():
+            other_otu = initialized_repo.create_otu(
+                isolate=_make_cmv_isolate_data(plan, "AB000001"),
+                lineage=CMV_LINEAGE,
+                molecule=Molecule(
+                    strandedness=Strandedness.SINGLE,
+                    type=MoleculeType.RNA,
+                    topology=Topology.LINEAR,
+                ),
+                plan=plan,
+                promoted_accessions=set(),
+            )
+            assert other_otu is not None
+
+            with pytest.raises(DuplicateAccessionError) as excinfo:
+                initialized_repo.create_isolate(
+                    other_otu.id,
+                    isolate_id=uuid4(),
+                    name=IsolateName(IsolateNameType.ISOLATE, "Y"),
+                    taxid=12306,
+                    sequences=[
+                        Sequence(
+                            accession=Accession(key="TM000001", version=1),
+                            definition="TMV",
+                            segment=plan.segments[0].id,
+                            sequence="ACGTACGTACGTACG",
+                        )
+                    ],
+                )
+
+        assert existing_otu.id in excinfo.value.conflicts
+        assert "TM000001" in excinfo.value.conflicts[existing_otu.id]
+
+    def test_create_otu_rejects_accession_in_other_otu(
+        self, initialized_repo: Repo
+    ):
+        """Creating a new OTU whose seed isolate's accession already lives in
+        another OTU must raise DuplicateAccessionError.
+        """
+        plan = _make_plan(initialized_repo)
+
+        with initialized_repo.lock(), pytest.raises(DuplicateAccessionError):
+            initialized_repo.create_otu(
+                isolate=_make_cmv_isolate_data(plan, "TM000001"),
+                lineage=CMV_LINEAGE,
+                molecule=Molecule(
+                    strandedness=Strandedness.SINGLE,
+                    type=MoleculeType.RNA,
+                    topology=Topology.LINEAR,
+                ),
+                plan=plan,
+                promoted_accessions=set(),
+            )
+
+    def test_update_sequence_rejects_accession_in_other_otu(
+        self, initialized_repo: Repo
+    ):
+        """update_sequence must reject a new key already owned elsewhere."""
+        plan = _make_plan(initialized_repo)
+
+        with initialized_repo.lock():
+            other_otu = initialized_repo.create_otu(
+                isolate=_make_cmv_isolate_data(plan, "AB000001"),
+                lineage=CMV_LINEAGE,
+                molecule=Molecule(
+                    strandedness=Strandedness.SINGLE,
+                    type=MoleculeType.RNA,
+                    topology=Topology.LINEAR,
+                ),
+                plan=plan,
+                promoted_accessions=set(),
+            )
+            assert other_otu is not None
+
+            with pytest.raises(DuplicateAccessionError):
+                initialized_repo.update_sequence(
+                    other_otu.id,
+                    old_accession=Accession(key="AB000001", version=1),
+                    new_sequence=Sequence(
+                        accession=Accession(key="TM000001", version=2),
+                        definition="reassigned",
+                        segment=plan.segments[0].id,
+                        sequence="ACGTACGTACGTACG",
+                    ),
+                )
+
+    def test_get_otu_id_by_accession_key(self, initialized_repo: Repo):
+        """The new repo-wide lookup returns the OTU that owns a given key."""
+        otu = initialized_repo.get_otu_by_taxid(3432891)
+
+        assert (
+            initialized_repo.get_otu_id_by_accession_key("TM000001") == otu.id
+        )
+        assert (
+            initialized_repo.get_otu_id_by_accession_key("DOES_NOT_EXIST") is None
+        )
+
+    def test_accession_keys_property(self, initialized_repo: Repo):
+        """``Repo.accession_keys`` covers every accession across all OTUs."""
+        plan = _make_plan(initialized_repo)
+
+        with initialized_repo.lock():
+            other_otu = initialized_repo.create_otu(
+                isolate=_make_cmv_isolate_data(plan, "AB000001"),
+                lineage=CMV_LINEAGE,
+                molecule=Molecule(
+                    strandedness=Strandedness.SINGLE,
+                    type=MoleculeType.RNA,
+                    topology=Topology.LINEAR,
+                ),
+                plan=plan,
+                promoted_accessions=set(),
+            )
+            assert other_otu is not None
+
+        assert initialized_repo.accession_keys == {"TM000001", "AB000001"}

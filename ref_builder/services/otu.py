@@ -284,7 +284,11 @@ class OTUService(Service):
             refseq_only=True,
         )
 
-        fetch_set = {accession.key for accession in accessions} - otu.blocked_accessions
+        fetch_set = (
+            {accession.key for accession in accessions}
+            - otu.blocked_accessions
+            - self._repo.accession_keys
+        )
 
         if fetch_set:
             records = self.ncbi.fetch_genbank_records(fetch_set)
@@ -439,7 +443,11 @@ class OTUService(Service):
             sequence_max_length=get_segments_max_length(otu.plan.segments),
         )
 
-        fetch_set = {accession.key for accession in accessions} - otu.blocked_accessions
+        fetch_set = (
+            {accession.key for accession in accessions}
+            - otu.blocked_accessions
+            - self._repo.accession_keys
+        )
 
         if fetch_set:
             log.info("Adding new isolates from NCBI.")

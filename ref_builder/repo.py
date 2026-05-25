@@ -5,7 +5,6 @@ This is a work in progress.
 
 TODO: Check if excluded accessions exist in the repo.
 TODO: Check for accessions filed in wrong isolates.
-TODO: Check for accession conflicts.
 
 """
 
@@ -17,11 +16,16 @@ from collections import defaultdict
 from collections.abc import Collection, Generator, Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ref_builder.audit import OTUAuditSnapshot
 
 import arrow
 from structlog import get_logger
 
 from ref_builder.errors import (
+    DuplicateAccessionError,
     OTUDeletedError,
 )
 from ref_builder.events.base import (
@@ -99,8 +103,9 @@ class Repo:
         self._lock = Lock(self.path)
         """A lock for the repository."""
 
-        # Populate the index if it is empty.
-        if not self._index.otu_ids:
+        # Populate the index if it is empty, or migrate it if it lacks
+        # tables/columns added after the index was first built.
+        if not self._index.otu_ids or self._index.needs_rebuild:
             self.rebuild_index()
 
     @classmethod
@@ -248,6 +253,92 @@ class Repo:
             except OTUDeletedError:
                 continue
 
+    def iter_otu_audit_snapshots(
+        self,
+    ) -> Iterator["OTUAuditSnapshot"]:
+        """Yield per-OTU audit snapshots by walking events directly.
+
+        Bypasses Pydantic OTU validation so already-corrupt repos
+        (e.g. ones containing within-OTU duplicate accessions) can still
+        be inspected by audit tooling.
+        """
+        from ref_builder.audit import IsolateAuditSnapshot, OTUAuditSnapshot
+
+        event_ids_by_otu: dict[uuid.UUID, list[int]] = defaultdict(list)
+
+        for event in self._event_store.iter_events():
+            if hasattr(event.query, "otu_id"):
+                event_ids_by_otu[event.query.otu_id].append(event.id)
+
+        for otu_id, event_ids in event_ids_by_otu.items():
+            events = [self._event_store.read_event(eid) for eid in event_ids]
+            if not events:
+                continue
+
+            first_event = events[0]
+            if not isinstance(first_event, CreateOTU):
+                continue
+
+            taxid = first_event.data.lineage.taxa[0].id
+            name = first_event.data.lineage.taxa[0].name
+
+            isolates: dict[uuid.UUID, IsolateAuditSnapshot] = {}
+
+            seed = first_event.data.isolate
+            isolates[seed.id] = IsolateAuditSnapshot(
+                id=seed.id,
+                name=str(seed.name) if seed.name is not None else None,
+                accession_keys=[s.accession.key for s in seed.sequences],
+            )
+
+            for event in events[1:]:
+                if isinstance(event, CreateIsolate):
+                    isolates[event.data.id] = IsolateAuditSnapshot(
+                        id=event.data.id,
+                        name=(
+                            str(event.data.name)
+                            if event.data.name is not None
+                            else None
+                        ),
+                        accession_keys=[
+                            s.accession.key for s in event.data.sequences
+                        ],
+                    )
+
+                elif isinstance(event, DeleteIsolate):
+                    isolates.pop(event.query.isolate_id, None)
+
+                elif isinstance(event, PromoteIsolate):
+                    isolate = isolates.get(event.query.isolate_id)
+                    if isolate is None:
+                        continue
+
+                    for old_accession, new_sequence in event.data.map.items():
+                        if old_accession.key in isolate.accession_keys:
+                            isolate.accession_keys.remove(old_accession.key)
+                        isolate.accession_keys.append(new_sequence.accession.key)
+
+                elif isinstance(event, UpdateSequence):
+                    old_key = event.query.accession.key
+                    new_key = event.data.sequence.accession.key
+                    if old_key == new_key:
+                        continue
+                    for isolate in isolates.values():
+                        if old_key in isolate.accession_keys:
+                            isolate.accession_keys.remove(old_key)
+                            isolate.accession_keys.append(new_key)
+                            break
+
+            if not isolates:
+                continue
+
+            yield OTUAuditSnapshot(
+                id=otu_id,
+                taxid=taxid,
+                name=name,
+                isolates=list(isolates.values()),
+            )
+
     def create_otu(
         self,
         isolate: CreateIsolateData,
@@ -262,6 +353,11 @@ class Repo:
                 otu = self.get_otu(otu_id)
                 msg = f"OTU {otu.id} already contains taxid {taxon.id} ({taxon.name})"
                 raise ValueError(msg)
+
+        self._check_accessions_unused(
+            None,
+            {sequence.accession.key for sequence in isolate.sequences},
+        )
 
         taxid = lineage.taxa[0].id
 
@@ -301,6 +397,11 @@ class Repo:
         :param sequences: list of SequenceData objects
         :return: the created isolate
         """
+        self._check_accessions_unused(
+            otu_id,
+            {sequence.accession.key for sequence in sequences},
+        )
+
         event = self._write_event(
             CreateIsolate,
             CreateIsolateData(
@@ -367,6 +468,14 @@ class Repo:
         if isolate is None:
             raise ValueError(f"Isolate does not exist: {isolate_id}")
 
+        existing_keys = otu.accessions
+        new_keys = {
+            new_sequence.accession.key
+            for new_sequence in accession_map.values()
+            if new_sequence.accession.key not in existing_keys
+        }
+        self._check_accessions_unused(otu_id, new_keys)
+
         self._write_event(
             PromoteIsolate,
             PromoteIsolateData(map=accession_map),
@@ -385,6 +494,9 @@ class Repo:
         where the old sequence is linked and deletes the old sequence. Does not
         exclude accessions since the accession key remains the same.
         """
+        if new_sequence.accession.key != old_accession.key:
+            self._check_accessions_unused(otu_id, {new_sequence.accession.key})
+
         self._write_event(
             UpdateSequence,
             UpdateSequenceData(sequence=new_sequence),
@@ -499,6 +611,40 @@ class Repo:
     def get_otu_id_by_isolate_id(self, isolate_id: uuid.UUID) -> uuid.UUID | None:
         """Get an OTU ID from an isolate ID that belongs to it."""
         return self._index.get_id_by_isolate_id(isolate_id)
+
+    def get_otu_id_by_accession_key(
+        self, accession_key: str
+    ) -> uuid.UUID | None:
+        """Get the OTU ID that currently owns an accession key.
+
+        Returns ``None`` if no OTU contains a sequence with this accession key.
+        """
+        return self._index.get_otu_id_by_accession_key(accession_key)
+
+    @property
+    def accession_keys(self) -> set[str]:
+        """All accession keys (unversioned) currently stored across every OTU."""
+        return {key for key, _ in self._index.iter_accession_keys()}
+
+    def _check_accessions_unused(
+        self,
+        otu_id: uuid.UUID | None,
+        accession_keys: Collection[str],
+    ) -> None:
+        """Raise ``DuplicateAccessionError`` if any key already lives in another OTU.
+
+        ``otu_id`` may be ``None`` (for new OTU creation), in which case any existing
+        owner is a conflict.
+        """
+        conflicts: dict[uuid.UUID, set[str]] = defaultdict(set)
+
+        for key in accession_keys:
+            existing_owner = self._index.get_otu_id_by_accession_key(key)
+            if existing_owner is not None and existing_owner != otu_id:
+                conflicts[existing_owner].add(key)
+
+        if conflicts:
+            raise DuplicateAccessionError(dict(conflicts))
 
     def get_otu(self, otu_id: uuid.UUID) -> OTU | None:
         """Get the OTU with the given ``otu_id``.

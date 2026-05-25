@@ -213,3 +213,15 @@ class TestOTU:
         otu_data["isolates"][0]["taxid"] = 3432891
 
         assert OTU.model_validate(otu_data)
+
+    def test_duplicate_accession_across_isolates(self):
+        """Validation must fail if two isolates share an accession key."""
+        otu_data = self.otu.model_dump()
+        shared_accession = otu_data["isolates"][0]["sequences"][0]["accession"]
+        otu_data["isolates"][1]["sequences"][0]["accession"] = shared_accession
+
+        with pytest.raises(
+            ValidationError,
+            match="Accession\\(s\\) appear in multiple isolates",
+        ):
+            OTU.model_validate(otu_data)
