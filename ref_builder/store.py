@@ -139,7 +139,6 @@ class EventStore:
             f.write(
                 orjson.dumps(
                     event.model_dump(by_alias=True, mode="json"),
-                    f,
                 ),
             )
 

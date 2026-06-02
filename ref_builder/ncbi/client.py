@@ -2,7 +2,7 @@
 
 import datetime
 import os
-from collections.abc import Collection
+from collections.abc import Collection, Iterator
 from contextlib import contextmanager, suppress
 from enum import StrEnum
 from http import HTTPStatus
@@ -590,7 +590,7 @@ class NCBIClient:
 
 
 @contextmanager
-def log_http_error() -> None:
+def log_http_error() -> Iterator[None]:
     """Log detailed HTTPError info for debugging before throwing the HTTPError."""
     try:
         yield
