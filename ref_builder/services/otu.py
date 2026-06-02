@@ -350,6 +350,14 @@ class OTUService(Service):
 
         for record in records:
             outdated_sequence = otu.get_sequence(record.accession)
+
+            if outdated_sequence is None:
+                logger.error(
+                    "Outdated sequence not found in OTU",
+                    accession=record.accession,
+                )
+                continue
+
             versioned_accession = Accession.from_string(record.accession_version)
 
             segment_id = assign_segment_id_to_record(record, otu.plan)
@@ -374,6 +382,13 @@ class OTUService(Service):
                 )
                 new_sequence = otu.get_sequence(record.accession)
 
+                if new_sequence is None:
+                    logger.error(
+                        "Existing sequence not found in OTU",
+                        accession=record.accession,
+                    )
+                    continue
+
             try:
                 self._repo.update_sequence(
                     otu.id,
@@ -390,7 +405,12 @@ class OTUService(Service):
                 )
                 continue
 
-            otu = self._repo.get_otu(otu.id)
+            refreshed_otu = self._repo.get_otu(otu.id)
+
+            if refreshed_otu is None:
+                raise ValueError(f"OTU does not exist: {otu.id}")
+
+            otu = refreshed_otu
 
         if upgraded_accessions:
             logger.info(
@@ -425,12 +445,20 @@ class OTUService(Service):
         if self._promote_accessions(otu):
             otu = self._repo.get_otu(otu.id)
 
+            if otu is None:
+                log.error("OTU disappeared after promotion")
+                return None
+
         # Step 2: Upgrade outdated sequence versions
         upgraded_accessions = self._upgrade_outdated_sequences(otu)
 
         if upgraded_accessions:
             log.info("Upgraded sequences", count=len(upgraded_accessions))
             otu = self._repo.get_otu(otu.id)
+
+            if otu is None:
+                log.error("OTU disappeared after sequence upgrade")
+                return None
 
         # Step 3: Add new isolates
         accessions = self.ncbi.fetch_accessions_by_taxid(
@@ -460,6 +488,10 @@ class OTUService(Service):
                     )
                     if promoted_accessions:
                         otu = self._repo.get_otu(otu.id)
+
+                        if otu is None:
+                            log.error("OTU disappeared after record promotion")
+                            return None
 
                 records = [
                     r

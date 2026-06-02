@@ -82,6 +82,8 @@ class TestParseTaxonomy:
         """
         record = scratch_ncbi_cache.load_taxonomy(1016856)
 
+        assert record is not None
+
         assert NCBITaxonomy.model_validate(record).rank == NCBIRank.NO_RANK
 
         taxonomy = NCBITaxonomy.model_validate({"rank": NCBIRank.ISOLATE, **record})

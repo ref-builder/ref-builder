@@ -1,7 +1,6 @@
 """Tests for data factories used in testing."""
 
 import uuid
-from uuid import uuid4
 
 from syrupy.assertion import SnapshotAssertion
 
@@ -30,7 +29,6 @@ def test_ncbi_genbank_factory(
 
     assert [
         Sequence(
-            id=uuid4(),
             accession=Accession.from_string(record.accession_version),
             definition=record.definition,
             segment=uuid.uuid4(),
@@ -145,7 +143,12 @@ class TestNCBIGenbankFactoryBuildIsolate:
         assert len(records) == 30
 
         # Verify keys go up to 30
-        segment_keys = [record.source.segment.split()[-1] for record in records]
+        assert all(record.source.segment is not None for record in records)
+        segment_keys = [
+            record.source.segment.split()[-1]
+            for record in records
+            if record.source.segment is not None
+        ]
         assert segment_keys[-1] == "30"
         assert segment_keys[0] == "1"
 
@@ -161,7 +164,11 @@ class TestNCBIGenbankFactoryBuildIsolate:
             segment_delimiter="-",
         )
 
-        assert all(record.source.segment.startswith("DNA-") for record in records)
+        assert all(
+            record.source.segment is not None
+            and record.source.segment.startswith("DNA-")
+            for record in records
+        )
 
         # Test RNA
         base_source = NCBISourceFactory.build(mol_type=NCBISourceMolType.GENOMIC_RNA)
@@ -171,7 +178,11 @@ class TestNCBIGenbankFactoryBuildIsolate:
             segment_delimiter="-",
         )
 
-        assert all(record.source.segment.startswith("RNA-") for record in records)
+        assert all(
+            record.source.segment is not None
+            and record.source.segment.startswith("RNA-")
+            for record in records
+        )
 
     def test_snapshot(
         self,

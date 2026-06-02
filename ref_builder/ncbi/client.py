@@ -2,7 +2,7 @@
 
 import datetime
 import os
-from collections.abc import Collection
+from collections.abc import Collection, Iterator
 from contextlib import contextmanager, suppress
 from enum import StrEnum
 from http import HTTPStatus
@@ -23,11 +23,14 @@ from ref_builder.ncbi.models import (
     NCBITaxonomy,
 )
 
+# Biopython ships py.typed but declares these Entrez config globals as bare
+# `None`, so ty infers their type as `None` and rejects str assignment. This is
+# an upstream typing bug, not unsafe code.
 if email := os.environ.get("NCBI_EMAIL"):
-    Entrez.email = email
+    Entrez.email = email  # ty: ignore[invalid-assignment]
 
 if api_key := os.environ.get("NCBI_API_KEY"):
-    Entrez.api_key = os.environ.get("NCBI_API_KEY")
+    Entrez.api_key = api_key  # ty: ignore[invalid-assignment]
 
 logger = get_logger("ncbi")
 
@@ -54,6 +57,8 @@ class NCBIClientProtocol(Protocol):
     def fetch_taxonomy_record(self, taxid: int) -> NCBITaxonomy | None: ...
 
     def fetch_descendant_taxids(self, species_taxid: int) -> list[int]: ...
+
+    def fetch_lineage(self, taxid: int) -> Lineage: ...
 
     @staticmethod
     def fetch_accessions_by_taxid(
@@ -162,7 +167,7 @@ class NCBIClient:
                     key = accession
 
             if key not in cached_keys:
-                accessions_to_fetch.append(accession)
+                accessions_to_fetch.append(str(accession))
 
         if accessions_to_fetch:
             total_to_fetch = len(accessions_to_fetch)
@@ -588,7 +593,7 @@ class NCBIClient:
 
 
 @contextmanager
-def log_http_error() -> None:
+def log_http_error() -> Iterator[None]:
     """Log detailed HTTPError info for debugging before throwing the HTTPError."""
     try:
         yield

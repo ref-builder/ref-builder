@@ -135,7 +135,8 @@ class NCBIGenbank(BaseModel):
     source: Annotated[NCBISource, Field(validation_alias="GBSeq_feature-table")]
     comment: Annotated[str, Field(validation_alias="GBSeq_comment")] = ""
 
-    @computed_field()
+    @computed_field
+    @property
     def refseq(self) -> bool:
         """Whether this is a RefSeq record.
 
@@ -151,7 +152,9 @@ class NCBIGenbank(BaseModel):
 
     @field_validator("source", mode="before")
     @classmethod
-    def convert_source(cls, raw: NCBISource | dict | list[dict[str:Any]]) -> NCBISource:
+    def convert_source(
+        cls, raw: NCBISource | dict | list[dict[str, Any]]
+    ) -> NCBISource:
         """If the source field isn't a ``NCBISource`` object, convert it."""
         # Already validated NCBISource instance (no conversion needed).
         if isinstance(raw, NCBISource):
@@ -232,6 +235,7 @@ class NCBITaxonomy(BaseModel):
         return v
 
     @computed_field
+    @property
     def species(self) -> NCBILineage:
         """Return the species level taxon in the lineage."""
         if self.rank is NCBIRank.SPECIES:

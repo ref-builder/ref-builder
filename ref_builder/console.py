@@ -273,10 +273,12 @@ def _print_isolate(
         isolate.sequences,
         key=lambda s: index_by_segment_id[s.segment],
     ):
+        segment = plan.get_segment_by_id(sequence.segment)
+
         isolate_table.add_row(
             _render_nucleotide_link(str(sequence.accession)),
             str(len(sequence.sequence)),
-            str(plan.get_segment_by_id(sequence.segment).name or "Unnamed"),
+            str((segment.name if segment is not None else None) or "Unnamed"),
             sequence.definition,
         )
 

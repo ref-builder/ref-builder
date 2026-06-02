@@ -819,6 +819,7 @@ class TestExcludeAccessions:
             )
 
         otu = initialized_repo.get_otu_by_taxid(3432891)
+        assert otu is not None
         assert len(otu.isolates) == 2
         assert len(otu.excluded_isolates) == 0
 
@@ -1054,6 +1055,7 @@ class TestAllowAccessions:
             )
 
         otu = initialized_repo.get_otu_by_taxid(3432891)
+        assert otu is not None
         assert len(otu.isolates) == 2
         assert len(otu.excluded_isolates) == 0
 
@@ -1063,6 +1065,7 @@ class TestAllowAccessions:
             initialized_repo.exclude_accessions(otu.id, {accession_to_exclude})
 
         otu = initialized_repo.get_otu_by_taxid(3432891)
+        assert otu is not None
         assert len(otu.isolates) == 1
         assert len(otu.excluded_isolates) == 1
         assert accession_to_exclude in otu.excluded_accessions
@@ -1073,6 +1076,7 @@ class TestAllowAccessions:
             initialized_repo.allow_accessions(otu.id, [accession_to_exclude])
 
         otu = initialized_repo.get_otu_by_taxid(3432891)
+        assert otu is not None
 
         # Verify the isolate is restored
         assert len(otu.isolates) == 2

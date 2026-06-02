@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 
 class OTUSpec:
     refseq: list[str]
@@ -22,6 +23,8 @@ class OTUHandle:
     taxid: int
 
 class OTURegistry:
+    def __init__(self, manifest: type, data_dir: Path) -> None: ...
+    def validate(self) -> None: ...
     @property
     def abaca_bunchy_top_virus(self) -> OTUHandle: ...
     @property

@@ -2,6 +2,7 @@ import logging
 import os
 
 import structlog
+from structlog.typing import Processor
 
 NO_COLOR = os.environ.get("NO_COLOR") is not None
 
@@ -15,7 +16,7 @@ def configure_logger(verbosity: int, no_color: bool = False) -> None:
     # Disable faker logging.
     logging.getLogger("faker").setLevel(logging.ERROR)
 
-    processors = [
+    processors: list[Processor] = [
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
     ]

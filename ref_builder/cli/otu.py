@@ -171,7 +171,7 @@ def otu_update(
     services.otu.update(otu_.id)
 
 
-@otu.command(name="exclude-accessions")  # type: ignore
+@otu.command(name="exclude-accessions")
 @click.argument("IDENTIFIER", type=str)
 @click.argument(
     "accessions_",
@@ -203,7 +203,7 @@ def otu_exclude_accessions(
     services.otu.exclude_accessions(otu_.id, set(accessions_))
 
 
-@otu.command(name="allow-accessions")  # type: ignore
+@otu.command(name="allow-accessions")
 @click.argument("IDENTIFIER", type=str)
 @click.argument(
     "accessions_",
