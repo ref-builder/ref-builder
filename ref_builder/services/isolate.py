@@ -108,6 +108,11 @@ class IsolateService(Service):
 
             if promoted_accessions:
                 otu = self._repo.get_otu(otu.id)
+
+                if otu is None:
+                    log.error("OTU disappeared after promotion")
+                    return None
+
                 # Find the isolate by one of the promoted accessions
                 promoted_accession = next(iter(promoted_accessions))
                 isolate = otu.get_isolate_by_accession(promoted_accession)
@@ -177,6 +182,10 @@ class IsolateService(Service):
             return False
 
         otu = self._repo.get_otu(otu_id)
+
+        if otu is None:
+            logger.error("OTU not found for isolate", isolate_id=str(isolate_id))
+            return False
 
         log = logger.bind(otu_id=str(otu.id), taxid=otu.taxid)
 

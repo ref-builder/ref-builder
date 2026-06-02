@@ -98,12 +98,22 @@ class RepoService(Service):
             if otu_records:
                 otu = self._repo.get_otu(otu_id)
 
+                if otu is None:
+                    logger.debug("No corresponding OTU found in this repo", taxid=taxid)
+                    continue
+
                 # Promote RefSeq accessions first
                 refseq_records = [r for r in otu_records if r.refseq]
                 if refseq_records and promote_otu_from_records(
                     self._repo, otu, refseq_records
                 ):
                     otu = self._repo.get_otu(otu_id)
+
+                    if otu is None:
+                        logger.debug(
+                            "No corresponding OTU found in this repo", taxid=taxid
+                        )
+                        continue
 
                 # Create isolates from records
                 for isolate_name, isolate_records in group_genbank_records_by_isolate(

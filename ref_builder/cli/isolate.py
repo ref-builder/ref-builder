@@ -72,5 +72,15 @@ def isolate_get(repo: Repo, isolate_id: UUID) -> None:
         sys.exit(1)
 
     otu_id = repo.get_otu_id_by_isolate_id(isolate_id)
+
+    if otu_id is None:
+        click.echo("OTU could not be found.", err=True)
+        sys.exit(1)
+
     otu_ = repo.get_otu(otu_id)
+
+    if otu_ is None:
+        click.echo("OTU could not be found.", err=True)
+        sys.exit(1)
+
     print_isolate(isolate_, otu_.plan)

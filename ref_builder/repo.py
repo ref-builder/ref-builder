@@ -260,6 +260,10 @@ class Repo:
         for taxon in lineage.taxa:
             if (otu_id := self.get_otu_id_by_taxid(taxon.id)) is not None:
                 otu = self.get_otu(otu_id)
+
+                if otu is None:
+                    raise ValueError(f"OTU does not exist: {otu_id}")
+
                 msg = f"OTU {otu.id} already contains taxid {taxon.id} ({taxon.name})"
                 raise ValueError(msg)
 
@@ -321,7 +325,12 @@ class Repo:
             sequence_count=len(sequences),
         )
 
-        return self.get_otu(otu_id).get_isolate(isolate_id)
+        otu = self.get_otu(otu_id)
+
+        if otu is None:
+            raise ValueError(f"OTU does not exist: {otu_id}")
+
+        return otu.get_isolate(isolate_id)
 
     def delete_isolate(
         self,
@@ -399,7 +408,12 @@ class Repo:
             OTUQuery(otu_id=otu_id),
         )
 
-        return self.get_otu(otu_id).plan
+        otu = self.get_otu(otu_id)
+
+        if otu is None:
+            raise ValueError(f"OTU does not exist: {otu_id}")
+
+        return otu.plan
 
     def exclude_accessions(
         self,
@@ -408,6 +422,9 @@ class Repo:
     ) -> set[str]:
         """Add accessions to OTU's excluded accessions."""
         otu = self.get_otu(otu_id)
+
+        if otu is None:
+            raise ValueError(f"OTU does not exist: {otu_id}")
 
         try:
             excludable_accessions = {
@@ -457,7 +474,12 @@ class Repo:
         else:
             logger.warning("No excludable accessions were given.")
 
-        return self.get_otu(otu_id).excluded_accessions
+        updated_otu = self.get_otu(otu_id)
+
+        if updated_otu is None:
+            raise ValueError(f"OTU does not exist: {otu_id}")
+
+        return updated_otu.excluded_accessions
 
     def allow_accessions(
         self,
@@ -466,6 +488,9 @@ class Repo:
     ) -> set[str]:
         """Remove accessions from OTU's excluded accessions."""
         otu = self.get_otu(otu_id)
+
+        if otu is None:
+            raise ValueError(f"OTU does not exist: {otu_id}")
 
         allowable_accessions = set(accessions)
 
@@ -494,7 +519,12 @@ class Repo:
                 new_excluded_accessions=sorted(allowable_accessions),
             )
 
-        return self.get_otu(otu_id).excluded_accessions
+        updated_otu = self.get_otu(otu_id)
+
+        if updated_otu is None:
+            raise ValueError(f"OTU does not exist: {otu_id}")
+
+        return updated_otu.excluded_accessions
 
     def get_otu_id_by_isolate_id(self, isolate_id: uuid.UUID) -> uuid.UUID | None:
         """Get an OTU ID from an isolate ID that belongs to it."""
@@ -582,7 +612,12 @@ class Repo:
     def get_isolate(self, isolate_id: uuid.UUID) -> Isolate | None:
         """Return the isolate with the given id if it exists, else None."""
         if otu_id := self.get_otu_id_by_isolate_id(isolate_id):
-            return self.get_otu(otu_id).get_isolate(isolate_id)
+            otu = self.get_otu(otu_id)
+
+            if otu is None:
+                raise ValueError(f"OTU does not exist: {otu_id}")
+
+            return otu.get_isolate(isolate_id)
 
         return None
 
