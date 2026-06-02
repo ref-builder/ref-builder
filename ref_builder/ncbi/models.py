@@ -135,7 +135,8 @@ class NCBIGenbank(BaseModel):
     source: Annotated[NCBISource, Field(validation_alias="GBSeq_feature-table")]
     comment: Annotated[str, Field(validation_alias="GBSeq_comment")] = ""
 
-    @computed_field()
+    @computed_field
+    @property
     def refseq(self) -> bool:
         """Whether this is a RefSeq record.
 
@@ -232,6 +233,7 @@ class NCBITaxonomy(BaseModel):
         return v
 
     @computed_field
+    @property
     def species(self) -> NCBILineage:
         """Return the species level taxon in the lineage."""
         if self.rank is NCBIRank.SPECIES:
