@@ -350,6 +350,14 @@ class OTUService(Service):
 
         for record in records:
             outdated_sequence = otu.get_sequence(record.accession)
+
+            if outdated_sequence is None:
+                logger.error(
+                    "Outdated sequence not found in OTU",
+                    accession=record.accession,
+                )
+                continue
+
             versioned_accession = Accession.from_string(record.accession_version)
 
             segment_id = assign_segment_id_to_record(record, otu.plan)
@@ -374,6 +382,13 @@ class OTUService(Service):
                 )
                 new_sequence = otu.get_sequence(record.accession)
 
+                if new_sequence is None:
+                    logger.error(
+                        "Existing sequence not found in OTU",
+                        accession=record.accession,
+                    )
+                    continue
+
             try:
                 self._repo.update_sequence(
                     otu.id,
@@ -390,7 +405,12 @@ class OTUService(Service):
                 )
                 continue
 
-            otu = self._repo.get_otu(otu.id)
+            refreshed_otu = self._repo.get_otu(otu.id)
+
+            if refreshed_otu is None:
+                raise ValueError(f"OTU does not exist: {otu.id}")
+
+            otu = refreshed_otu
 
         if upgraded_accessions:
             logger.info(

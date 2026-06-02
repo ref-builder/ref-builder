@@ -142,6 +142,11 @@ class ProductionSequence(ProductionResource):
     ) -> "ProductionSequence":
         segment = otu_plan.get_segment_by_id(validated_sequence.segment)
 
+        if segment is None:
+            raise ValueError(
+                f"Segment not found in plan: {validated_sequence.segment}"
+            )
+
         return ProductionSequence(
             id=str(validated_sequence.accession),
             accession=str(validated_sequence.accession),

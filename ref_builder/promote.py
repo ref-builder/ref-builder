@@ -140,7 +140,12 @@ def promote_otu_from_records(
             )
             continue
 
-        otu = repo.get_otu(otu.id)
+        refreshed_otu = repo.get_otu(otu.id)
+
+        if refreshed_otu is None:
+            raise ValueError(f"OTU does not exist: {otu.id}")
+
+        otu = refreshed_otu
 
     if promoted_accessions:
         log.info(

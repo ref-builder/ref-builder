@@ -330,7 +330,12 @@ class Repo:
         if otu is None:
             raise ValueError(f"OTU does not exist: {otu_id}")
 
-        return otu.get_isolate(isolate_id)
+        isolate = otu.get_isolate(isolate_id)
+
+        if isolate is None:
+            raise ValueError(f"Isolate does not exist: {isolate_id}")
+
+        return isolate
 
     def delete_isolate(
         self,

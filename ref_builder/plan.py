@@ -36,12 +36,14 @@ def extract_segment_name_from_record_with_plan(
         return segment_name
 
     if not plan.monopartite:
-        try:
-            plan_keys_and_prefixes = {
-                segment.name.key: segment.name.prefix for segment in plan.segments
-            }
-        except AttributeError:
+        if any(segment.name is None for segment in plan.segments):
             raise ValueError("Multipartite plan contains unnamed segments")
+
+        plan_keys_and_prefixes = {
+            segment.name.key: segment.name.prefix
+            for segment in plan.segments
+            if segment.name is not None
+        }
 
         # Handle no prefix.
         with suppress(KeyError):
