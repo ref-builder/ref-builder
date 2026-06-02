@@ -50,6 +50,7 @@ class TestBuildFasta:
             "otu_id",
             "isolate_id",
         }
+        assert reader.fieldnames is not None
         assert set(reader.fieldnames) == expected_columns
 
     def test_no_csv(self, scratch_repo: Repo, tmp_path: Path):

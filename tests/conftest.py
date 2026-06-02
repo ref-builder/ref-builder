@@ -86,18 +86,18 @@ def scratch_user_cache_path(files_path: Path, tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def ncbi_genbank_factory() -> NCBIGenbankFactory:
+def ncbi_genbank_factory() -> type[NCBIGenbankFactory]:
     """Fixture for a factory that generates NCBIGenbank instances."""
     return NCBIGenbankFactory
 
 
 @pytest.fixture
-def ncbi_source_factory() -> NCBISourceFactory:
+def ncbi_source_factory() -> type[NCBISourceFactory]:
     """Fixture for a factory that generates NCBISource instances."""
     return NCBISourceFactory
 
 
 @pytest.fixture
-def ncbi_taxonomy_factory() -> NCBITaxonomyFactory:
+def ncbi_taxonomy_factory() -> type[NCBITaxonomyFactory]:
     """Fixture for a factory that generates NCBITaxonomy instances."""
     return NCBITaxonomyFactory

@@ -41,6 +41,8 @@ class TestGenbank:
 
         record = scratch_ncbi_cache.load_genbank_record(accession.key)
 
+        assert record is not None
+
         scratch_ncbi_cache.clear()
 
         assert scratch_ncbi_cache.load_genbank_record(accession.key) is None
@@ -84,6 +86,8 @@ class TestTaxonomy:
     ):
         """Test that a taxonomy record can be loaded and cached correctly."""
         record = scratch_ncbi_cache.load_taxonomy(1198450)
+
+        assert record is not None
 
         scratch_ncbi_cache.clear()
 
