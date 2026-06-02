@@ -152,7 +152,9 @@ class NCBIGenbank(BaseModel):
 
     @field_validator("source", mode="before")
     @classmethod
-    def convert_source(cls, raw: NCBISource | dict | list[dict[str, Any]]) -> NCBISource:
+    def convert_source(
+        cls, raw: NCBISource | dict | list[dict[str, Any]]
+    ) -> NCBISource:
         """If the source field isn't a ``NCBISource`` object, convert it."""
         # Already validated NCBISource instance (no conversion needed).
         if isinstance(raw, NCBISource):

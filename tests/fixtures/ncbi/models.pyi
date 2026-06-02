@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-
 class OTUSpec:
     refseq: list[str]
     isolates: list[list[str]]
@@ -14,52 +13,37 @@ class OTUSpec:
         isolates: list[list[str]] | None = None,
         incompatible: list[str] | None = None,
     ) -> None: ...
-
     def __set_name__(self, owner, name: str) -> None: ...
-
     @property
     def all_accessions(self) -> list[str]: ...
-
 
 @dataclass
 class OTUHandle:
     name: str
     taxid: int
 
-
 class OTURegistry:
     def __init__(self, manifest: type, data_dir: Path) -> None: ...
     def validate(self) -> None: ...
-
     @property
     def abaca_bunchy_top_virus(self) -> OTUHandle: ...
-
     @property
     def babaco_mosaic_virus(self) -> OTUHandle: ...
-
     @property
     def beet_black_scorch_virus(self) -> OTUHandle: ...
-
     @property
     def cabbage_leaf_curl_jamaica_virus(self) -> OTUHandle: ...
-
     @property
     def dahlia_latent_viroid(self) -> OTUHandle: ...
-
     @property
     def east_african_cassava_mosaic_cameroon_virus(self) -> OTUHandle: ...
-
     @property
     def oat_blue_dwarf_virus(self) -> OTUHandle: ...
-
     @property
     def okra_leaf_curl_alphasatellite(self) -> OTUHandle: ...
-
     @property
     def saccharum_streak_virus(self) -> OTUHandle: ...
-
     @property
     def tobacco_mosaic_virus(self) -> OTUHandle: ...
-
     @property
     def wasabi_mottle_virus(self) -> OTUHandle: ...
