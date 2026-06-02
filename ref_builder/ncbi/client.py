@@ -23,11 +23,14 @@ from ref_builder.ncbi.models import (
     NCBITaxonomy,
 )
 
+# Biopython ships py.typed but declares these Entrez config globals as bare
+# `None`, so ty infers their type as `None` and rejects str assignment. This is
+# an upstream typing bug, not unsafe code.
 if email := os.environ.get("NCBI_EMAIL"):
-    Entrez.email = email
+    Entrez.email = email  # ty: ignore[invalid-assignment]
 
 if api_key := os.environ.get("NCBI_API_KEY"):
-    Entrez.api_key = os.environ.get("NCBI_API_KEY")
+    Entrez.api_key = api_key  # ty: ignore[invalid-assignment]
 
 logger = get_logger("ncbi")
 
