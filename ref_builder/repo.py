@@ -577,7 +577,7 @@ class Repo:
 
         return otu
 
-    def iter_otu_events(self, otu_id: uuid.UUID) -> Generator[ApplicableEvent]:
+    def iter_otu_events(self, otu_id: uuid.UUID) -> Generator[Event]:
         """Iterate through event log."""
         event_index_item = self._index.get_event_ids_by_otu_id(otu_id)
 

@@ -164,7 +164,7 @@ class NCBIClient:
                     key = accession
 
             if key not in cached_keys:
-                accessions_to_fetch.append(accession)
+                accessions_to_fetch.append(str(accession))
 
         if accessions_to_fetch:
             total_to_fetch = len(accessions_to_fetch)
