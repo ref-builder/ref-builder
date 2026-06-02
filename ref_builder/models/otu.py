@@ -70,6 +70,10 @@ class OTU(BaseModel):
     """The plan for the OTU."""
 
     @model_validator(mode="after")
+    def _rebuild_lookups_after_validation(self) -> "OTU":
+        """Rebuild lookup dictionaries after model validation."""
+        return self.rebuild_lookups()
+
     def rebuild_lookups(self) -> "OTU":
         """Rebuild lookup dictionaries when isolates change."""
         self._isolates_by_accession = {
