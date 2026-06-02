@@ -55,6 +55,8 @@ class NCBIClientProtocol(Protocol):
 
     def fetch_descendant_taxids(self, species_taxid: int) -> list[int]: ...
 
+    def fetch_lineage(self, taxid: int) -> Lineage: ...
+
     @staticmethod
     def fetch_accessions_by_taxid(
         taxid: int,

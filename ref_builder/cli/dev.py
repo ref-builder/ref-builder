@@ -133,9 +133,23 @@ def refresh() -> None:
         generated_count += 1
 
     # Generate type stub
+    stub_path = _generate_stub()
+    click.echo(f"  Wrote {stub_path}")
+
+    click.echo(f"\n✓ Generated {generated_count} OTUs in {output_path}")
+
+
+def _generate_stub() -> Path:
+    """Generate the ``models.pyi`` type stub from the OTU manifest.
+
+    Emits static declarations for ``OTUSpec``/``OTUHandle`` and the dynamic
+    ``OTURegistry``, whose ``@property`` OTU handles mirror the manifest entries.
+    Returns the path to the written stub.
+    """
     stub_path = Path("tests/fixtures/ncbi/models.pyi")
     stub_lines = [
         "from dataclasses import dataclass",
+        "from pathlib import Path",
         "",
         "",
         "class OTUSpec:",
@@ -164,6 +178,9 @@ def refresh() -> None:
         "",
         "",
         "class OTURegistry:",
+        "    def __init__(self, manifest: type, data_dir: Path) -> None: ...",
+        "    def validate(self) -> None: ...",
+        "",
     ]
 
     for attr_name in dir(OTUManifest):
@@ -176,6 +193,16 @@ def refresh() -> None:
             stub_lines.append("")
 
     stub_path.write_text("\n".join(stub_lines))
-    click.echo(f"  Wrote {stub_path}")
 
-    click.echo(f"\n✓ Generated {generated_count} OTUs in {output_path}")
+    return stub_path
+
+
+@dev.command(name="stub")
+def stub() -> None:
+    """Regenerate the mock OTU registry type stub from the manifest.
+
+    Unlike ``refresh``, this does not fetch from NCBI; it only rewrites
+    ``tests/fixtures/ncbi/models.pyi`` from the current manifest.
+    """
+    stub_path = _generate_stub()
+    click.echo(f"✓ Wrote {stub_path}")

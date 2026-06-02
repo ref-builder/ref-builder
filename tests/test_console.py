@@ -7,7 +7,6 @@ from ref_builder.console import (
     print_otu_list,
 )
 from ref_builder.models.otu import OTUMinimal
-from ref_builder.ncbi.client import NCBIClientProtocol
 from ref_builder.repo import Repo
 from tests.fixtures.mock_ncbi_client import MockNCBIClient
 
@@ -82,7 +81,7 @@ class TestPrintOTU:
 
     def test_ok(
         self,
-        mock_ncbi_client: NCBIClientProtocol,
+        mock_ncbi_client: MockNCBIClient,
         scratch_repo: Repo,
     ):
         """Test that an OTU is printed as expected by ``print_otu``."""
