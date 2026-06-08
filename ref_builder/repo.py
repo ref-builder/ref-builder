@@ -300,9 +300,7 @@ class Repo:
                             if event.data.name is not None
                             else None
                         ),
-                        accession_keys=[
-                            s.accession.key for s in event.data.sequences
-                        ],
+                        accession_keys=[s.accession.key for s in event.data.sequences],
                     )
 
                 elif isinstance(event, DeleteIsolate):
@@ -647,9 +645,7 @@ class Repo:
         """Get an OTU ID from an isolate ID that belongs to it."""
         return self._index.get_id_by_isolate_id(isolate_id)
 
-    def get_otu_id_by_accession_key(
-        self, accession_key: str
-    ) -> uuid.UUID | None:
+    def get_otu_id_by_accession_key(self, accession_key: str) -> uuid.UUID | None:
         """Get the OTU ID that currently owns an accession key.
 
         Returns ``None`` if no OTU contains a sequence with this accession key.

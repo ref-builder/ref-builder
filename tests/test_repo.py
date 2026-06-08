@@ -1290,9 +1290,7 @@ class TestDuplicateAccessions:
         assert existing_otu.id in excinfo.value.conflicts
         assert "TM000001" in excinfo.value.conflicts[existing_otu.id]
 
-    def test_create_otu_rejects_accession_in_other_otu(
-        self, initialized_repo: Repo
-    ):
+    def test_create_otu_rejects_accession_in_other_otu(self, initialized_repo: Repo):
         """Creating a new OTU whose seed isolate's accession already lives in
         another OTU must raise DuplicateAccessionError.
         """
@@ -1347,12 +1345,8 @@ class TestDuplicateAccessions:
         """The new repo-wide lookup returns the OTU that owns a given key."""
         otu = initialized_repo.get_otu_by_taxid(3432891)
 
-        assert (
-            initialized_repo.get_otu_id_by_accession_key("TM000001") == otu.id
-        )
-        assert (
-            initialized_repo.get_otu_id_by_accession_key("DOES_NOT_EXIST") is None
-        )
+        assert initialized_repo.get_otu_id_by_accession_key("TM000001") == otu.id
+        assert initialized_repo.get_otu_id_by_accession_key("DOES_NOT_EXIST") is None
 
     def test_accession_keys_property(self, initialized_repo: Repo):
         """``Repo.accession_keys`` covers every accession across all OTUs."""

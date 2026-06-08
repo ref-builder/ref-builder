@@ -3,10 +3,9 @@
 from pathlib import Path
 from uuid import uuid4
 
+import arrow
 import pytest
 from click.testing import CliRunner
-
-import arrow
 
 from ref_builder.cli.validate_cmd import validate as validate_command_group
 from ref_builder.events.base import IsolateQuery
