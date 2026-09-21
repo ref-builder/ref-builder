@@ -5,12 +5,18 @@
 # name: TestAssignRecordsToSegments.test_ok
   set({
     tuple(
-      SegmentName(prefix='DNA', key='A'),
+      SegmentName(
+        key='A',
+        prefix='DNA',
+      ),
       'NC_907439',
       'DNA A',
     ),
     tuple(
-      SegmentName(prefix='DNA', key='B'),
+      SegmentName(
+        key='B',
+        prefix='DNA',
+      ),
       'K93863',
       'DNA B',
     ),
